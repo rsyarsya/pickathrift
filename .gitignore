@@ -1,0 +1,44 @@
+# Variabel lingkungan dan kredensial lokal
+.env
+.env.*
+!**/.env.example
+
+# Dependensi
+node_modules/
+.pnpm-store/
+.yarn/
+
+# Hasil build dan cakupan pengujian
+dist/
+build/
+.next/
+out/
+coverage/
+.turbo/
+.cache/
+.vite/
+.nyc_output/
+.eslintcache
+*.tsbuildinfo
+
+# Log dan berkas proses
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.pid
+*.pid.lock
+
+# Berkas editor
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Metadata sistem operasi
+.DS_Store
+Thumbs.db
+Desktop.ini
