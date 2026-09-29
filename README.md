@@ -53,18 +53,14 @@ pickathrift/
 │       └── README.md
 ├── docs/
 │   └── README.md
-├── .editorconfig
-├── .gitignore
-├── AGENTS.md
 └── README.md
 ```
 
 - `apps/frontend` disiapkan untuk aplikasi React atau Next.js.
 - `apps/backend` disiapkan untuk API ExpressJS dan MongoDB.
 - `docs` menjadi indeks dokumentasi proyek dan laporan Milestone 1.
-- `AGENTS.md` menyimpan konteks produk, aturan bisnis, kontrak API, dan keputusan proyek untuk pekerjaan berikutnya.
 
-## Teknologi
+## Tech Stacks
 
 ### Digunakan pada tahap analisis dan perancangan
 
@@ -80,29 +76,7 @@ pickathrift/
 
 Pilihan React atau Next.js, package manager, dan konfigurasi workspace belum diputuskan. Belum ada dependensi aplikasi yang dipasang.
 
-## Status proyek
-
-- Analisis kebutuhan, prioritas fitur, alur fitur utama, dan rancangan 20 endpoint telah tersedia pada laporan Milestone 1.
-- Pengujian awal Postman telah dilakukan untuk akun, produk, wishlist, pesanan, otorisasi, dan perlindungan stok tunggal.
-- Fondasi monorepo dan dokumentasi repositori telah disiapkan.
-- Implementasi frontend dan backend belum terdapat di repositori ini.
-
-Temuan backend dari pengujian sebelumnya dicatat di [AGENTS.md](AGENTS.md). Temuan tersebut belum dinyatakan selesai karena belum ada kode yang dapat membuktikan perbaikannya.
-
-## Instalasi dan menjalankan aplikasi
-
-Belum ada manifest paket, dependensi, atau skrip aplikasi. Karena itu, belum ada perintah instalasi, pengembangan, pengujian, maupun build yang dapat dijalankan. Bagian ini harus diperbarui setelah tim memilih frontend, package manager, dan membuat implementasi yang sesuai.
-
-## Variabel lingkungan
-
-Belum ada variabel lingkungan yang digunakan oleh kode dan belum ada `.env.example`. Ketika implementasi mulai membutuhkan konfigurasi lokal:
-
-1. Dokumentasikan hanya nama variabel yang benar-benar digunakan.
-2. Sediakan `.env.example` dengan nilai placeholder aman.
-3. Simpan nilai nyata di `.env` lokal dan jangan commit kredensial, token, kunci privat, atau URI basis data.
-
 ## Dokumentasi
 
 - [Indeks dokumentasi proyek](docs/README.md)
 - [Laporan dan dokumen proyek di Google Drive](https://drive.google.com/drive/folders/18fWD-o-8HaH5uzsJtjpsghzn-5u93bpv?usp=sharing)
-- [Memori proyek untuk agen pengembangan](AGENTS.md)
