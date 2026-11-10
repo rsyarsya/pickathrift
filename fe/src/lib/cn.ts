@@ -1,17 +1,12 @@
 import { clsx, type ClassValue } from "clsx";
 import { extendTailwindMerge } from "tailwind-merge";
 
-/*
- * tailwind-merge hanya tahu skala milik Tailwind sendiri. Tanpa daftar ini ia membaca
- * `text-label` dan `text-ds-muted` sebagai dua ukuran font lalu membuang yang pertama.
- * Setiap skala yang ditambahkan di globals.css harus disebut di sini juga.
- */
+// Samakan daftar ini dengan token --text-* di globals.css agar tailwind-merge
+// mengenali kelas seperti text-hero sebagai tipografi, terpisah dari warna teks.
 const twMerge = extendTailwindMerge({
   extend: {
     theme: {
-      text: ["display", "price", "title", "heading", "body", "label", "caption"],
-      radius: ["small", "row", "card"],
-      ease: ["base", "drawer"],
+      text: ["hero", "page", "section", "card", "price", "body", "strong", "helper", "overline"],
     },
   },
 });

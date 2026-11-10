@@ -17,11 +17,19 @@ export class ApiError extends Error {
 }
 
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
+  const headers = new Headers(init?.headers);
+  if (init?.body instanceof FormData) {
+    // Fetch perlu membuat Content-Type beserta boundary yang cocok dengan body.
+    headers.delete("Content-Type");
+  } else if (typeof init?.body === "string" && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+
   let response: Response;
   try {
     response = await fetch(`${API_URL}${path}`, {
       ...init,
-      headers: { "Content-Type": "application/json", ...init?.headers },
+      headers,
       credentials: "include",
     });
   } catch {
