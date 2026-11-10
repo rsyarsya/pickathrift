@@ -46,19 +46,20 @@ Setiap produk hanya memiliki satu unit dengan status Tersedia, Dipesan, atau Ter
 
 ```text
 pickathrift/
-├── apps/
-│   ├── frontend/
-│   │   └── README.md
-│   └── backend/
-│       └── README.md
+├── fe/                 # Next.js App Router, TypeScript, Tailwind CSS 4
+├── be/                 # ExpressJS dan MongoDB
 ├── docs/
-│   └── README.md
-└── README.md
+├── package.json        # skrip workspace: dev, build, lint, typecheck, test, format
+└── pnpm-workspace.yaml
 ```
 
-- `apps/frontend` disiapkan untuk aplikasi React atau Next.js.
-- `apps/backend` disiapkan untuk API ExpressJS dan MongoDB.
+- `fe` berisi frontend. Strukturnya dijelaskan di [fe/README.md](fe/README.md).
+- `be` disiapkan untuk API ExpressJS dan MongoDB. Belum ada kode.
 - `docs` menjadi indeks dokumentasi proyek dan laporan Milestone 1.
+
+Repositori ini satu pnpm workspace. Jalankan `pnpm install` sekali di root, lalu
+`pnpm --filter @pickathrift/fe dev` untuk frontend. Perintah `pnpm lint`, `pnpm typecheck`,
+`pnpm test`, dan `pnpm format:check` berlaku untuk seluruh workspace.
 
 ## Tech Stacks
 
@@ -74,7 +75,8 @@ pickathrift/
 - Basis data: MongoDB.
 - Frontend: React atau Next.js.
 
-Pilihan React atau Next.js, package manager, dan konfigurasi workspace belum diputuskan. Belum ada dependensi aplikasi yang dipasang.
+Keputusan tim: frontend memakai Next.js App Router dengan TypeScript, Tailwind CSS 4, dan Vitest.
+Package manager pnpm dengan satu workspace di root. Backend belum dipasang.
 
 ## Dokumentasi
 
