@@ -2,11 +2,11 @@ import { clsx, type ClassValue } from "clsx";
 import { extendTailwindMerge } from "tailwind-merge";
 
 // Samakan daftar ini dengan token --text-* di globals.css agar tailwind-merge
-// mengenali kelas seperti text-hero sebagai tipografi, terpisah dari warna teks.
+// mengenali kelas seperti text-display sebagai tipografi, terpisah dari warna teks.
 const twMerge = extendTailwindMerge({
   extend: {
     theme: {
-      text: ["hero", "page", "section", "card", "price", "body", "strong", "helper", "overline"],
+      text: ["display", "title", "price", "card", "body", "caption", "micro", "nano"],
     },
   },
 });

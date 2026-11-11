@@ -1,92 +1,100 @@
 @import "tailwindcss";
 
 /*
- * Token desain PickaThrift, disalin dari board "Foundation" di Figma
- * (PAW Web Thrift Store → Letter - 1). Jangan menulis hex mentah di dalam komponen.
+ * Token desain PickaThrift, disalin dari desain ulang di Figma
+ * "PAW Web Thrift Store gacor" page "ag". Jangan menulis hex mentah di dalam komponen.
  */
 @theme {
-  /* Background */
-  --color-canvas: #f7f7f5;
+  /* Latar */
+  --color-canvas: #f4f2ee;
   --color-surface: #ffffff;
-  --color-subtle: #eeedea;
-  --color-brand-subtle: #fff1f2;
+  --color-subtle: #e7e4dd;
+  --color-brand-subtle: #fdecee;
 
   /* Teks dan aksi */
-  --color-fg: #20201e;
+  --color-fg: #1e1e1c;
   --color-muted: #666660;
   --color-brand: #c8102e;
   --color-brand-hover: #a50c25;
 
   /* Garis dan status */
   --color-line: #ddddd7;
+  --color-line-strong: #b8b6ae;
   --color-success: #166448;
   --color-success-bg: #e7f3eb;
   --color-warning: #815300;
   --color-warning-bg: #fff2d6;
   --color-sold: #5d5d58;
-  --color-sold-bg: #eaeae6;
+  --color-sold-bg: #e8e6e0;
   --color-danger: #b42318;
   --color-danger-bg: #feece9;
+  --color-disabled: #dcdad4;
+  --color-disabled-fg: #9a988f;
 
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  /* Aksen kategori dan sorotan */
+  --color-peach: #f6cbb4;
+  --color-butter: #f2e7a8;
+  --color-lilac: #d9d3f5;
+  --color-mint: #cfe6d6;
+
+  /* Footer dan permukaan gelap */
+  --color-night: #1e1e1c;
+  --color-night-raised: #2c2c29;
+  --color-night-line: #3a3a36;
+  --color-night-muted: #8a887f;
+  --color-night-soft: #b8b6ae;
+  --color-night-fg: #f4f2ee;
+
+  --font-sans: var(--font-instrument-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-dm-mono), ui-monospace, monospace;
 
   /*
-   * Gaya teks bernama dari board Typography. Satu nama membawa ukuran, line height,
-   * dan weight-nya sendiri, jadi komponen tidak pernah mengulang angkanya.
+   * Gaya teks bernama. Ukuran lain (12, 14, 16, 18) memakai skala bawaan Tailwind:
+   * text-xs, text-sm, text-base, text-lg.
    */
-  --text-hero: 40px;
-  --text-hero--line-height: 46px;
-  --text-hero--letter-spacing: -0.02em;
-  --text-hero--font-weight: 700;
+  --text-display: 40px;
+  --text-display--line-height: 1.15;
+  --text-display--letter-spacing: -0.035em;
+  --text-display--font-weight: 500;
 
-  --text-page: 30px;
-  --text-page--line-height: 38px;
-  --text-page--letter-spacing: -0.01em;
-  --text-page--font-weight: 700;
+  --text-title: 30px;
+  --text-title--line-height: 1.2;
+  --text-title--letter-spacing: -0.027em;
+  --text-title--font-weight: 500;
 
-  --text-section: 20px;
-  --text-section--line-height: 28px;
-  --text-section--font-weight: 700;
+  --text-price: 26px;
+  --text-price--line-height: 1.3;
 
-  --text-card: 16px;
-  --text-card--line-height: 24px;
-  --text-card--font-weight: 600;
-
-  --text-price: 18px;
-  --text-price--line-height: 26px;
-  --text-price--font-weight: 700;
+  --text-card: 17px;
+  --text-card--line-height: 1.35;
+  --text-card--font-weight: 500;
 
   --text-body: 15px;
-  --text-body--line-height: 23px;
+  --text-body--line-height: 1.5;
 
-  --text-strong: 15px;
-  --text-strong--line-height: 23px;
-  --text-strong--font-weight: 600;
+  --text-caption: 13px;
+  --text-caption--line-height: 1.4;
 
-  --text-helper: 13px;
-  --text-helper--line-height: 19px;
+  --text-micro: 11px;
+  --text-micro--line-height: 1.4;
 
-  --text-overline: 12px;
-  --text-overline--line-height: 16px;
-  --text-overline--letter-spacing: 0.18em;
-  --text-overline--font-weight: 600;
+  --text-nano: 10px;
+  --text-nano--line-height: 1.4;
 
-  /* Structure - soft edges */
+  /* Huruf kapital DM Mono di label dan overline. */
+  --tracking-label: 0.08em;
+
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: 14px;
   --radius-xl: 20px;
 
-  /* shadow & focus */
-  --shadow-card: 0 4px 16px rgb(32 32 30 / 0.04);
-  --shadow-overlay: 0 20px 60px rgb(32 32 30 / 0.15);
+  --shadow-card: 0 4px 16px rgb(30 30 28 / 0.04);
+  --shadow-overlay: 0 20px 48px rgb(31 31 28 / 0.18);
 
-  /* Skala spasi 4px: space-1 sampai space-16 di board = p-4 sampai p-64 di kode. */
+  /* Satu langkah spasi = satu piksel desain: p-16 = 16px. */
   --spacing: 1px;
 }
-
-/* Hover hanya untuk penunjuk sungguhan. */
-@custom-variant hover-fine (@media (hover: hover) and (pointer: fine));
 
 @layer base {
   body {
@@ -98,6 +106,7 @@
   summary,
   select:not(:disabled),
   a[href],
+  label:has(input:not(:disabled)),
   [role="button"]:not([aria-disabled="true"]),
   input[type="checkbox"]:not(:disabled),
   input[type="radio"]:not(:disabled),
@@ -105,9 +114,12 @@
     cursor: pointer;
   }
 
-  /* Focus ring 3px dari board, hanya untuk keyboard. */
   :focus-visible {
     outline: 3px solid var(--color-brand);
     outline-offset: 2px;
+  }
+
+  dialog::backdrop {
+    background: rgb(30 30 28 / 0.45);
   }
 }
