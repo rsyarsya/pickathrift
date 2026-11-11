@@ -1,27 +1,32 @@
 .page {
   --auth-canvas: #f4f2ee;
   --auth-ink: #1e1e1c;
-  --auth-border: #d6d6d6;
   --auth-muted: #666660;
   --auth-field-border: #ddddd7;
   --auth-placeholder: #9a988f;
   --auth-surface: #ffffff;
+  --auth-field-hover: #b1aaa0;
+  --auth-focus: #7a7369;
+  --auth-focus-halo: rgb(75 65 51 / 10%);
 
   display: grid;
   /* Desktop Figma: foto 640px dan area form 800px pada lebar 1440px. */
   grid-template-columns: minmax(0, 4fr) minmax(0, 5fr);
   min-height: 100svh;
   overflow: hidden;
-  border: 1px solid var(--auth-border);
-  border-radius: 16px;
   background: var(--auth-canvas);
   color: var(--auth-ink);
   font-family: var(--font-auth-sans), sans-serif;
 }
 
+.page :focus-visible {
+  outline: 2px solid var(--auth-focus);
+  outline-offset: 4px;
+}
+
 .photoPanel {
   position: relative;
-  min-height: calc(100svh - 2px);
+  min-height: 100svh;
   overflow: hidden;
 }
 
@@ -129,6 +134,21 @@
   border: 1px solid var(--auth-field-border);
   border-radius: 10px;
   background: var(--auth-surface);
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+/* Fokus sandi mengikuti seluruh kotak, termasuk tombol tampilkan/sembunyikan. */
+.input:focus,
+.passwordBox:focus-within {
+  border-color: var(--auth-focus);
+  box-shadow: 0 0 0 3px var(--auth-focus-halo);
+}
+
+.input:focus,
+.passwordInput:focus {
+  outline: none;
 }
 
 .input,
@@ -158,12 +178,49 @@
 
 .passwordToggle {
   flex-shrink: 0;
-  padding: 14px 16px 14px 0;
+  margin-right: 8px;
+  padding: 8px;
+  border-radius: 6px;
   font-family: var(--font-auth-mono), monospace;
   font-size: 11px;
   font-weight: 500;
   line-height: normal;
   letter-spacing: 1px;
+  transition: background-color 180ms ease;
+}
+
+.passwordToggle:focus-visible {
+  outline-offset: -2px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .input:hover:not(:focus):not([aria-invalid="true"]),
+  .passwordBox:hover:not(:focus-within):not(:has([aria-invalid="true"])) {
+    border-color: var(--auth-field-hover);
+  }
+
+  .passwordToggle:hover {
+    background: var(--auth-canvas);
+  }
+}
+
+/* Validasi akan memasang aria-invalid pada isian yang salah. */
+.input[aria-invalid="true"],
+.passwordBox:has(.passwordInput[aria-invalid="true"]) {
+  border-color: var(--color-danger);
+}
+
+.input[aria-invalid="true"]:focus,
+.passwordBox:has(.passwordInput[aria-invalid="true"]):focus-within {
+  box-shadow: 0 0 0 3px rgb(180 35 24 / 10%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .input,
+  .passwordBox,
+  .passwordToggle {
+    transition: none;
+  }
 }
 
 .submitButton {
