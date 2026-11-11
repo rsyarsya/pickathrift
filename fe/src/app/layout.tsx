@@ -1,21 +1,21 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
-import { Inter, Instrument_Serif } from "next/font/google";
+import { DM_Mono, Instrument_Sans } from "next/font/google";
 import "@/styles/globals.css";
 
-const inter = Inter({
-  variable: "--font-inter",
+const instrumentSans = Instrument_Sans({
+  variable: "--font-instrument-sans",
   subsets: ["latin"],
 });
 
-const instrumentSerif = Instrument_Serif({
-  variable: "--font-instrument-serif",
-  weight: "400",
+const dmMono = DM_Mono({
+  variable: "--font-dm-mono",
+  weight: ["400", "500"],
   subsets: ["latin"],
 });
 
 export const metadata: Metadata = {
-  title: "PickaThrift",
+  title: { default: "PickaThrift", template: "%s · PickaThrift" },
   description:
     "Toko thrift dengan satu unit per produk, jadi tidak ada dua pembeli untuk satu barang.",
 };
@@ -28,7 +28,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="id" className={`${inter.variable} ${instrumentSerif.variable} antialiased`}>
+    <html lang="id" className={`${instrumentSans.variable} ${dmMono.variable} antialiased`}>
       <body className="font-sans">{children}</body>
     </html>
   );
