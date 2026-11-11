@@ -123,3 +123,25 @@
     background: rgb(30 30 28 / 0.45);
   }
 }
+
+/*
+ * Foto hero landing: sedikit mengecil dan meredup selama tertutup panel di atasnya.
+ * Hanya di browser yang mendukung scroll-driven animation, dan dimatikan untuk
+ * pengguna yang memilih kurangi gerakan. Tanpa dukungan, foto cukup diam.
+ */
+@keyframes hero-recede {
+  to {
+    transform: scale(0.94);
+    filter: brightness(0.7);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: scroll()) {
+    .hero-recede {
+      animation: hero-recede linear both;
+      animation-timeline: scroll();
+      animation-range: 0 640px;
+    }
+  }
+}
