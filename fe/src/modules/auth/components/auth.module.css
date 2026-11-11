@@ -1,0 +1,586 @@
+.page,
+.adminPage {
+  --auth-canvas: #f4f2ee;
+  --auth-ink: #1e1e1c;
+  --auth-muted: #666660;
+  --auth-field-border: #ddddd7;
+  --auth-placeholder: #9a988f;
+  --auth-surface: #ffffff;
+  --auth-field-hover: #b1aaa0;
+  --auth-focus: #7a7369;
+  --auth-focus-halo: rgb(75 65 51 / 10%);
+  --auth-error-bg: #fff8f6;
+  --auth-success-mark-bg: #cde6d4;
+}
+
+.page {
+  display: grid;
+  /* Desktop Figma: foto 640px dan area form 800px pada lebar 1440px. */
+  grid-template-columns: minmax(0, 4fr) minmax(0, 5fr);
+  min-height: 100svh;
+  overflow: hidden;
+  background: var(--auth-canvas);
+  color: var(--auth-ink);
+  font-family: var(--font-auth-sans), sans-serif;
+}
+
+.page :focus-visible,
+.adminPage :focus-visible {
+  outline: 2px solid var(--auth-focus);
+  outline-offset: 4px;
+}
+
+.compactHeader {
+  display: none;
+}
+
+.photoWrap {
+  display: flex;
+  min-width: 0;
+}
+
+.photoPanel {
+  position: relative;
+  width: 100%;
+  min-height: 100svh;
+  overflow: hidden;
+}
+
+.photo {
+  object-fit: cover;
+  object-position: center;
+}
+
+.logo {
+  position: absolute;
+  /* Ruang transparan PNG ikut dihitung agar tulisan berada dekat x40/y36 Figma. */
+  top: 20px;
+  left: 27px;
+  width: 180px;
+  height: 60px;
+  object-fit: contain;
+}
+
+.caption {
+  position: absolute;
+  bottom: 40px;
+  left: 40px;
+  margin: 0;
+  font-family: var(--font-auth-mono), monospace;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: normal;
+  letter-spacing: 1px;
+}
+
+.formArea {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+}
+
+.formContent {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 24px;
+  width: 420px;
+  max-width: 100%;
+}
+
+.backLink,
+.adminLink,
+.adminReturnLink {
+  color: var(--auth-muted);
+  font-size: 14px;
+  line-height: normal;
+  text-decoration: underline;
+  text-underline-position: from-font;
+}
+
+.heading {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.subtitle {
+  margin: 0;
+  color: var(--auth-muted);
+  font-size: 15px;
+  line-height: normal;
+}
+
+.inlineLink {
+  margin-left: 6px;
+  color: var(--auth-ink);
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-position: from-font;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  width: 100%;
+}
+
+.fields {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.label {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: normal;
+}
+
+.input,
+.passwordBox {
+  width: 100%;
+  border: 1px solid var(--auth-field-border);
+  border-radius: 10px;
+  background: var(--auth-surface);
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+/* Fokus sandi mengikuti seluruh kotak, termasuk tombol tampilkan/sembunyikan. */
+.input:focus,
+.passwordBox:focus-within {
+  border-color: var(--auth-focus);
+  box-shadow: 0 0 0 3px var(--auth-focus-halo);
+}
+
+.input:focus,
+.passwordInput:focus {
+  outline: none;
+}
+
+.input,
+.passwordInput {
+  min-width: 0;
+  padding: 14px 16px;
+  color: var(--auth-ink);
+  font-size: 16px;
+  line-height: normal;
+}
+
+.input::placeholder,
+.passwordInput::placeholder {
+  color: var(--auth-placeholder);
+  opacity: 1;
+}
+
+.passwordBox {
+  display: flex;
+  align-items: center;
+}
+
+.passwordInput {
+  flex: 1;
+  border-radius: inherit;
+}
+
+.passwordToggle {
+  flex-shrink: 0;
+  margin-right: 8px;
+  padding: 8px;
+  border-radius: 6px;
+  font-family: var(--font-auth-mono), monospace;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: normal;
+  letter-spacing: 1px;
+  transition: background-color 180ms ease;
+}
+
+.passwordToggle:focus-visible {
+  outline-offset: -2px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .input:hover:not(:focus):not([aria-invalid="true"]),
+  .passwordBox:hover:not(:focus-within):not(:has([aria-invalid="true"])) {
+    border-color: var(--auth-field-hover);
+  }
+
+  .passwordToggle:hover {
+    background: var(--auth-canvas);
+  }
+}
+
+/* Status error mengikuti aria-invalid pada isian. */
+.input[aria-invalid="true"],
+.passwordBox:has(.passwordInput[aria-invalid="true"]) {
+  border-color: var(--color-danger);
+  background: var(--auth-error-bg);
+  box-shadow: inset 0 0 0 0.5px var(--color-danger);
+}
+
+.input[aria-invalid="true"]:focus,
+.passwordBox:has(.passwordInput[aria-invalid="true"]):focus-within {
+  box-shadow:
+    inset 0 0 0 0.5px var(--color-danger),
+    0 0 0 3px rgb(180 35 24 / 10%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .input,
+  .passwordBox,
+  .passwordToggle {
+    transition: none;
+  }
+}
+
+.submitButton {
+  width: 100%;
+  padding: 16px 24px;
+  border-radius: 999px;
+  background: var(--auth-ink);
+  color: var(--auth-canvas);
+  font-size: 16px;
+  font-weight: 500;
+  line-height: normal;
+}
+
+.form[aria-busy="true"] .submitButton {
+  cursor: wait;
+}
+
+.feedback {
+  display: flex;
+  width: 100%;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  font-size: 14px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.feedback p {
+  margin: 0;
+}
+
+.feedbackError {
+  --feedback-accent: var(--color-danger);
+  background: var(--color-danger-bg);
+}
+
+.feedbackSuccess {
+  --feedback-accent: var(--color-success);
+  background: var(--color-success-bg);
+}
+
+.feedbackIcon {
+  display: flex;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--feedback-accent);
+  color: var(--auth-surface);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.registrationSuccess,
+.successBody {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.successHeading {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.successMark {
+  display: flex;
+  width: 64px;
+  height: 64px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--auth-success-mark-bg);
+  color: var(--color-success);
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.title.successTitle {
+  width: 100%;
+  line-height: 1.05;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.successTitle:focus {
+  outline: none;
+}
+
+.successCopy {
+  width: 100%;
+  margin: 0;
+  color: var(--auth-muted);
+  font-size: 16px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.successActions {
+  display: flex;
+  width: 100%;
+  flex-shrink: 0;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.secondaryButton {
+  display: block;
+  width: 100%;
+  padding: 16px 24px;
+  border: 1.5px solid var(--auth-ink);
+  border-radius: 999px;
+  color: var(--auth-ink);
+  font-size: 16px;
+  font-weight: 500;
+  line-height: normal;
+  text-align: center;
+}
+
+.title {
+  margin: 0;
+  font-size: 48px;
+  font-weight: 500;
+  line-height: normal;
+  letter-spacing: -1.8462px;
+}
+
+.helperText,
+.errorText,
+.privacyNote {
+  margin: 0;
+  color: var(--auth-muted);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.errorText {
+  color: var(--color-danger);
+}
+
+.privacyNote {
+  line-height: 1.45;
+}
+
+.adminPage {
+  display: flex;
+  min-height: 100svh;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px;
+  background: var(--auth-ink);
+  color: var(--auth-ink);
+  font-family: var(--font-auth-sans), sans-serif;
+}
+
+.adminCard {
+  display: flex;
+  width: 480px;
+  max-width: 100%;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 24px;
+  padding: 40px;
+  border-radius: 16px;
+  background: var(--auth-canvas);
+}
+
+.adminBrand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.adminLogo {
+  width: 136px;
+  height: auto;
+  /* Kompensasi ruang transparan pada PNG asli yang dipakai bersama. */
+  margin: -9px -10px;
+}
+
+.adminBadge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--auth-ink);
+  color: var(--auth-canvas);
+  font-family: var(--font-auth-mono), monospace;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: normal;
+  letter-spacing: 1px;
+}
+
+.adminCard .form {
+  gap: 24px;
+}
+
+/* Tablet: header, foto pendek, lalu form selebar 480px. */
+@media (max-width: 1023px) {
+  .page {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .compactHeader {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr) 44px;
+    align-items: center;
+    padding: 10px 20px;
+    border-bottom: 1px solid var(--auth-field-border);
+  }
+
+  .compactBackLink {
+    display: flex;
+    width: 44px;
+    height: 44px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+  }
+
+  .headerLogo {
+    width: 156px;
+    height: 52px;
+    margin-block: -4px;
+    justify-self: center;
+    object-fit: contain;
+  }
+
+  .photoWrap {
+    display: block;
+    padding: 20px 32px 0;
+  }
+
+  .photoPanel {
+    min-height: 0;
+    height: 200px;
+    border-radius: 12px;
+  }
+
+  .photo {
+    object-position: center 10%;
+  }
+
+  .registerPage .photo {
+    object-position: center 32%;
+  }
+
+  .logo,
+  .caption,
+  .backLink {
+    display: none;
+  }
+
+  .formArea {
+    padding: 48px 32px 40px;
+  }
+
+  .formContent {
+    width: 480px;
+  }
+
+  .title {
+    font-size: 44px;
+    letter-spacing: -1.6923px;
+  }
+}
+
+/* Ponsel: jarak tepi 16px dan form mengikuti lebar layar. */
+@media (max-width: 639px) {
+  .registerPage:has(.registrationSuccess) .formArea {
+    flex: 1;
+    align-items: stretch;
+    padding: 32px 16px;
+  }
+
+  .formContent:has(.registrationSuccess),
+  .registrationSuccess,
+  .successBody {
+    flex: 1;
+  }
+
+  .registrationSuccess .successHeading {
+    flex: 1;
+    justify-content: center;
+    gap: 14px;
+  }
+
+  .adminCard {
+    padding: 40px 24px;
+  }
+
+  .compactHeader {
+    padding: 8px;
+  }
+
+  .headerLogo {
+    width: 130px;
+    height: auto;
+    margin-block: 0;
+  }
+
+  .photoWrap {
+    padding: 16px 16px 4px;
+  }
+
+  .photoPanel {
+    height: 120px;
+  }
+
+  .photo {
+    object-position: center 7.5%;
+  }
+
+  .formArea {
+    padding: 16px 16px 32px;
+  }
+
+  .formContent,
+  .form {
+    gap: 20px;
+  }
+
+  .title {
+    font-size: 32px;
+    letter-spacing: -1.2308px;
+  }
+}

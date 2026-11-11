@@ -1,17 +1,22 @@
 import { createStore } from "@/lib/store";
 
+export type SessionUser = { name: string; email: string };
+
 /*
- * Status masuk Buyer. SEMENTARA hanya penanda di localStorage supaya navbar bisa
- * menampilkan versi tamu dan versi Buyer. Begitu Auth (A1/A2) dan backend ada, isinya
- * diambil dari GET /auth/me lewat api(), dan logOut() memanggil POST /auth/logout.
+ * Sesi Buyer. SEMENTARA disimpan di localStorage dan diisi oleh simulasi auth
+ * (login-form, buyer-register-content). Begitu backend ada, isinya diambil dari
+ * GET /auth/me lewat api(), dan logOut() memanggil POST /auth/logout.
  */
-const store = createStore<boolean>(false, "pickathrift.session");
+const store = createStore<SessionUser | null>(null, "pickathrift.session");
 
 export function useSession() {
-  const isLoggedIn = store.use();
+  const saved = store.use();
+  // Versi lama menyimpan `true`; anggap belum masuk supaya nama tidak kosong.
+  const user = saved !== null && typeof saved === "object" ? saved : null;
   return {
-    isLoggedIn,
-    logIn: () => store.set(true),
-    logOut: () => store.set(false),
+    user,
+    isLoggedIn: user !== null,
+    logIn: (next: SessionUser) => store.set({ name: next.name, email: next.email }),
+    logOut: () => store.set(null),
   };
 }
