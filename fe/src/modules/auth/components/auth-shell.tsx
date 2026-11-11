@@ -1,19 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
-import { DM_Mono, Instrument_Sans } from "next/font/google";
 import type { ReactNode } from "react";
+import { authFontClassName } from "./auth-fonts";
 import styles from "./auth.module.css";
-
-const instrumentSans = Instrument_Sans({
-  subsets: ["latin"],
-  variable: "--font-auth-sans",
-});
-
-const dmMono = DM_Mono({
-  subsets: ["latin"],
-  weight: ["400", "500"],
-  variable: "--font-auth-mono",
-});
 
 type AuthShellProps = {
   title: string;
@@ -34,7 +23,7 @@ export function AuthShell({
 }: AuthShellProps) {
   return (
     <main
-      className={`${styles.page} ${instrumentSans.variable} ${dmMono.variable} ${variant === "register" ? styles.registerPage : ""}`}
+      className={`${styles.page} ${authFontClassName} ${variant === "register" ? styles.registerPage : ""}`}
       aria-labelledby="auth-title"
     >
       <header className={styles.compactHeader}>

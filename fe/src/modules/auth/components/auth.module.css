@@ -1,4 +1,5 @@
-.page {
+.page,
+.adminPage {
   --auth-canvas: #f4f2ee;
   --auth-ink: #1e1e1c;
   --auth-muted: #666660;
@@ -8,7 +9,9 @@
   --auth-field-hover: #b1aaa0;
   --auth-focus: #7a7369;
   --auth-focus-halo: rgb(75 65 51 / 10%);
+}
 
+.page {
   display: grid;
   /* Desktop Figma: foto 640px dan area form 800px pada lebar 1440px. */
   grid-template-columns: minmax(0, 4fr) minmax(0, 5fr);
@@ -19,7 +22,8 @@
   font-family: var(--font-auth-sans), sans-serif;
 }
 
-.page :focus-visible {
+.page :focus-visible,
+.adminPage :focus-visible {
   outline: 2px solid var(--auth-focus);
   outline-offset: 4px;
 }
@@ -85,7 +89,8 @@
 }
 
 .backLink,
-.adminLink {
+.adminLink,
+.adminReturnLink {
   color: var(--auth-muted);
   font-size: 14px;
   line-height: normal;
@@ -265,6 +270,59 @@
   line-height: 1.45;
 }
 
+.adminPage {
+  display: flex;
+  min-height: 100svh;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px;
+  background: var(--auth-ink);
+  color: var(--auth-ink);
+  font-family: var(--font-auth-sans), sans-serif;
+}
+
+.adminCard {
+  display: flex;
+  width: 480px;
+  max-width: 100%;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 24px;
+  padding: 40px;
+  border-radius: 16px;
+  background: var(--auth-canvas);
+}
+
+.adminBrand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.adminLogo {
+  width: 136px;
+  height: auto;
+  /* Kompensasi ruang transparan pada PNG asli yang dipakai bersama. */
+  margin: -9px -10px;
+}
+
+.adminBadge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--auth-ink);
+  color: var(--auth-canvas);
+  font-family: var(--font-auth-mono), monospace;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: normal;
+  letter-spacing: 1px;
+}
+
+.adminCard .form {
+  gap: 24px;
+}
+
 /* Tablet: header, foto pendek, lalu form selebar 480px. */
 @media (max-width: 1023px) {
   .page {
@@ -338,6 +396,10 @@
 
 /* Ponsel: jarak tepi 16px dan form mengikuti lebar layar. */
 @media (max-width: 639px) {
+  .adminCard {
+    padding: 40px 24px;
+  }
+
   .compactHeader {
     padding: 8px;
   }

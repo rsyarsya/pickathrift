@@ -17,9 +17,9 @@ export function BuyerLogin() {
         </>
       }
       footer={
-        <span className={styles.adminLink} aria-disabled="true">
+        <Link href="/admin/masuk" className={styles.adminLink}>
           Admin toko? Masuk lewat halaman admin →
-        </span>
+        </Link>
       }
     >
       <BuyerLoginForm />
