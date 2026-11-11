@@ -1,11 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import styles from "./buyer-login.module.css";
+import { PasswordField } from "./password-field";
+import styles from "./auth.module.css";
 
 export function BuyerLoginForm() {
-  const [passwordVisible, setPasswordVisible] = useState(false);
-
   return (
     <form className={styles.form} onSubmit={(event) => event.preventDefault()}>
       <div className={styles.fields}>
@@ -23,30 +21,13 @@ export function BuyerLoginForm() {
           />
         </div>
 
-        <div className={styles.field}>
-          <label htmlFor="buyer-password" className={styles.label}>
-            Kata sandi
-          </label>
-          <div className={styles.passwordBox}>
-            <input
-              id="buyer-password"
-              name="password"
-              type={passwordVisible ? "text" : "password"}
-              autoComplete="current-password"
-              placeholder="Kata sandimu"
-              className={styles.passwordInput}
-            />
-            <button
-              type="button"
-              className={styles.passwordToggle}
-              aria-controls="buyer-password"
-              aria-pressed={passwordVisible}
-              onClick={() => setPasswordVisible((visible) => !visible)}
-            >
-              {passwordVisible ? "SEMBUNYIKAN" : "TAMPILKAN"}
-            </button>
-          </div>
-        </div>
+        <PasswordField
+          id="buyer-password"
+          name="password"
+          label="Kata sandi"
+          placeholder="Kata sandimu"
+          autoComplete="current-password"
+        />
       </div>
 
       {/* Submit diaktifkan saat validasi dan proses login ditambahkan. */}

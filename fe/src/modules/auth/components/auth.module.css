@@ -253,6 +253,18 @@
   letter-spacing: -1.8462px;
 }
 
+.helperText,
+.privacyNote {
+  margin: 0;
+  color: var(--auth-muted);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.privacyNote {
+  line-height: 1.45;
+}
+
 /* Tablet: header, foto pendek, lalu form selebar 480px. */
 @media (max-width: 1023px) {
   .page {
@@ -298,6 +310,10 @@
 
   .photo {
     object-position: center 10%;
+  }
+
+  .registerPage .photo {
+    object-position: center 32%;
   }
 
   .logo,
