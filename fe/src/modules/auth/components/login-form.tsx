@@ -1,8 +1,10 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { AUTH_SIMULATION_ENABLED } from "@/lib/env";
 import { useAuthSimulation } from "../hooks/use-auth-simulation";
+import { useSession } from "../useSession";
 import { mockAuth, type MockRole } from "../lib/mock-auth";
 import { validateBuyerLogin, type BuyerLoginValues } from "../lib/validate-buyer-login";
 import { AuthFeedback } from "./auth-feedback";
@@ -16,6 +18,8 @@ export function LoginForm({ role }: { role: MockRole }) {
   const emailError = touched.email ? errors.email : undefined;
   const passwordError = touched.password ? errors.password : undefined;
   const { pending, feedback, submit, clearFeedback } = useAuthSimulation();
+  const session = useSession();
+  const router = useRouter();
   const admin = role === "admin";
   const emailId = `${role}-email`;
   const passwordId = `${role}-password`;
@@ -33,7 +37,12 @@ export function LoginForm({ role }: { role: MockRole }) {
     void submit(
       () => mockAuth.login(values, role),
       (user) => `Berhasil masuk sebagai ${admin ? "Admin" : "Buyer"}. Halo, ${user.name}!`,
-    );
+    ).then((user) => {
+      // Admin tetap di sini sampai dasbor admin dibuat; nanti alihkan ke /admin.
+      if (!user || admin) return;
+      session.logIn(user);
+      router.push("/");
+    });
   }
 
   return (

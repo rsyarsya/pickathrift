@@ -27,8 +27,10 @@ Buka `/daftar`, `/masuk`, atau `/admin/masuk`. Akun uji dibagikan lewat dokument
 halaman aplikasi tidak menampilkan panel simulasi.
 Coba sandi salah, email yang sudah terdaftar, serta akun Buyer di halaman Admin.
 Pendaftaran membuat akun Buyer baru di memori tab.
-Refresh mereset akun baru. Data hanya ada di memori tab; tidak ada database, cookie,
-JWT, sesi login, atau akses dasbor yang dibuat oleh simulasi ini. Gunakan data uji.
+Refresh mereset akun baru yang didaftarkan. Login Buyer dan pendaftaran menyimpan sesi
+sementara di localStorage (`pickathrift.session`) supaya navbar berganti ke versi Buyer;
+tidak ada database, cookie, JWT, atau akses dasbor. Login Admin belum mengalihkan ke
+mana pun karena dasbor admin belum ada. Gunakan data uji.
 
 ## Struktur
 
@@ -76,7 +78,26 @@ komponen: base URL, header, dan penanganan galat hanya ditulis sekali di sana, d
 membawa status HTTP supaya layar bisa membedakan 409 "sudah dipesan" dari jaringan putus.
 
 Selama backend belum ada, modul boleh memakai fixtures lokal di `modules/<bagian>/data/`.
-Itu sementara. Fixtures wajib diganti panggilan `api()` sebelum pengumpulan, lihat FE5 di
+Itu sementara.
+
+Layar tidak membaca fixtures langsung, tapi lewat fungsi service seperti
+`modules/catalog/data/products.ts` (`listProducts`, `getProduct`, `reserveProduct`). Begitu
+endpoint ada, isi fungsi itu cukup diganti satu panggilan `api()`.
+
+State yang sulit dipicu tanpa backend bisa dipaksa lewat `?demo=`:
+
+| URL                                               | State                   |
+| ------------------------------------------------- | ----------------------- |
+| `/katalog?demo=memuat`                            | B1.3 Memuat             |
+| `/katalog?demo=kosong`                            | B1.4 Hasil kosong       |
+| `/katalog?demo=gagal`                             | B1.5 Gagal dimuat       |
+| `/produk/<id>?demo=konflik`                       | B2.4 Stok konflik (409) |
+| `/wishlist?demo=gagal`                            | Wishlist gagal dimuat   |
+| `/cari-yang-cocok?jenis=Jaket&cari=1&demo=kosong` | B4.5 Hasil kosong       |
+| `/meja-perbandingan?demo=konflik`                 | 409 saat "Beli ini"     |
+
+Wishlist dan Meja Perbandingan disimpan di localStorage (`pickathrift.wishlist`,
+`pickathrift.compare`) selama belum ada endpoint. `?demo=` ikut terhapus bersama fixtures. Fixtures wajib diganti panggilan `api()` sebelum pengumpulan, lihat FE5 di
 bawah.
 
 ## Yang dinilai rubrik (Frontend, bobot bagian 30%)

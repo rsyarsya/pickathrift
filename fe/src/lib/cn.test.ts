@@ -3,11 +3,11 @@ import { cn } from "@/lib/cn";
 
 describe("cn", () => {
   it("mempertahankan token tipografi saat dipasangkan dengan warna", () => {
-    expect(cn("text-hero", "text-muted")).toBe("text-hero text-muted");
-    expect(cn("text-helper", "text-success")).toBe("text-helper text-success");
+    expect(cn("text-display", "text-muted")).toBe("text-display text-muted");
+    expect(cn("text-caption", "text-success")).toBe("text-caption text-success");
   });
 
   it("memakai kelas terakhir untuk tiap kelompok yang bentrok", () => {
-    expect(cn("text-page", "text-muted", "text-card", "text-brand")).toBe("text-card text-brand");
+    expect(cn("text-title", "text-muted", "text-card", "text-brand")).toBe("text-card text-brand");
   });
 });
