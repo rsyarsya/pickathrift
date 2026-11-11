@@ -1,0 +1,186 @@
+.page {
+  --auth-canvas: #f4f2ee;
+  --auth-ink: #1e1e1c;
+  --auth-border: #d6d6d6;
+  --auth-muted: #666660;
+  --auth-field-border: #ddddd7;
+  --auth-placeholder: #9a988f;
+  --auth-surface: #ffffff;
+
+  display: grid;
+  /* Desktop Figma: foto 640px dan area form 800px pada lebar 1440px. */
+  grid-template-columns: minmax(0, 4fr) minmax(0, 5fr);
+  min-height: 100svh;
+  overflow: hidden;
+  border: 1px solid var(--auth-border);
+  border-radius: 16px;
+  background: var(--auth-canvas);
+  color: var(--auth-ink);
+  font-family: var(--font-auth-sans), sans-serif;
+}
+
+.photoPanel {
+  position: relative;
+  min-height: calc(100svh - 2px);
+  overflow: hidden;
+}
+
+.photo {
+  object-fit: cover;
+  object-position: center;
+}
+
+.logo {
+  position: absolute;
+  /* Ruang transparan PNG ikut dihitung agar tulisan berada dekat x40/y36 Figma. */
+  top: 20px;
+  left: 27px;
+  width: 180px;
+  height: 60px;
+  object-fit: contain;
+}
+
+.caption {
+  position: absolute;
+  bottom: 40px;
+  left: 40px;
+  margin: 0;
+  font-family: var(--font-auth-mono), monospace;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: normal;
+  letter-spacing: 1px;
+}
+
+.formArea {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+}
+
+.formContent {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 24px;
+  width: 420px;
+  max-width: 100%;
+}
+
+.backLink,
+.adminLink {
+  color: var(--auth-muted);
+  font-size: 14px;
+  line-height: normal;
+  text-decoration: underline;
+  text-underline-position: from-font;
+}
+
+.heading {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.subtitle {
+  margin: 0;
+  color: var(--auth-muted);
+  font-size: 15px;
+  line-height: normal;
+}
+
+.inlineLink {
+  margin-left: 6px;
+  color: var(--auth-ink);
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-position: from-font;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  width: 100%;
+}
+
+.fields {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.label {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: normal;
+}
+
+.input,
+.passwordBox {
+  width: 100%;
+  border: 1px solid var(--auth-field-border);
+  border-radius: 10px;
+  background: var(--auth-surface);
+}
+
+.input,
+.passwordInput {
+  min-width: 0;
+  padding: 14px 16px;
+  color: var(--auth-ink);
+  font-size: 16px;
+  line-height: normal;
+}
+
+.input::placeholder,
+.passwordInput::placeholder {
+  color: var(--auth-placeholder);
+  opacity: 1;
+}
+
+.passwordBox {
+  display: flex;
+  align-items: center;
+}
+
+.passwordInput {
+  flex: 1;
+  border-radius: inherit;
+}
+
+.passwordToggle {
+  flex-shrink: 0;
+  padding: 14px 16px 14px 0;
+  font-family: var(--font-auth-mono), monospace;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: normal;
+  letter-spacing: 1px;
+}
+
+.submitButton {
+  width: 100%;
+  padding: 16px 24px;
+  border-radius: 999px;
+  background: var(--auth-ink);
+  color: var(--auth-canvas);
+  font-size: 16px;
+  font-weight: 500;
+  line-height: normal;
+}
+
+.title {
+  margin: 0;
+  font-size: 48px;
+  font-weight: 500;
+  line-height: normal;
+  letter-spacing: -1.8462px;
+}

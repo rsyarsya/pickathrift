@@ -4,7 +4,7 @@ const nextConfig: NextConfig = {
   images: { formats: ["image/avif", "image/webp"] },
   turbopack: {
     rules: {
-      "*.css": {
+      "globals.css": {
         loaders: ["@tailwindcss/turbopack"],
         as: "*.css",
       },
