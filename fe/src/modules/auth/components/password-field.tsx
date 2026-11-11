@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ComponentProps, type FocusEventHandler } from "react";
 import styles from "./auth.module.css";
 
 type PasswordFieldProps = {
@@ -10,7 +10,9 @@ type PasswordFieldProps = {
   placeholder: string;
   autoComplete: "current-password" | "new-password";
   hint?: string;
-};
+  error?: string;
+  onBlur?: FocusEventHandler<HTMLDivElement>;
+} & Pick<ComponentProps<"input">, "value" | "onChange" | "required">;
 
 export function PasswordField({
   id,
@@ -19,12 +21,23 @@ export function PasswordField({
   placeholder,
   autoComplete,
   hint,
+  error,
+  value,
+  onChange,
+  onBlur,
+  required,
 }: PasswordFieldProps) {
   const [visible, setVisible] = useState(false);
-  const hintId = hint ? `${id}-hint` : undefined;
+  const message = error || hint;
+  const messageId = message ? `${id}-${error ? "error" : "hint"}` : undefined;
 
   return (
-    <div className={styles.field}>
+    <div
+      className={styles.field}
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) onBlur?.(event);
+      }}
+    >
       <label htmlFor={id} className={styles.label}>
         {label}
       </label>
@@ -35,7 +48,11 @@ export function PasswordField({
           type={visible ? "text" : "password"}
           autoComplete={autoComplete}
           placeholder={placeholder}
-          aria-describedby={hintId}
+          value={value}
+          onChange={onChange}
+          required={required}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={messageId}
           className={styles.passwordInput}
         />
         <button
@@ -49,9 +66,13 @@ export function PasswordField({
           {visible ? "SEMBUNYIKAN" : "TAMPILKAN"}
         </button>
       </div>
-      {hint && (
-        <p id={hintId} className={styles.helperText}>
-          {hint}
+      {message && (
+        <p
+          id={messageId}
+          className={error ? styles.errorText : styles.helperText}
+          aria-live="polite"
+        >
+          {message}
         </p>
       )}
     </div>

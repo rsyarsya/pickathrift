@@ -5,22 +5,12 @@ import { authFontClassName } from "./auth-fonts";
 import styles from "./auth.module.css";
 
 type AuthShellProps = {
-  title: string;
-  subtitle: ReactNode;
   photoSrc: string;
   variant?: "register";
   children: ReactNode;
-  footer: ReactNode;
 };
 
-export function AuthShell({
-  title,
-  subtitle,
-  photoSrc,
-  variant,
-  children,
-  footer,
-}: AuthShellProps) {
+export function AuthShell({ photoSrc, variant, children }: AuthShellProps) {
   return (
     <main
       className={`${styles.page} ${authFontClassName} ${variant === "register" ? styles.registerPage : ""}`}
@@ -65,21 +55,7 @@ export function AuthShell({
       </div>
 
       <section className={styles.formArea} aria-labelledby="auth-title">
-        <div className={styles.formContent}>
-          <Link href="/" className={styles.backLink}>
-            ← Kembali ke beranda
-          </Link>
-
-          <div className={styles.heading}>
-            <h1 id="auth-title" className={styles.title}>
-              {title}
-            </h1>
-            <p className={styles.subtitle}>{subtitle}</p>
-          </div>
-
-          {children}
-          {footer}
-        </div>
+        <div className={styles.formContent}>{children}</div>
       </section>
     </main>
   );

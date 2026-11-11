@@ -15,6 +15,21 @@ Buka http://localhost:3000.
 
 Sebelum push: `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm format:check` dari root.
 
+## Simulasi auth lokal
+
+Tambahkan `NEXT_PUBLIC_AUTH_SIMULATION=on` ke `fe/.env.local`, lalu jalankan server dev.
+File lingkungan tetap lokal. Simulasi otomatis mati pada build production.
+
+- Buyer: `buyer@pickathrift.test` / `Buyer123!`
+- Admin: `admin@pickathrift.test` / `Admin123!`
+
+Buka `/daftar`, `/masuk`, atau `/admin/masuk`. Akun uji dibagikan lewat dokumentasi ini;
+halaman aplikasi tidak menampilkan panel simulasi.
+Coba sandi salah, email yang sudah terdaftar, serta akun Buyer di halaman Admin.
+Pendaftaran membuat akun Buyer baru di memori tab.
+Refresh mereset akun baru. Data hanya ada di memori tab; tidak ada database, cookie,
+JWT, sesi login, atau akses dasbor yang dibuat oleh simulasi ini. Gunakan data uji.
+
 ## Struktur
 
 ```text

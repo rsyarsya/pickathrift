@@ -9,6 +9,8 @@
   --auth-field-hover: #b1aaa0;
   --auth-focus: #7a7369;
   --auth-focus-halo: rgb(75 65 51 / 10%);
+  --auth-error-bg: #fff8f6;
+  --auth-success-mark-bg: #cde6d4;
 }
 
 .page {
@@ -130,6 +132,10 @@
   display: flex;
   flex-direction: column;
   gap: 18px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
 }
 
 .field {
@@ -220,15 +226,19 @@
   }
 }
 
-/* Validasi akan memasang aria-invalid pada isian yang salah. */
+/* Status error mengikuti aria-invalid pada isian. */
 .input[aria-invalid="true"],
 .passwordBox:has(.passwordInput[aria-invalid="true"]) {
   border-color: var(--color-danger);
+  background: var(--auth-error-bg);
+  box-shadow: inset 0 0 0 0.5px var(--color-danger);
 }
 
 .input[aria-invalid="true"]:focus,
 .passwordBox:has(.passwordInput[aria-invalid="true"]):focus-within {
-  box-shadow: 0 0 0 3px rgb(180 35 24 / 10%);
+  box-shadow:
+    inset 0 0 0 0.5px var(--color-danger),
+    0 0 0 3px rgb(180 35 24 / 10%);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -250,6 +260,121 @@
   line-height: normal;
 }
 
+.form[aria-busy="true"] .submitButton {
+  cursor: wait;
+}
+
+.feedback {
+  display: flex;
+  width: 100%;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  font-size: 14px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.feedback p {
+  margin: 0;
+}
+
+.feedbackError {
+  --feedback-accent: var(--color-danger);
+  background: var(--color-danger-bg);
+}
+
+.feedbackSuccess {
+  --feedback-accent: var(--color-success);
+  background: var(--color-success-bg);
+}
+
+.feedbackIcon {
+  display: flex;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--feedback-accent);
+  color: var(--auth-surface);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.registrationSuccess,
+.successBody {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.successHeading {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.successMark {
+  display: flex;
+  width: 64px;
+  height: 64px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--auth-success-mark-bg);
+  color: var(--color-success);
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.title.successTitle {
+  width: 100%;
+  line-height: 1.05;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.successTitle:focus {
+  outline: none;
+}
+
+.successCopy {
+  width: 100%;
+  margin: 0;
+  color: var(--auth-muted);
+  font-size: 16px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.successActions {
+  display: flex;
+  width: 100%;
+  flex-shrink: 0;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.secondaryButton {
+  display: block;
+  width: 100%;
+  padding: 16px 24px;
+  border: 1.5px solid var(--auth-ink);
+  border-radius: 999px;
+  color: var(--auth-ink);
+  font-size: 16px;
+  font-weight: 500;
+  line-height: normal;
+  text-align: center;
+}
+
 .title {
   margin: 0;
   font-size: 48px;
@@ -259,11 +384,16 @@
 }
 
 .helperText,
+.errorText,
 .privacyNote {
   margin: 0;
   color: var(--auth-muted);
   font-size: 13px;
   line-height: 1.4;
+}
+
+.errorText {
+  color: var(--color-danger);
 }
 
 .privacyNote {
@@ -396,6 +526,24 @@
 
 /* Ponsel: jarak tepi 16px dan form mengikuti lebar layar. */
 @media (max-width: 639px) {
+  .registerPage:has(.registrationSuccess) .formArea {
+    flex: 1;
+    align-items: stretch;
+    padding: 32px 16px;
+  }
+
+  .formContent:has(.registrationSuccess),
+  .registrationSuccess,
+  .successBody {
+    flex: 1;
+  }
+
+  .registrationSuccess .successHeading {
+    flex: 1;
+    justify-content: center;
+    gap: 14px;
+  }
+
   .adminCard {
     padding: 40px 24px;
   }
