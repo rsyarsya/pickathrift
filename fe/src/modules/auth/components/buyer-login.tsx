@@ -21,25 +21,42 @@ export function BuyerLogin() {
       className={`${styles.page} ${instrumentSans.variable} ${dmMono.variable}`}
       aria-labelledby="buyer-login-title"
     >
-      <div className={styles.photoPanel}>
-        <Image
-          src="/images/auth/buyer-login.png"
-          alt=""
-          fill
-          preload
-          sizes="44.45vw"
-          className={styles.photo}
-        />
+      <header className={styles.compactHeader}>
+        <Link href="/" className={styles.compactBackLink} aria-label="Kembali ke beranda">
+          <Image src="/images/auth/back-arrow.svg" alt="" width={22} height={22} />
+        </Link>
         <Image
           src="/images/auth/pickathrift-logo.png"
           alt="PickaThrift"
           width={2172}
           height={724}
           loading="eager"
-          sizes="180px"
-          className={styles.logo}
+          sizes="156px"
+          className={styles.headerLogo}
         />
-        <p className={styles.caption}>SATU TOKO · SATU UNIT PER BARANG</p>
+      </header>
+
+      <div className={styles.photoWrap}>
+        <div className={styles.photoPanel}>
+          <Image
+            src="/images/auth/buyer-login.png"
+            alt=""
+            fill
+            preload
+            sizes="(max-width: 639px) calc(100vw - 32px), (max-width: 1023px) calc(100vw - 64px), 44.45vw"
+            className={styles.photo}
+          />
+          <Image
+            src="/images/auth/pickathrift-logo.png"
+            alt="PickaThrift"
+            width={2172}
+            height={724}
+            loading="eager"
+            sizes="180px"
+            className={styles.logo}
+          />
+          <p className={styles.caption}>SATU TOKO · SATU UNIT PER BARANG</p>
+        </div>
       </div>
 
       <section className={styles.formArea} aria-labelledby="buyer-login-title">

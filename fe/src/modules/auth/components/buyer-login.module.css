@@ -24,8 +24,18 @@
   outline-offset: 4px;
 }
 
+.compactHeader {
+  display: none;
+}
+
+.photoWrap {
+  display: flex;
+  min-width: 0;
+}
+
 .photoPanel {
   position: relative;
+  width: 100%;
   min-height: 100svh;
   overflow: hidden;
 }
@@ -62,6 +72,7 @@
   min-width: 0;
   align-items: center;
   justify-content: center;
+  padding: 32px;
 }
 
 .formContent {
@@ -240,4 +251,110 @@
   font-weight: 500;
   line-height: normal;
   letter-spacing: -1.8462px;
+}
+
+/* Tablet: header, foto pendek, lalu form selebar 480px. */
+@media (max-width: 1023px) {
+  .page {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .compactHeader {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr) 44px;
+    align-items: center;
+    padding: 10px 20px;
+    border-bottom: 1px solid var(--auth-field-border);
+  }
+
+  .compactBackLink {
+    display: flex;
+    width: 44px;
+    height: 44px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+  }
+
+  .headerLogo {
+    width: 156px;
+    height: 52px;
+    margin-block: -4px;
+    justify-self: center;
+    object-fit: contain;
+  }
+
+  .photoWrap {
+    display: block;
+    padding: 20px 32px 0;
+  }
+
+  .photoPanel {
+    min-height: 0;
+    height: 200px;
+    border-radius: 12px;
+  }
+
+  .photo {
+    object-position: center 10%;
+  }
+
+  .logo,
+  .caption,
+  .backLink {
+    display: none;
+  }
+
+  .formArea {
+    padding: 48px 32px 40px;
+  }
+
+  .formContent {
+    width: 480px;
+  }
+
+  .title {
+    font-size: 44px;
+    letter-spacing: -1.6923px;
+  }
+}
+
+/* Ponsel: jarak tepi 16px dan form mengikuti lebar layar. */
+@media (max-width: 639px) {
+  .compactHeader {
+    padding: 8px;
+  }
+
+  .headerLogo {
+    width: 130px;
+    height: auto;
+    margin-block: 0;
+  }
+
+  .photoWrap {
+    padding: 16px 16px 4px;
+  }
+
+  .photoPanel {
+    height: 120px;
+  }
+
+  .photo {
+    object-position: center 7.5%;
+  }
+
+  .formArea {
+    padding: 16px 16px 32px;
+  }
+
+  .formContent,
+  .form {
+    gap: 20px;
+  }
+
+  .title {
+    font-size: 32px;
+    letter-spacing: -1.2308px;
+  }
 }
