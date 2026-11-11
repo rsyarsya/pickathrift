@@ -7,6 +7,7 @@ import { buttonClass } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
 import { Logo } from "@/components/layout/Logo";
 import { useCompare } from "@/modules/compare/useCompare";
+import { useSession } from "@/modules/auth/useSession";
 import { useWishlist } from "@/modules/wishlist/useWishlist";
 
 const CATEGORY_CHIPS = [
@@ -19,6 +20,7 @@ const CATEGORY_CHIPS = [
 /** Laci menu ponsel dan tablet (Figma "Ponsel · menu terbuka · Buyer"). */
 export function MobileMenu({ ref }: { ref: Ref<HTMLDialogElement> }) {
   const wishlist = useWishlist();
+  const session = useSession();
   const compare = useCompare();
 
   const links = [
@@ -97,12 +99,27 @@ export function MobileMenu({ ref }: { ref: Ref<HTMLDialogElement> }) {
         </ul>
 
         <div className="mt-auto flex flex-col gap-10">
-          <Link href="/profil" className={buttonClass("primary", "md")}>
-            Profil saya
-          </Link>
-          <Link href="/masuk" className={buttonClass("outline", "md")}>
-            Keluar
-          </Link>
+          {session.isLoggedIn ? (
+            <>
+              <Link href="/profil" className={buttonClass("primary", "md")}>
+                Profil saya
+              </Link>
+              <form method="dialog">
+                <button onClick={session.logOut} className={buttonClass("outline", "md", "w-full")}>
+                  Keluar
+                </button>
+              </form>
+            </>
+          ) : (
+            <>
+              <Link href="/masuk" className={buttonClass("primary", "md")}>
+                Masuk
+              </Link>
+              <Link href="/daftar" className={buttonClass("outline", "md")}>
+                Daftar
+              </Link>
+            </>
+          )}
           <p className="font-mono text-nano tracking-label text-muted">
             SATU TOKO · SATU UNIT PER BARANG
           </p>

@@ -1,12 +1,14 @@
 "use client";
 
-import Form from "next/form";
 import Link from "next/link";
 import { useRef } from "react";
 import { cn } from "@/lib/cn";
 import { Icon } from "@/components/ui/Icon";
 import { Logo } from "@/components/layout/Logo";
 import { MobileMenu } from "@/components/layout/MobileMenu";
+import { SearchBox } from "@/components/layout/SearchBox";
+import { buttonClass } from "@/components/ui/Button";
+import { useSession } from "@/modules/auth/useSession";
 
 const NAV_LINKS = [
   { href: "/katalog", label: "Koleksi" },
@@ -19,6 +21,7 @@ const iconLink = "flex size-32 items-center justify-center rounded-full hover:bg
 
 export function Navbar() {
   const menu = useRef<HTMLDialogElement>(null);
+  const { isLoggedIn } = useSession();
 
   return (
     <header className="bg-canvas">
@@ -58,20 +61,7 @@ export function Navbar() {
         </div>
 
         <div className="flex items-center justify-end gap-8 lg:flex-1 lg:gap-12">
-          <Form
-            action="/katalog"
-            role="search"
-            className="hidden items-center gap-10 rounded-full border border-line bg-surface px-16 py-10 focus-within:border-fg lg:flex"
-          >
-            <Icon name="search" className="shrink-0 text-muted" />
-            <input
-              name="q"
-              type="search"
-              placeholder="Cari jaket, kaos, merek…"
-              aria-label="Cari barang"
-              className="w-150 bg-transparent text-sm outline-none placeholder:text-muted"
-            />
-          </Form>
+          <SearchBox />
           <button
             type="button"
             className={cn(iconLink, "lg:hidden")}
@@ -86,9 +76,19 @@ export function Navbar() {
           <Link href="/pesanan" className={iconLink} aria-label="Pesanan saya">
             <Icon name="bag" size={22} />
           </Link>
-          <Link href="/profil" className={cn(iconLink, "hidden lg:flex")} aria-label="Profil saya">
-            <Icon name="user" size={22} />
-          </Link>
+          {isLoggedIn ? (
+            <Link
+              href="/profil"
+              className={cn(iconLink, "hidden lg:flex")}
+              aria-label="Profil saya"
+            >
+              <Icon name="user" size={22} />
+            </Link>
+          ) : (
+            <Link href="/masuk" className={buttonClass("primary", "sm", "hidden lg:inline-flex")}>
+              Masuk
+            </Link>
+          )}
         </div>
       </nav>
 
