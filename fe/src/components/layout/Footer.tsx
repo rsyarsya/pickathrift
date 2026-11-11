@@ -1,8 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { Logo } from "@/components/layout/Logo";
+import { ApiError } from "@/lib/api";
+import { cn } from "@/lib/cn";
+import { subscribeNewsletter } from "@/modules/home/data/newsletter";
 
 const SHOP = [
   { href: "/katalog", label: "Semua koleksi" },
@@ -38,40 +41,70 @@ function Column({ title, links }: { title: string; links: typeof SHOP }) {
   );
 }
 
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** Daftar kabar barang baru. Alur state (galat, mengirim, berhasil) dari Newsletter karya Ola. */
 function Newsletter() {
-  const [state, setState] = useState<"idle" | "invalid" | "done">("idle");
+  const [state, setState] = useState<"idle" | "error" | "loading" | "success">("idle");
+  const [message, setMessage] = useState("");
+  const busy = state === "loading" || state === "success";
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const email = String(new FormData(event.currentTarget).get("email") ?? "").trim();
+    if (!EMAIL.test(email)) {
+      setState("error");
+      setMessage("Format email belum benar. Contoh: nama@email.com");
+      return;
+    }
+    setState("loading");
+    setMessage("");
+    try {
+      await subscribeNewsletter(email);
+      setState("success");
+      setMessage("Siap! Kami kabari lewat email kalau ada barang baru.");
+    } catch (error) {
+      setState("error");
+      setMessage(error instanceof ApiError ? error.message : "Terjadi kesalahan. Coba lagi.");
+    }
+  }
 
   return (
-    <form
-      noValidate
-      className="flex flex-col gap-14"
-      onSubmit={(event) => {
-        event.preventDefault();
-        const email = new FormData(event.currentTarget).get("email");
-        // ponytail: hanya validasi format; belum ada endpoint newsletter di backend.
-        setState(typeof email === "string" && /^\S+@\S+\.\S+$/.test(email) ? "done" : "invalid");
-      }}
-    >
+    <form noValidate className="flex flex-col gap-14" onSubmit={submit}>
       <label htmlFor="newsletter" className="text-lg font-medium">
         Kabari aku kalau ada barang baru
       </label>
-      <div className="flex items-center justify-between rounded-full bg-night-raised py-6 pr-6 pl-18">
+      <div
+        className={cn(
+          "flex items-center justify-between rounded-full border bg-night-raised py-6 pr-6 pl-18",
+          state === "error" ? "border-danger" : "border-transparent focus-within:border-peach",
+        )}
+      >
         <input
           id="newsletter"
           name="email"
           type="email"
+          autoComplete="email"
           placeholder="Email kamu"
-          aria-invalid={state === "invalid"}
+          disabled={busy}
+          onChange={() => state === "error" && setState("idle")}
+          aria-invalid={state === "error"}
           aria-describedby="newsletter-help"
           className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-night-muted"
         />
-        <button className="rounded-full bg-peach px-18 py-10 text-sm font-medium text-fg">
-          Daftar
+        <button
+          disabled={busy}
+          className="rounded-full bg-peach px-18 py-10 text-sm font-medium text-fg disabled:opacity-70"
+        >
+          {state === "loading" ? "Mengirim…" : state === "success" ? "✓ Terdaftar" : "Daftar"}
         </button>
       </div>
-      <p id="newsletter-help" aria-live="polite" className="text-caption text-night-soft">
-        {state === "invalid" && "Tulis email yang valid, misalnya nama@email.com."}
-        {state === "done" && "Terima kasih, kamu akan dikabari."}
+      <p
+        id="newsletter-help"
+        aria-live="polite"
+        className={cn("text-caption", state === "error" ? "text-[#ff9d94]" : "text-night-soft")}
+      >
+        {message}
       </p>
     </form>
   );
