@@ -8,6 +8,7 @@ import { Logo } from "@/components/layout/Logo";
 import { MobileMenu } from "@/components/layout/MobileMenu";
 import { SearchBox } from "@/components/layout/SearchBox";
 import { buttonClass } from "@/components/ui/Button";
+import { useHideOnScroll } from "@/hooks/useHideOnScroll";
 import { useSession } from "@/modules/auth/useSession";
 
 const NAV_LINKS = [
@@ -22,9 +23,17 @@ const iconLink = "flex size-32 items-center justify-center rounded-full hover:bg
 export function Navbar() {
   const menu = useRef<HTMLDialogElement>(null);
   const { isLoggedIn } = useSession();
+  const hidden = useHideOnScroll();
 
   return (
-    <header className="bg-canvas">
+    <header
+      // Ikut layar, sembunyi saat scroll ke bawah, muncul lagi saat scroll ke atas.
+      // focus-within: tetap terlihat saat pengguna keyboard berpindah ke navbar.
+      className={cn(
+        "sticky top-0 z-40 bg-canvas transition-transform duration-300 ease-out focus-within:translate-y-0 motion-reduce:transition-none",
+        hidden && "-translate-y-full",
+      )}
+    >
       <p className="bg-night py-10 text-center font-mono text-xs tracking-label text-night-fg">
         SATU TOKO · SATU UNIT PER BARANG
         <span className="hidden lg:inline"> · ONGKIR TETAP RP 15.000</span>
