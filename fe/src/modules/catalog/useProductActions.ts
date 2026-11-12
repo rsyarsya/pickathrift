@@ -10,16 +10,27 @@ const COMPARE_LINK = { label: "Lihat meja", href: "/meja-perbandingan" };
 export function useProductActions() {
   const wishlist = useWishlist();
   const compare = useCompare();
-  const { toast, show, clear } = useToast();
+  const { toast, show, fail, clear } = useToast();
+
+  function toggle(product: Product) {
+    if (wishlist.toggle(product.id)) show("✓ Disimpan ke wishlist", WISHLIST_LINK);
+    else show("Dihapus dari wishlist");
+  }
 
   return {
     toast,
     clearToast: clear,
-    showError: (message: string) => show(message),
+    /** X1.7: galat dengan tombol "Coba lagi" kalau `retry` diisi. */
+    showError: (message: string, retry?: () => void) => fail(message, retry),
     isSaved: wishlist.has,
     toggleWishlist(product: Product) {
-      if (wishlist.toggle(product.id)) show("✓ Disimpan ke wishlist", WISHLIST_LINK);
-      else show("Dihapus dari wishlist");
+      // SEMENTARA: wishlist belum memanggil server, jadi galatnya hanya bisa dipaksa lewat
+      // ?demo=aksi-gagal. Nanti galat dari POST /wishlist memakai jalur yang sama.
+      if (new URLSearchParams(window.location.search).get("demo") === "aksi-gagal") {
+        fail("Gagal menyimpan ke wishlist.", () => toggle(product));
+        return;
+      }
+      toggle(product);
     },
     saveToWishlist(product: Product) {
       if (!wishlist.has(product.id)) wishlist.toggle(product.id);
