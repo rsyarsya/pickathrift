@@ -3,8 +3,10 @@
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { AUTH_SIMULATION_ENABLED } from "@/lib/env";
+import { getShippingAddress } from "@/modules/profile/data/profile";
 import { useAuthSimulation } from "../hooks/use-auth-simulation";
 import { useSession } from "../useSession";
+import { buyerReturnPath } from "../lib/return-path";
 import { mockAuth, type MockRole } from "../lib/mock-auth";
 import { validateBuyerLogin, type BuyerLoginValues } from "../lib/validate-buyer-login";
 import { AuthFeedback } from "./auth-feedback";
@@ -37,11 +39,13 @@ export function LoginForm({ role }: { role: MockRole }) {
     void submit(
       () => mockAuth.login(values, role),
       (user) => `Berhasil masuk sebagai ${admin ? "Admin" : "Buyer"}. Halo, ${user.name}!`,
-    ).then((user) => {
+    ).then(async (user) => {
       // Admin tetap di sini sampai dasbor admin dibuat; nanti alihkan ke /admin.
       if (!user || admin) return;
-      session.logIn(user);
-      router.push("/");
+      const address = await getShippingAddress(user.email);
+      session.logIn(address ? { ...user, name: address.recipient } : user);
+      const returnTo = new URLSearchParams(window.location.search).get("kembali");
+      router.push(buyerReturnPath(returnTo));
     });
   }
 

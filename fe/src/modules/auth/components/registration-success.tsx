@@ -37,14 +37,9 @@ export function RegistrationSuccess({ user }: { user: MockUser }) {
           </p>
         </div>
         <div className={styles.successActions}>
-          <button
-            type="button"
-            className={styles.submitButton}
-            disabled
-            title="Halaman profil belum tersedia."
-          >
+          <Link href="/profil" className={styles.submitButton}>
             Isi alamat sekarang →
-          </button>
+          </Link>
           <Link href="/" className={styles.secondaryButton}>
             Nanti saja, mulai belanja
           </Link>
