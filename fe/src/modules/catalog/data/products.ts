@@ -6,7 +6,7 @@ import {
   type CatalogQuery,
   type Product,
 } from "@/modules/catalog/types";
-import { PRODUCTS } from "@/modules/catalog/data/fixtures";
+import { isActive, loadProducts } from "@/modules/catalog/data/productStore";
 import { matchProducts, type Criteria, type Match } from "@/modules/match/criteria";
 import { applyOrderStock } from "@/modules/orders/order";
 import { withOrders } from "@/modules/orders/data/orderStore";
@@ -37,9 +37,15 @@ function delay<T>(value: () => T | Promise<T>, ms = LATENCY): Promise<T> {
   );
 }
 
+/** Produk yang tampil untuk Buyer: yang dinonaktifkan admin tidak ikut. */
+function catalogProducts() {
+  return loadProducts().filter(isActive);
+}
+
 function readProducts() {
-  if (typeof indexedDB === "undefined") return Promise.resolve(PRODUCTS);
-  return withOrders((orders) => PRODUCTS.map((product) => applyOrderStock(product, orders)));
+  const products = catalogProducts();
+  if (typeof indexedDB === "undefined") return Promise.resolve(products);
+  return withOrders((orders) => products.map((product) => applyOrderStock(product, orders)));
 }
 
 export function listProducts(
@@ -54,15 +60,16 @@ export function listProducts(
       throw new ApiError(503, "Koneksi ke server terputus. Periksa internetmu, lalu coba lagi.");
     }
     const matches = demo === "kosong" ? [] : applyQuery(await readProducts(), query);
-    const counts = { Semua: PRODUCTS.length } as CatalogPage["counts"];
-    for (const c of CATEGORIES) counts[c] = PRODUCTS.filter((p) => p.category === c).length;
+    const all = catalogProducts();
+    const counts = { Semua: all.length } as CatalogPage["counts"];
+    for (const c of CATEGORIES) counts[c] = all.filter((p) => p.category === c).length;
     return { items: matches.slice(0, limit), total: matches.length, counts };
   });
 }
 
 export function getProduct(id: string, { includeOrderStock = true } = {}): Promise<Product> {
   return delay(async () => {
-    const products = includeOrderStock ? await readProducts() : PRODUCTS;
+    const products = includeOrderStock ? await readProducts() : catalogProducts();
     const product = products.find((p) => p.id === id);
     if (!product) throw new ApiError(404, "Barang ini tidak ada atau sudah dihapus.");
     return product;

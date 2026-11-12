@@ -25,6 +25,8 @@ export type Order = {
   status: OrderStatus;
   proof?: { name: string; size: number; uploadedAt: number; file?: Blob };
   adminNote?: string;
+  /** Waktu admin menyetujui pembayaran. */
+  verifiedAt?: number;
   cancellation?: "expired" | "buyer" | "admin";
   shipment?: { service: string; number: string; shippedAt: number };
   receivedAt?: number;
