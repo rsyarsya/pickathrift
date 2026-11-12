@@ -25,16 +25,17 @@ export function createStore<T>(initial: T, storageKey?: string) {
 
   return {
     get: read,
-    set(next: T) {
-      state = next;
-      loaded = true;
+    set(next: T, { requireStorage = false } = {}) {
       if (storageKey) {
         try {
           localStorage.setItem(storageKey, JSON.stringify(next));
-        } catch {
+        } catch (error) {
+          if (requireStorage) throw error;
           // Tetap jalan di memori kalau localStorage tidak tersedia.
         }
       }
+      state = next;
+      loaded = true;
       listeners.forEach((listener) => listener());
     },
     use(): T {

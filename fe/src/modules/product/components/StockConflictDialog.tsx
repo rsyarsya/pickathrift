@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { Button, ButtonLink } from "@/components/ui/Button";
+import { cn } from "@/lib/cn";
 
 type StockConflictDialogProps = {
   open: boolean;
@@ -9,6 +10,7 @@ type StockConflictDialogProps = {
   similarHref: string;
   onSave: () => void;
   onClose: () => void;
+  bottomSheet?: boolean;
 };
 
 /** B2.4: pembeli lain lebih dulu memesan barang ini (409). */
@@ -18,6 +20,7 @@ export function StockConflictDialog({
   similarHref,
   onSave,
   onClose,
+  bottomSheet,
 }: StockConflictDialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
 
@@ -33,7 +36,10 @@ export function StockConflictDialog({
       aria-labelledby="conflict-title"
       onClose={onClose}
       onClick={(e) => e.target === e.currentTarget && e.currentTarget.close()}
-      className="m-auto w-[calc(100%-32px)] max-w-460 rounded-xl bg-canvas p-0 text-fg shadow-overlay"
+      className={cn(
+        "m-auto w-[calc(100%-32px)] max-w-460 rounded-xl bg-canvas p-0 text-fg shadow-overlay",
+        bottomSheet && "max-md:mb-0 max-md:w-full max-md:max-w-none max-md:rounded-b-none",
+      )}
     >
       <div className="flex flex-col gap-16 px-24 pt-32 pb-28 md:px-28">
         <span

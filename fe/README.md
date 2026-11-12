@@ -95,6 +95,45 @@ State yang sulit dipicu tanpa backend bisa dipaksa lewat `?demo=`:
 | `/wishlist?demo=gagal`                            | Wishlist gagal dimuat   |
 | `/cari-yang-cocok?jenis=Jaket&cari=1&demo=kosong` | B4.5 Hasil kosong       |
 | `/meja-perbandingan?demo=konflik`                 | 409 saat "Beli ini"     |
+| `/checkout/work-jacket-olive`                    | B6.1 Checkout           |
+| `/checkout/work-jacket-olive?demo=memproses`      | B6.2 Memproses pesanan   |
+| `/checkout/work-jacket-olive?demo=konflik`        | B6.3 Stok konflik (409)  |
+| `/checkout/work-jacket-olive?demo=koneksi`        | B6.4 Koneksi terputus    |
+| `/checkout/work-jacket-olive?demo=alamat`         | B6.5 Galat alamat        |
+| `/checkout/work-jacket-olive?demo=bayar`          | B6.6 Menunggu pembayaran |
+| `/checkout/work-jacket-olive?demo=file-ditolak`   | B6.7 File ditolak        |
+| `/checkout/work-jacket-olive?demo=verifikasi`     | B6.8 Menunggu verifikasi |
+| `/checkout/work-jacket-olive?demo=unggah-ulang`   | B6.9 Perlu unggah ulang   |
+| `/checkout/work-jacket-olive?demo=gagal`          | Checkout gagal dimuat    |
+
+Checkout memerlukan sesi Buyer. Pesanan dan bukti gambar disimpan sementara di IndexedDB
+(`pickathrift.checkout`). Nomor rekening di checkout adalah contoh untuk simulasi.
+
+| URL | State |
+| --- | --- |
+| `/pesanan?demo=riwayat` | B7.1 Riwayat dengan empat pesanan contoh |
+| `/pesanan?demo=kosong` | B7.2 Riwayat kosong |
+| `/pesanan/PCT-001?demo=diproses` | B7.3 Diproses |
+| `/pesanan/PCT-001?demo=dikirim` | B7.4 Dikirim |
+| `/pesanan/PCT-001?demo=selesai` | B7.5 Selesai |
+| `/pesanan/PCT-001?demo=dibatalkan` | B7.6 Dibatalkan |
+| `/pesanan/PCT-001?demo=batal` | B7.7 Konfirmasi batal |
+| `/ulasan?demo=tulis` | B8.1 Tulis ulasan |
+| `/ulasan?demo=validasi` | B8.2 Galat validasi |
+| `/ulasan?demo=terkirim` | B8.3 Ulasan terkirim |
+| `/ulasan?demo=terkunci` | B8.4 Belum boleh mengulas |
+| `/ulasan` | B8.5 Ulasan toko |
+| `/profil?demo=default` | B9.1 Profil dengan data contoh |
+| `/profil?demo=validasi` | B9.2 Galat validasi |
+| `/profil?demo=tersimpan` | B9.3 Toast perubahan disimpan |
+| `/pesanan?demo=gagal`, `/pesanan/PCT-001?demo=gagal`, `/ulasan?demo=gagal`, `/profil?demo=gagal` | Galat memuat data |
+| `/profil?demo=gagal-simpan` | Galat setelah mengubah data dan menekan Simpan perubahan |
+
+Riwayat normal menampilkan pesanan Buyer yang dibuat di checkout. State diproses dan dikirim
+tersedia sebagai demo selama alur admin belum tersedia. Ulasan dari pesanan selesai tersimpan
+bersama pesanan di IndexedDB. Profil menyimpan nama dan alamat per akun di localStorage
+(`pickathrift.profile.<email>`) dan checkout membacanya saat dibuka. Pesanan dan profil contoh
+untuk demo B7–B9 tidak disimpan.
 
 Wishlist dan Meja Perbandingan disimpan di localStorage (`pickathrift.wishlist`,
 `pickathrift.compare`) selama belum ada endpoint. `?demo=` ikut terhapus bersama fixtures. Fixtures wajib diganti panggilan `api()` sebelum pengumpulan, lihat FE5 di

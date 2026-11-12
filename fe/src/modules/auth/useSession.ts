@@ -17,6 +17,10 @@ export function useSession() {
     user,
     isLoggedIn: user !== null,
     logIn: (next: SessionUser) => store.set({ name: next.name, email: next.email }),
+    updateName(email: string, name: string) {
+      const current = store.get();
+      if (current?.email === email) store.set({ ...current, name });
+    },
     logOut: () => store.set(null),
   };
 }

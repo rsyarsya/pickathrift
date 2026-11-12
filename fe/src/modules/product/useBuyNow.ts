@@ -4,7 +4,7 @@ import { ApiError } from "@/lib/api";
 import { reserveProduct, type Demo } from "@/modules/catalog/data/products";
 
 /**
- * Tombol "Beli sekarang": kunci barang dulu, baru ke checkout. Kalau server menjawab
+ * Tombol "Beli sekarang": cek stok sebelum ke checkout. Kalau server menjawab
  * 409, pembeli lain lebih dulu memesan dan layar menampilkan dialog keduluan (B2.4).
  */
 export function useBuyNow(productId: string, demo: Demo, onError: (message: string) => void) {
