@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 type PageHeaderProps = {
   /** Baris DM Mono kecil di atas judul, misalnya "4 BARANG DISIMPAN". */
-  overline: string;
+  overline: ReactNode;
   title: string;
   /** Tautan kecil di kanan, misalnya "Lanjut belanja →". */
   aside?: ReactNode;

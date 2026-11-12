@@ -2,13 +2,15 @@ import Link from "next/link";
 import type { ComponentProps } from "react";
 import { cn } from "@/lib/cn";
 
-type Variant = "primary" | "outline";
+type Variant = "primary" | "outline" | "danger";
 type Size = "lg" | "md" | "sm";
 
 const variants: Record<Variant, string> = {
   primary: "bg-fg text-night-fg hover:bg-black disabled:bg-disabled disabled:text-disabled-fg",
   outline:
     "border-[1.5px] border-fg text-fg hover:bg-fg/5 disabled:border-disabled disabled:text-disabled-fg",
+  danger:
+    "bg-danger text-night-fg hover:bg-danger/90 disabled:bg-disabled disabled:text-disabled-fg",
 };
 
 const sizes: Record<Size, string> = {

@@ -122,6 +122,10 @@
   dialog::backdrop {
     background: rgb(30 30 28 / 0.45);
   }
+
+  html:has([data-checkout-layout] dialog[open], dialog[data-cancel-order][open]) {
+    overflow: hidden;
+  }
 }
 
 /*
