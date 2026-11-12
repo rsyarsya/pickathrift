@@ -38,6 +38,6 @@ export function BuyerOnly({
   return children(user, () => {
     loggingOut.current = true;
     logOut();
-    router.replace("/masuk");
+    router.replace("/keluar");
   });
 }

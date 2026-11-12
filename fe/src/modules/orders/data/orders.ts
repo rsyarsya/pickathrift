@@ -6,8 +6,12 @@ import { withOrders } from "./orderStore";
 const delay = () => new Promise<void>((resolve) => setTimeout(resolve, 450));
 
 export function ownedOrder(orders: Order[], id: string, email: string) {
-  const order = orders.find((item) => item.id === id && item.buyerEmail === email.toLowerCase());
+  const order = orders.find((item) => item.id === id);
   if (!order) throw new ApiError(404, "Pesanan tidak ditemukan.");
+  // X1.3: pesanan ada tapi milik akun lain.
+  if (order.buyerEmail !== email.toLowerCase()) {
+    throw new ApiError(403, "Kamu hanya bisa melihat pesanan dari akunmu sendiri.");
+  }
   return order;
 }
 
@@ -35,6 +39,9 @@ export async function getOrder(id: string, email: string, demo: string | null = 
   }
   await delay();
   if (demo === "gagal") throw new ApiError(503, "Detail pesanan gagal dimuat.");
+  if (demo === "bukan-milikmu") {
+    throw new ApiError(403, "Kamu hanya bisa melihat pesanan dari akunmu sendiri.");
+  }
   return withOrders((orders) => ownedOrder(orders, id, email));
 }
 

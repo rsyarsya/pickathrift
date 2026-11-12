@@ -86,16 +86,16 @@ endpoint ada, isi fungsi itu cukup diganti satu panggilan `api()`.
 
 State yang sulit dipicu tanpa backend bisa dipaksa lewat `?demo=`:
 
-| URL                                               | State                   |
-| ------------------------------------------------- | ----------------------- |
-| `/katalog?demo=memuat`                            | B1.3 Memuat             |
-| `/katalog?demo=kosong`                            | B1.4 Hasil kosong       |
-| `/katalog?demo=gagal`                             | B1.5 Gagal dimuat       |
-| `/produk/<id>?demo=konflik`                       | B2.4 Stok konflik (409) |
-| `/wishlist?demo=gagal`                            | Wishlist gagal dimuat   |
-| `/cari-yang-cocok?jenis=Jaket&cari=1&demo=kosong` | B4.5 Hasil kosong       |
-| `/meja-perbandingan?demo=konflik`                 | 409 saat "Beli ini"     |
-| `/checkout/work-jacket-olive`                    | B6.1 Checkout           |
+| URL                                               | State                    |
+| ------------------------------------------------- | ------------------------ |
+| `/katalog?demo=memuat`                            | B1.3 Memuat              |
+| `/katalog?demo=kosong`                            | B1.4 Hasil kosong        |
+| `/katalog?demo=gagal`                             | B1.5 Gagal dimuat        |
+| `/produk/<id>?demo=konflik`                       | B2.4 Stok konflik (409)  |
+| `/wishlist?demo=gagal`                            | Wishlist gagal dimuat    |
+| `/cari-yang-cocok?jenis=Jaket&cari=1&demo=kosong` | B4.5 Hasil kosong        |
+| `/meja-perbandingan?demo=konflik`                 | 409 saat "Beli ini"      |
+| `/checkout/work-jacket-olive`                     | B6.1 Checkout            |
 | `/checkout/work-jacket-olive?demo=memproses`      | B6.2 Memproses pesanan   |
 | `/checkout/work-jacket-olive?demo=konflik`        | B6.3 Stok konflik (409)  |
 | `/checkout/work-jacket-olive?demo=koneksi`        | B6.4 Koneksi terputus    |
@@ -103,37 +103,83 @@ State yang sulit dipicu tanpa backend bisa dipaksa lewat `?demo=`:
 | `/checkout/work-jacket-olive?demo=bayar`          | B6.6 Menunggu pembayaran |
 | `/checkout/work-jacket-olive?demo=file-ditolak`   | B6.7 File ditolak        |
 | `/checkout/work-jacket-olive?demo=verifikasi`     | B6.8 Menunggu verifikasi |
-| `/checkout/work-jacket-olive?demo=unggah-ulang`   | B6.9 Perlu unggah ulang   |
+| `/checkout/work-jacket-olive?demo=unggah-ulang`   | B6.9 Perlu unggah ulang  |
 | `/checkout/work-jacket-olive?demo=gagal`          | Checkout gagal dimuat    |
 
 Checkout memerlukan sesi Buyer. Pesanan dan bukti gambar disimpan sementara di IndexedDB
 (`pickathrift.checkout`). Nomor rekening di checkout adalah contoh untuk simulasi.
 
-| URL | State |
-| --- | --- |
-| `/pesanan?demo=riwayat` | B7.1 Riwayat dengan empat pesanan contoh |
-| `/pesanan?demo=kosong` | B7.2 Riwayat kosong |
-| `/pesanan/PCT-001?demo=diproses` | B7.3 Diproses |
-| `/pesanan/PCT-001?demo=dikirim` | B7.4 Dikirim |
-| `/pesanan/PCT-001?demo=selesai` | B7.5 Selesai |
-| `/pesanan/PCT-001?demo=dibatalkan` | B7.6 Dibatalkan |
-| `/pesanan/PCT-001?demo=batal` | B7.7 Konfirmasi batal |
-| `/ulasan?demo=tulis` | B8.1 Tulis ulasan |
-| `/ulasan?demo=validasi` | B8.2 Galat validasi |
-| `/ulasan?demo=terkirim` | B8.3 Ulasan terkirim |
-| `/ulasan?demo=terkunci` | B8.4 Belum boleh mengulas |
-| `/ulasan` | B8.5 Ulasan toko |
-| `/profil?demo=default` | B9.1 Profil dengan data contoh |
-| `/profil?demo=validasi` | B9.2 Galat validasi |
-| `/profil?demo=tersimpan` | B9.3 Toast perubahan disimpan |
-| `/pesanan?demo=gagal`, `/pesanan/PCT-001?demo=gagal`, `/ulasan?demo=gagal`, `/profil?demo=gagal` | Galat memuat data |
-| `/profil?demo=gagal-simpan` | Galat setelah mengubah data dan menekan Simpan perubahan |
+| URL                                                                                              | State                                                    |
+| ------------------------------------------------------------------------------------------------ | -------------------------------------------------------- |
+| `/pesanan?demo=riwayat`                                                                          | B7.1 Riwayat dengan empat pesanan contoh                 |
+| `/pesanan?demo=kosong`                                                                           | B7.2 Riwayat kosong                                      |
+| `/pesanan/PCT-001?demo=diproses`                                                                 | B7.3 Diproses                                            |
+| `/pesanan/PCT-001?demo=dikirim`                                                                  | B7.4 Dikirim                                             |
+| `/pesanan/PCT-001?demo=selesai`                                                                  | B7.5 Selesai                                             |
+| `/pesanan/PCT-001?demo=dibatalkan`                                                               | B7.6 Dibatalkan                                          |
+| `/pesanan/PCT-001?demo=batal`                                                                    | B7.7 Konfirmasi batal                                    |
+| `/ulasan?demo=tulis`                                                                             | B8.1 Tulis ulasan                                        |
+| `/ulasan?demo=validasi`                                                                          | B8.2 Galat validasi                                      |
+| `/ulasan?demo=terkirim`                                                                          | B8.3 Ulasan terkirim                                     |
+| `/ulasan?demo=terkunci`                                                                          | B8.4 Belum boleh mengulas                                |
+| `/ulasan`                                                                                        | B8.5 Ulasan toko                                         |
+| `/profil?demo=default`                                                                           | B9.1 Profil dengan data contoh                           |
+| `/profil?demo=validasi`                                                                          | B9.2 Galat validasi                                      |
+| `/profil?demo=tersimpan`                                                                         | B9.3 Toast perubahan disimpan                            |
+| `/pesanan?demo=gagal`, `/pesanan/PCT-001?demo=gagal`, `/ulasan?demo=gagal`, `/profil?demo=gagal` | Galat memuat data                                        |
+| `/profil?demo=gagal-simpan`                                                                      | Galat setelah mengubah data dan menekan Simpan perubahan |
 
 Riwayat normal menampilkan pesanan Buyer yang dibuat di checkout. State diproses dan dikirim
 tersedia sebagai demo selama alur admin belum tersedia. Ulasan dari pesanan selesai tersimpan
 bersama pesanan di IndexedDB. Profil menyimpan nama dan alamat per akun di localStorage
 (`pickathrift.profile.<email>`) dan checkout membacanya saat dibuka. Pesanan dan profil contoh
 untuk demo B7–B9 tidak disimpan.
+
+### State sistem (X1)
+
+| URL                                   | State                                                                                |
+| ------------------------------------- | ------------------------------------------------------------------------------------ |
+| `/halaman-yang-tidak-ada`             | X1.1 Halaman tidak ditemukan (rute apa pun yang tidak ada)                           |
+| —                                     | X1.2 Terjadi kesalahan: muncul otomatis saat ada galat tak terduga (`app/error.tsx`) |
+| `/pesanan/PCT-001?demo=bukan-milikmu` | X1.3 Bukan milikmu (juga untuk pesanan akun lain)                                    |
+| `/katalog?demo=offline`               | X1.4 Sedang offline (juga otomatis saat koneksi putus)                               |
+| `/keluar`                             | X1.5 Sudah keluar (tujuan setelah menekan Keluar)                                    |
+| `/sesi-berakhir?kembali=/pesanan`     | X1.6 Sesi berakhir                                                                   |
+| `/katalog?demo=aksi-gagal`            | X1.7 Aksi gagal terkirim: tekan ikon hati di kartu                                   |
+
+### Admin (M1–M4)
+
+Masuk lewat `/admin/masuk` dengan `admin@pickathrift.test` / `Admin123!` (simulasi auth harus
+aktif). Sesi admin terpisah dari sesi Buyer, disimpan di localStorage
+(`pickathrift.admin-session`), dan berakhir setelah 2 jam tidak aktif.
+
+| URL                                            | State                                                                       |
+| ---------------------------------------------- | --------------------------------------------------------------------------- |
+| `/admin/produk`                                | M1.1 Daftar produk, M1.2 cari dan filter, M1.5 konfirmasi nonaktifkan       |
+| `/admin/produk?demo=memuat`                    | M1.3 Memuat                                                                 |
+| `/admin/produk?demo=kosong`                    | M1.4 Belum ada produk                                                       |
+| `/admin/produk?demo=gagal`                     | Produk gagal dimuat                                                         |
+| `/admin/produk/baru`                           | M2.1 Form kosong; tekan Simpan untuk M2.3 Galat validasi                    |
+| `/admin/produk/baru?demo=menyimpan`            | M2.4 Menyimpan (isi form lalu Simpan)                                       |
+| `/admin/produk/baru?demo=gagal-simpan`         | Galat saat menyimpan                                                        |
+| `/admin/produk/work-jacket-olive`              | M2.2 Terisi; Simpan → M2.5 Tersimpan                                        |
+| `/admin/produk/denim-jacket-blue`              | M2.6 Edit barang yang dipesan (harga dan ukuran terkunci)                   |
+| `/admin/produk?demo=ditolak`                   | M4.1 Akses ditolak                                                          |
+| `/admin/produk?demo=sesi-berakhir`             | M4.2 Sesi berakhir                                                          |
+| `/admin/pesanan`                               | M3.1 Daftar pesanan (pesanan nyata dari checkout Buyer)                     |
+| `/admin/pesanan?demo=contoh`                   | M3.1 dengan enam pesanan contoh seperti di Figma                            |
+| `/admin/pesanan?demo=contoh&status=verifikasi` | Filter Perlu verifikasi                                                     |
+| `/admin/pesanan/PCT-007?demo=contoh`           | M3.2 Verifikasi pembayaran, M3.3 Tolak dan batalkan                         |
+| `/admin/pesanan/PCT-005?demo=contoh`           | M3.4 Proses dan kirim; simpan tanpa resi untuk M3.5, dengan resi untuk M3.6 |
+| `/admin/pesanan?demo=kosong&status=verifikasi` | M3.7 Tidak ada yang perlu diverifikasi                                      |
+| `/admin/pesanan?demo=gagal`                    | Pesanan gagal dimuat                                                        |
+
+Aksi admin pada pesanan nyata (setujui, minta unggah ulang, tolak, simpan resi) langsung
+mengubah pesanan Buyer di IndexedDB yang sama, jadi bisa dicek di `/pesanan`. Pesanan contoh
+hanya hidup di memori tab. Produk yang ditambah, diubah, atau dinonaktifkan admin disimpan di localStorage
+(`pickathrift.products`) dan langsung terlihat di katalog Buyer pada browser yang sama. Produk
+nonaktif hilang dari katalog. Foto dikecilkan dulu sebelum disimpan karena kuota localStorage
+sekitar 5 MB. Hapus kunci itu di DevTools untuk kembali ke data contoh.
 
 Wishlist dan Meja Perbandingan disimpan di localStorage (`pickathrift.wishlist`,
 `pickathrift.compare`) selama belum ada endpoint. `?demo=` ikut terhapus bersama fixtures. Fixtures wajib diganti panggilan `api()` sebelum pengumpulan, lihat FE5 di

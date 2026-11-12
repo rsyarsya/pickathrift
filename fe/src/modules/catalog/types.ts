@@ -27,6 +27,10 @@ export type Product = {
   /** Ukuran pakaian dalam cm, diukur terbentang datar. */
   measurements: { label: string; cm: number }[];
   createdAt: string;
+  /** Dinonaktifkan admin: hilang dari katalog Buyer. Tidak diisi = aktif. */
+  active?: boolean;
+  /** Terakhir diubah admin. Tidak diisi = sama dengan createdAt. */
+  updatedAt?: string;
 };
 
 export type SortKey = "terbaru" | "termurah" | "termahal";

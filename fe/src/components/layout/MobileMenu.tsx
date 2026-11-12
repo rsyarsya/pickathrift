@@ -2,6 +2,7 @@
 
 import Form from "next/form";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { MouseEvent, Ref } from "react";
 import { buttonClass } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
@@ -21,6 +22,7 @@ const CATEGORY_CHIPS = [
 export function MobileMenu({ ref }: { ref: Ref<HTMLDialogElement> }) {
   const wishlist = useWishlist();
   const session = useSession();
+  const router = useRouter();
   const compare = useCompare();
 
   const links = [
@@ -105,7 +107,13 @@ export function MobileMenu({ ref }: { ref: Ref<HTMLDialogElement> }) {
                 Profil saya
               </Link>
               <form method="dialog">
-                <button onClick={session.logOut} className={buttonClass("outline", "md", "w-full")}>
+                <button
+                  onClick={() => {
+                    session.logOut();
+                    router.push("/keluar");
+                  }}
+                  className={buttonClass("outline", "md", "w-full")}
+                >
                   Keluar
                 </button>
               </form>
