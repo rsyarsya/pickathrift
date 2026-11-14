@@ -1,40 +1,31 @@
-const express = require('express');
-const router = express.Router();
-const Wishlist = require('../models/wishlist');
-const { authenticateToken } = require('../middleware/auth');
+const router = require("express").Router();
+const Wishlist = require("../models/wishlist");
+const { authenticateToken, requireBuyer } = require("../middleware/auth");
+const { ApiError } = require("../lib/errors");
+const validate = require("../lib/validation");
+const serialize = require("../lib/serializers");
 
-// GET /api/wishlist
-router.get('/', authenticateToken, async (req, res) => {
-  try {
-    const wishlist = await Wishlist.find({ user_id: req.user.id }).populate('product_id');
-    res.status(200).json({ success: true, data: wishlist });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
+router.use(authenticateToken, requireBuyer);
+router.get("/", async (req, res) => {
+  const items = await Wishlist.find({ user_id: req.user.id }).populate("product_id");
+  res.json({ success: true, data: items.map(serialize.wishlist) });
 });
 
-// POST /api/wishlist/:productId
-router.post('/:productId', authenticateToken, async (req, res) => {
-  try {
-    const exists = await Wishlist.findOne({ user_id: req.user.id, product_id: req.params.productId });
-    if (exists) return res.status(400).json({ success: false, message: 'Barang sudah ada di wishlist' });
-
-    const item = new Wishlist({ user_id: req.user.id, product_id: req.params.productId });
-    await item.save();
-    res.status(201).json({ success: true, message: 'Berhasil menambahkan ke wishlist' });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
+router.post("/:productId", validate.idParam("productId"), async (req, res) => {
+  const key = { user_id: req.user.id, product_id: req.params.productId };
+  if (await Wishlist.exists(key))
+    throw new ApiError(409, "CONFLICT", "Barang sudah ada di wishlist.");
+  const item = await Wishlist.create(key);
+  res.status(201).json({ success: true, data: serialize.wishlist(item) });
 });
 
-// DELETE /api/wishlist/:productId
-router.delete('/:productId', authenticateToken, async (req, res) => {
-  try {
-    await Wishlist.findOneAndDelete({ user_id: req.user.id, product_id: req.params.productId });
-    res.status(200).json({ success: true, message: 'Barang dihapus dari wishlist' });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
+router.delete("/:productId", validate.idParam("productId"), async (req, res) => {
+  const item = await Wishlist.findOneAndDelete({
+    user_id: req.user.id,
+    product_id: req.params.productId,
+  });
+  if (!item) throw new ApiError(404, "NOT_FOUND", "Barang tidak ada di wishlist Anda.");
+  res.json({ success: true, data: { id: item.id } });
 });
 
 module.exports = router;

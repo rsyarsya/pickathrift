@@ -1,41 +1,39 @@
-require('dotenv').config();
-const express = require('express');
-const cors = require('cors');
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
+const { once } = require("node:events");
+const { getConfig } = require("./config");
+const { createApp } = require("./app");
+const User = require("./models/user");
 
-// Import Routers
-const authRoutes = require('./routes/authRoutes');
-const userRoutes = require('./routes/userRoutes');
-const productRoutes = require('./routes/productRoutes');
-const wishlistRoutes = require('./routes/wishlistRoutes');
-const orderRoutes = require('./routes/orderRoutes');
-const reviewRoutes = require('./routes/reviewRoutes');
+async function start(config = getConfig()) {
+  try {
+    await mongoose.connect(config.mongoUri, { serverSelectionTimeoutMS: 5000 });
+    await User.init();
+    const server = createApp(config).listen(config.port);
+    await once(server, "listening");
+    return server;
+  } catch (error) {
+    await mongoose.disconnect();
+    throw error;
+  }
+}
 
-const app = express();
-app.use(cors());
-app.use(express.json());
+if (require.main === module) {
+  if (process.env.NODE_ENV !== "test") {
+    require("dotenv").config({ path: require("node:path").join(__dirname, ".env"), quiet: true });
+  }
+  start()
+    .then((server) => {
+      console.log(`Backend PickaThrift berjalan pada port ${server.address().port}.`);
+      const shutdown = () => server.close(() => mongoose.disconnect().then(() => process.exit(0)));
+      process.once("SIGINT", shutdown);
+      process.once("SIGTERM", shutdown);
+    })
+    .catch(() => {
+      console.error(
+        "Backend gagal dimulai. Periksa MONGODB_URI, JWT_SECRET, PORT, dan koneksi database.",
+      );
+      process.exitCode = 1;
+    });
+}
 
-// Koneksi Database
-mongoose.connect(process.env.MONGODB_URI)
-  .then(() => console.log('Terhubung ke MongoDB Atlas'))
-  .catch((err) => console.error('Gagal koneksi MongoDB:', err));
-
-// Register Base Route
-app.get('/', (req, res) => {
-  res.send('Server pickathrift Berjalan!');
-});
-
-// Mount Routes Sesuai Spesifikasi Milestone 1
-app.use('/api/auth', authRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/products', productRoutes);
-app.use('/api/wishlist', wishlistRoutes);
-app.use('/api/orders', orderRoutes);
-app.use('/api', orderRoutes);  // Menampung /api/admin/orders
-app.use('/api', reviewRoutes); // Menampung /api/orders/:id/review dan /api/reviews
-
-// Jalankan Server
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Server Backend berjalan di http://localhost:${PORT}`);
-});
+module.exports = { start };

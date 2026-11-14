@@ -1,91 +1,79 @@
-const express = require('express');
-const router = express.Router();
-const Order = require('../models/order');
-const Product = require('../models/products');
-const { authenticateToken, requireAdmin } = require('../middleware/auth');
+const { Router } = require("express");
+const orderRouter = Router();
+const adminOrderRouter = Router();
+const Order = require("../models/order");
+const Product = require("../models/products");
+const { authenticateToken, requireAdmin, requireBuyer } = require("../middleware/auth");
+const { ApiError } = require("../lib/errors");
+const validate = require("../lib/validation");
+const serialize = require("../lib/serializers");
 
-// POST /api/orders (Membuat pesanan & mengunci barang)
-router.post('/', authenticateToken, async (req, res) => {
-  try {
-    const { product_id } = req.body;
+orderRouter.use(authenticateToken);
+orderRouter.post("/", requireBuyer, async (req, res) => {
+  validate.fields(req.body, ["product_id"]);
+  const productId = validate.objectId(req.body.product_id, "product_id");
+  // Transaksi dan pemulihan stok ditangani pada batch pesanan.
+  const product = await Product.findOneAndUpdate(
+    { _id: productId, status: "available" },
+    { status: "reserved" },
+    { returnDocument: "after" },
+  );
+  if (!product) {
+    if (!(await Product.exists({ _id: productId })))
+      throw new ApiError(404, "NOT_FOUND", "Barang tidak ditemukan.");
+    throw new ApiError(409, "STOCK_CONFLICT", "Barang sudah dipesan atau terjual.");
+  }
+  const order = await Order.create({
+    buyer_id: req.user.id,
+    product_id: product.id,
+    total_price: product.price,
+  });
+  res.status(201).json({ success: true, data: serialize.order(order) });
+});
 
-    // Kunci barang secara atomik (hanya jika status 'available')
-    const product = await Product.findOneAndUpdate(
-      { _id: product_id, status: 'available' },
-      { status: 'reserved' },
-      { new: true }
-    );
+orderRouter.get("/my", requireBuyer, async (req, res) => {
+  const orders = await Order.find({ buyer_id: req.user.id }).populate("product_id");
+  res.json({ success: true, data: orders.map(serialize.order) });
+});
 
-    if (!product) {
-      return res.status(400).json({
-        success: false,
-        message: 'Barang sudah dipesan atau terjual oleh pembeli lain.'
-      });
-    }
+orderRouter.get("/:id", validate.idParam("id"), async (req, res) => {
+  const order = await Order.findById(req.params.id).populate("product_id");
+  if (!order) throw new ApiError(404, "NOT_FOUND", "Pesanan tidak ditemukan.");
+  if (req.user.role !== "admin" && String(order.buyer_id) !== req.user.id) {
+    throw new ApiError(403, "FORBIDDEN", "Anda tidak memiliki akses ke pesanan ini.");
+  }
+  res.json({ success: true, data: serialize.order(order) });
+});
 
-    const order = new Order({
-      buyer_id: req.user.id,
-      product_id: product._id,
-      total_price: product.price
+adminOrderRouter.use(authenticateToken, requireAdmin);
+adminOrderRouter.get("/", async (req, res) => {
+  const orders = await Order.find().populate("buyer_id", "name email").populate("product_id");
+  res.json({ success: true, data: orders.map(serialize.order) });
+});
+
+adminOrderRouter.patch("/:id/status", validate.idParam("id"), async (req, res) => {
+  validate.fields(req.body, ["status", "tracking_number"]);
+  if (!Object.keys(req.body).length) validate.invalid("body");
+  const update = {};
+  if (req.body.status !== undefined) {
+    if (!["pending", "paid", "shipped", "completed", "cancelled"].includes(req.body.status))
+      validate.invalid("status");
+    update.status = req.body.status;
+  }
+  if (req.body.tracking_number !== undefined)
+    update.tracking_number = validate.text(req.body.tracking_number, "tracking_number", {
+      max: 100,
+      required: false,
     });
-    await order.save();
-
-    res.status(201).json({ success: true, message: 'Pesanan berhasil dibuat, barang dikunci', data: order });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
+  const order = await Order.findByIdAndUpdate(req.params.id, update, {
+    returnDocument: "after",
+    runValidators: true,
+  });
+  if (!order) throw new ApiError(404, "NOT_FOUND", "Pesanan tidak ditemukan.");
+  // Transisi bisnis lengkap menggantikan pembaruan status lama pada batch pembayaran.
+  if (update.status === "completed")
+    await Product.findByIdAndUpdate(order.product_id, { status: "sold" });
+  res.json({ success: true, data: serialize.order(order) });
 });
 
-// GET /api/orders/my
-router.get('/my', authenticateToken, async (req, res) => {
-  try {
-    const orders = await Order.find({ buyer_id: req.user.id }).populate('product_id');
-    res.status(200).json({ success: true, data: orders });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
-
-// GET /api/admin/orders (Admin - Seluruh Pesanan)
-router.get('/admin/orders', authenticateToken, requireAdmin, async (req, res) => {
-  try {
-    const orders = await Order.find().populate('buyer_id', 'name email').populate('product_id');
-    res.status(200).json({ success: true, data: orders });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
-
-// GET /api/orders/:id
-router.get('/:id', authenticateToken, async (req, res) => {
-  try {
-    const order = await Order.findById(req.params.id).populate('product_id');
-    if (!order) return res.status(404).json({ success: false, message: 'Pesanan tidak ditemukan' });
-    res.status(200).json({ success: true, data: order });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
-
-// PATCH /api/admin/orders/:id/status (Admin - Ubah Status & Resi)
-router.patch('/admin/orders/:id/status', authenticateToken, requireAdmin, async (req, res) => {
-  try {
-    const { status, tracking_number } = req.body;
-    const order = await Order.findByIdAndUpdate(
-      req.params.id,
-      { status, tracking_number },
-      { new: true }
-    );
-
-    // Jika pesanan selesai, update status produk jadi 'sold'
-    if (status === 'completed') {
-      await Product.findByIdAndUpdate(order.product_id, { status: 'sold' });
-    }
-
-    res.status(200).json({ success: true, message: 'Status pesanan diperbarui', data: order });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
-
-module.exports = router;
+module.exports = { orderRouter, adminOrderRouter };
