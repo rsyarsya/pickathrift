@@ -14,18 +14,19 @@ orderRouter.post("/", requireBuyer, async (req, res) => {
   const productId = validate.objectId(req.body.product_id, "product_id");
   // Transaksi dan pemulihan stok ditangani pada batch pesanan.
   const product = await Product.findOneAndUpdate(
-    { _id: productId, status: "available" },
+    { _id: productId, status: "available", active: true },
     { status: "reserved" },
     { returnDocument: "after" },
   );
   if (!product) {
-    if (!(await Product.exists({ _id: productId })))
+    if (!(await Product.exists({ _id: productId, active: true })))
       throw new ApiError(404, "NOT_FOUND", "Barang tidak ditemukan.");
     throw new ApiError(409, "STOCK_CONFLICT", "Barang sudah dipesan atau terjual.");
   }
   const order = await Order.create({
     buyer_id: req.user.id,
     product_id: product.id,
+    product_snapshot: serialize.product(product),
     total_price: product.price,
   });
   res.status(201).json({ success: true, data: serialize.order(order) });

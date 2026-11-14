@@ -15,6 +15,7 @@ const Order = require("../models/order");
 const Product = require("../models/products");
 const Review = require("../models/review");
 const Wishlist = require("../models/wishlist");
+const { productInput } = require("./fixtures");
 
 const secret = randomBytes(48).toString("hex");
 const credentials = { email: "buyer@example.test", password: "Buyer123!" };
@@ -74,7 +75,7 @@ before(async () => {
   buyerToken = await login(credentials.email, credentials.password, "buyer");
   otherToken = await login(other.email, credentials.password, "buyer");
   adminToken = await login(admin.email, credentials.password, "admin");
-  product = await Product.create({ title: "Jaket QA", price: 75000, category: "Jaket" });
+  product = await Product.create(productInput({ name: "Jaket QA" }));
   order = await Order.create({
     buyer_id: buyer.id,
     product_id: product.id,
@@ -353,19 +354,19 @@ test("input domain yang tidak valid menghasilkan 422 tanpa mutasi", async () => 
 
 test("query numerik/objek tidak valid ditolak dan pencarian regex menjadi teks literal", async () => {
   for (const query of [
-    "min_price=abc",
-    "min_price=-1",
-    "max_price=Infinity",
-    "min_price=20&max_price=10",
+    "minPrice=abc",
+    "minPrice=-1",
+    "maxPrice=Infinity",
+    "minPrice=20&maxPrice=10",
     "category=x&category=y",
     "status=banana",
     "sort[$ne]=x",
   ]) {
     assert.equal((await request(`/products?${query}`)).status, 422, query);
   }
-  const result = await request("/products?search=%5B");
+  const result = await request("/products?q=%5B");
   assert.equal(result.status, 200);
-  assert.equal(result.json.count, 0);
+  assert.equal(result.json.data.total, 0);
 });
 
 test("JSON rusak, body besar, route asing, dan alias router lama ditangani konsisten", async () => {
@@ -411,7 +412,7 @@ test("route produk tetap berjalan untuk Admin dan menolak modifikasi oleh Buyer"
   const added = await request("/products", {
     token: adminToken,
     method: "POST",
-    body: { title: "Produk Admin", category: "Jaket", price: 25000 },
+    body: productInput({ name: "Produk Admin", price: 25000 }),
   });
   assert.equal(added.status, 201);
   noPrivateFields(added.json);
@@ -426,11 +427,14 @@ test("route produk tetap berjalan untuk Admin dan menolak modifikasi oleh Buyer"
   assert.equal((await request(route)).json.data.price, 35000);
   const removed = await request(route, { token: adminToken, method: "DELETE" });
   assert.equal(removed.status, 200);
-  assert.equal(removed.json.data.status, "inactive");
+  assert.equal(removed.json.data.status, "available");
+  assert.equal(removed.json.data.active, false);
 });
 
 test("Buyer masih bisa membuat pesanan, mengulas pesanan sendiri, dan menghapus wishlist sendiri", async () => {
-  const item = await Product.create({ title: "Produk Pesanan QA", price: 50000, category: "Kaos" });
+  const item = await Product.create(
+    productInput({ name: "Produk Pesanan QA", price: 50000, category: "Kaos" }),
+  );
   const body = { product_id: item.id };
   const placed = await request("/orders", { token: buyerToken, method: "POST", body });
   assert.equal(placed.status, 201);

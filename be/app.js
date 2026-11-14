@@ -19,6 +19,7 @@ function createApp(config) {
   app.use("/api/auth", require("./routes/authRoutes"));
   app.use("/api/users", require("./routes/userRoutes"));
   app.use("/api/products", require("./routes/productRoutes"));
+  app.use("/api/admin/products", require("./routes/adminProductRoutes"));
   app.use("/api/wishlist", require("./routes/wishlistRoutes"));
   app.use("/api/orders", orderRouter);
   app.use("/api/admin/orders", adminOrderRouter);

@@ -1,4 +1,4 @@
-const id = (value) => (value == null ? null : String(value._id ?? value));
+const id = (value) => (value == null ? null : String(value._id ?? value.id ?? value));
 
 function user(value) {
   return {
@@ -17,22 +17,24 @@ function product(value) {
   if (!value) return null;
   return {
     id: id(value),
-    title: value.title,
+    name: value.name,
     price: value.price,
     category: value.category,
-    clothing_type: value.clothing_type,
     brand: value.brand,
     size: value.size,
     condition: value.condition,
     style: value.style,
     status: value.status,
-    image_url: value.image_url,
+    color: value.color,
+    active: value.active,
+    images: [...(value.images ?? [])],
+    measurements: (value.measurements ?? []).map(({ label, cm }) => ({ label, cm })),
     createdAt: value.createdAt,
     updatedAt: value.updatedAt,
   };
 }
 
-const productRef = (value) => (value?.title !== undefined ? product(value) : id(value));
+const productRef = (value) => (value?.name !== undefined ? product(value) : id(value));
 
 function order(value) {
   const buyer = value.buyer_id;
@@ -42,7 +44,9 @@ function order(value) {
       buyer?.name !== undefined
         ? { id: id(buyer), name: buyer.name, email: buyer.email }
         : id(buyer),
-    product_id: productRef(value.product_id),
+    product_id: value.product_snapshot
+      ? product(value.product_snapshot)
+      : productRef(value.product_id),
     status: value.status,
     tracking_number: value.tracking_number,
     total_price: value.total_price,
