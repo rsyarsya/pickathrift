@@ -44,7 +44,6 @@ export function orderCode(order: Pick<Order, "id">) {
   return `#${order.id.length > 12 ? order.id.slice(0, 12).toUpperCase() : order.id}`;
 }
 
-/** Tautan ke detail pesanan admin, membawa `?demo=contoh` kalau pesanannya contoh. */
 export function adminOrderHref(order: Order) {
-  return `/admin/pesanan/${encodeURIComponent(order.id)}${order.demo ? "?demo=contoh" : ""}`;
+  return `/admin/pesanan/${encodeURIComponent(order.id)}`;
 }

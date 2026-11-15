@@ -1,46 +1,22 @@
 import { describe, expect, it } from "vitest";
-import { PRODUCTS } from "@/modules/catalog/data/fixtures";
-import { applyAdminAction, trackingError } from "@/modules/admin/orderActions";
-import type { Order, OrderStatus } from "@/modules/orders/order";
-import { DEMO_ADDRESS } from "@/modules/profile/data/fixtures";
-
-const order = (status: OrderStatus): Order => ({
-  id: "PCT-TEST",
-  buyerEmail: "buyer@pickathrift.test",
-  product: PRODUCTS[0]!,
-  address: DEMO_ADDRESS,
-  createdAt: 0,
-  expiresAt: 1,
-  status,
-});
+import { canAdmin, trackingError } from "@/modules/admin/orderActions";
 
 describe("aksi admin pada pesanan", () => {
-  it("menerima bukti dari Menunggu verifikasi dan Perlu unggah ulang", () => {
-    expect(applyAdminAction(order("MENUNGGU_VERIFIKASI"), { type: "approve" }, 5).status).toBe(
-      "DIPROSES",
-    );
-    expect(applyAdminAction(order("PERLU_UNGGAH_ULANG"), { type: "approve" }, 5).status).toBe(
-      "DIPROSES",
-    );
+  it("menampilkan aksi setujui saat menunggu verifikasi atau unggah ulang", () => {
+    expect(canAdmin({ status: "MENUNGGU_VERIFIKASI" }, "approve")).toBe(true);
+    expect(canAdmin({ status: "PERLU_UNGGAH_ULANG" }, "approve")).toBe(true);
   });
 
-  it("menolak transisi yang tidak diizinkan dengan 409", () => {
-    expect(() => applyAdminAction(order("DIPROSES"), { type: "reject", note: "x" }, 5)).toThrow(
-      /Status pesanan sudah berubah/,
-    );
-    expect(() =>
-      applyAdminAction(order("PERLU_UNGGAH_ULANG"), { type: "reupload", note: "x" }, 5),
-    ).toThrow();
+  it("hanya menawarkan aksi yang sesuai status", () => {
+    expect(canAdmin({ status: "DIPROSES" }, "reject")).toBe(false);
+    expect(canAdmin({ status: "PERLU_UNGGAH_ULANG" }, "reupload")).toBe(false);
+    expect(canAdmin({ status: "DIPROSES" }, "ship")).toBe(true);
+    expect(canAdmin({ status: "DIKIRIM" }, "ship")).toBe(false);
   });
 
-  it("menyimpan resi hanya kalau nomornya valid", () => {
+  it("menerima nomor resi yang valid setelah memangkas spasi", () => {
     expect(trackingError("")).toMatch(/wajib/);
-    const shipped = applyAdminAction(
-      order("DIPROSES"),
-      { type: "ship", service: "JNE REG", number: " JNE 0123 4567 " },
-      9,
-    );
-    expect(shipped.status).toBe("DIKIRIM");
-    expect(shipped.shipment).toEqual({ service: "JNE REG", number: "JNE 0123 4567", shippedAt: 9 });
+    expect(trackingError("JNE-1")).toMatch(/8–30 karakter/);
+    expect(trackingError(" JNE 0123 4567 ")).toBeNull();
   });
 });

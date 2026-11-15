@@ -8,8 +8,7 @@ import { Icon, type IconName } from "@/components/ui/Icon";
 import { useAsync } from "@/hooks/useAsync";
 import { cn } from "@/lib/cn";
 import { AdminBadge } from "@/modules/admin/components/AdminAccess";
-import { countPendingOrders } from "@/modules/admin/data/products";
-import { ORDERS_CHANGED } from "@/modules/orders/data/orderStore";
+import { adminOrderRevision, countPendingOrders } from "@/modules/admin/data/orders";
 import { useAdminSession } from "@/modules/admin/useAdminSession";
 
 type NavItem = { href: string; label: string; icon: IconName; external?: boolean };
@@ -72,13 +71,15 @@ function Brand() {
 export function AdminShell({ children }: { children: ReactNode }) {
   const router = useRouter();
   const { session, logOut } = useAdminSession();
-  const pendingCount = useAsync(countPendingOrders, []);
+  const pathname = usePathname();
+  const revision = adminOrderRevision.use();
+  const pendingCount = useAsync(countPendingOrders, [pathname, revision]);
   const pending = pendingCount.data;
   const refreshPending = pendingCount.reload;
   // QA-008: hitung ulang setelah approve/tolak/unggah ulang, tanpa polling.
   useEffect(() => {
-    window.addEventListener(ORDERS_CHANGED, refreshPending);
-    return () => window.removeEventListener(ORDERS_CHANGED, refreshPending);
+    window.addEventListener("focus", refreshPending);
+    return () => window.removeEventListener("focus", refreshPending);
   }, [refreshPending]);
   const drawer = useRef<HTMLDialogElement>(null);
 

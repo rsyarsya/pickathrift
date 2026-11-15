@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PRODUCTS } from "@/modules/catalog/data/fixtures";
+import { PRODUCTS } from "@/test/products";
 import { formFromProduct, validateProductForm } from "@/modules/admin/productForm";
 
 describe("form produk admin", () => {

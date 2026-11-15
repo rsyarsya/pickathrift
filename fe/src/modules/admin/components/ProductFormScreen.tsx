@@ -14,9 +14,14 @@ import { useToast } from "@/hooks/useToast";
 import { ApiError } from "@/lib/api";
 import { cn } from "@/lib/cn";
 import { formatRupiah, parseRupiah } from "@/lib/format";
-import { imageError, toDataUrl } from "@/lib/image";
+import { imageError } from "@/lib/image";
 import { AdminHeader, Panel } from "@/modules/admin/components/AdminParts";
-import { getAdminProduct, saveProduct, type AdminProduct } from "@/modules/admin/data/products";
+import {
+  getAdminProduct,
+  saveProduct,
+  uploadProductImages,
+  type AdminProduct,
+} from "@/modules/admin/data/products";
 import {
   MAX_IMAGES,
   OPTIONS,
@@ -105,34 +110,44 @@ function Select({
   );
 }
 
-/** Slot foto: foto utama besar + tiga foto detail. Berkas dikecilkan sebelum disimpan. */
+/** Slot foto: foto utama besar + tiga foto detail, diunggah ke backend. */
 function PhotoSlots({
   images,
   onChange,
   error,
+  onBusyChange,
 }: {
   images: string[];
   onChange: (images: string[]) => void;
   error?: string;
+  onBusyChange: (busy: boolean) => void;
 }) {
   const [fileError, setFileError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const uploading = useRef(false);
 
   async function add(file: File | undefined, index: number) {
-    if (!file) return;
+    if (!file || uploading.current) return;
     const problem = imageError(file);
     if (problem) return setFileError(problem);
     setFileError(null);
     setBusy(true);
+    uploading.current = true;
+    onBusyChange(true);
     try {
-      const url = await toDataUrl(file);
+      const [url] = await uploadProductImages([file]);
+      if (!url) throw new Error("Foto tidak tersedia.");
       const next = [...images];
       next[index] = url;
       onChange(next.filter(Boolean));
-    } catch {
-      setFileError("Foto tidak bisa dibaca. Coba berkas lain.");
+    } catch (error) {
+      setFileError(
+        error instanceof ApiError ? error.message : "Foto tidak bisa dibaca. Coba berkas lain.",
+      );
     } finally {
       setBusy(false);
+      uploading.current = false;
+      onBusyChange(false);
     }
   }
 
@@ -160,6 +175,7 @@ function PhotoSlots({
                   />
                   <button
                     type="button"
+                    disabled={busy}
                     onClick={() => onChange(images.filter((_, j) => j !== i))}
                     aria-label={main ? "Hapus foto utama" : `Hapus foto detail ${i}`}
                     className="absolute top-6 right-6 flex rounded-full bg-surface p-4 shadow-card"
@@ -182,6 +198,7 @@ function PhotoSlots({
                   {main ? "Foto utama" : "Detail"}
                   <input
                     type="file"
+                    disabled={busy}
                     accept="image/jpeg,image/png"
                     className="sr-only"
                     onChange={(e) => {
@@ -252,13 +269,15 @@ function Spinner() {
   );
 }
 
-function Editor({ product, demo }: { product?: AdminProduct; demo: string | null }) {
+function Editor({ product, onReload }: { product?: AdminProduct; onReload: () => void }) {
   const router = useRouter();
   const params = useSearchParams();
   const { toast, show, clear } = useToast();
   const [form, setForm] = useState<ProductForm>(() => formFromProduct(product));
   const [errors, setErrors] = useState<ProductFormErrors>({});
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [conflict, setConflict] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const locked = product?.status === "reserved";
@@ -287,7 +306,9 @@ function Editor({ product, demo }: { product?: AdminProduct; demo: string | null
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (saving || uploading) return;
     setSaveError(null);
+    setConflict(false);
     const result = validateProductForm(form);
     if (!result.ok) {
       setErrors(result.errors);
@@ -301,7 +322,7 @@ function Editor({ product, demo }: { product?: AdminProduct; demo: string | null
     setErrors({});
     setSaving(true);
     try {
-      const saved = await saveProduct(result.value, product?.id, demo);
+      const saved = await saveProduct(result.value, product?.id);
       if (!product) {
         router.replace(`/admin/produk/${saved.id}?disimpan=1`);
         return;
@@ -310,6 +331,7 @@ function Editor({ product, demo }: { product?: AdminProduct; demo: string | null
       show("✓ Perubahan disimpan", { label: "Lihat", href: `/produk/${saved.id}` });
     } catch (error) {
       setSaveError(error instanceof ApiError ? error.message : "Gagal menyimpan. Coba lagi.");
+      setConflict(error instanceof ApiError && error.status === 409);
     } finally {
       setSaving(false);
     }
@@ -321,7 +343,13 @@ function Editor({ product, demo }: { product?: AdminProduct; demo: string | null
       <ButtonLink href="/admin/produk" variant="outline" size="sm" className="px-20 py-9">
         Batal
       </ButtonLink>
-      <Button type="submit" form="product-form" size="sm" disabled={saving} className="px-20 py-9">
+      <Button
+        type="submit"
+        form="product-form"
+        size="sm"
+        disabled={saving || uploading || conflict}
+        className="px-20 py-9"
+      >
         {saving && <Spinner />}
         {saving ? "Menyimpan…" : "Simpan produk"}
       </Button>
@@ -346,8 +374,8 @@ function Editor({ product, demo }: { product?: AdminProduct; demo: string | null
 
       {locked && (
         <p className="rounded-md bg-warning-bg px-16 py-12 text-sm leading-[1.45]">
-          Barang ini sedang dipesan{product?.orderId ? ` (#${product.orderId})` : ""}. Harga dan
-          ukuran dikunci sampai pesanan selesai atau dibatalkan.
+          Barang ini sedang dipesan. Harga dan ukuran dikunci sampai pesanan selesai atau
+          dibatalkan.
         </p>
       )}
       {errorCount > 0 && (
@@ -360,6 +388,11 @@ function Editor({ product, demo }: { product?: AdminProduct; demo: string | null
           {saveError}
         </p>
       )}
+      {conflict && (
+        <Button variant="outline" onClick={onReload}>
+          Muat ulang produk
+        </Button>
+      )}
 
       <div className="flex flex-col gap-24 lg:flex-row lg:items-start">
         <form
@@ -370,12 +403,13 @@ function Editor({ product, demo }: { product?: AdminProduct; demo: string | null
           aria-busy={saving}
           className="flex min-w-0 flex-1 flex-col gap-14"
         >
-          <fieldset disabled={saving} className="contents">
+          <fieldset disabled={saving || uploading || conflict} className="contents">
             <Panel title="Foto" hint="JPG atau PNG, maks 2 MB. Foto utama tampil di katalog.">
               <PhotoSlots
                 images={form.images}
                 onChange={(images) => update("images", images)}
                 error={errors.images}
+                onBusyChange={setUploading}
               />
             </Panel>
 
@@ -565,7 +599,6 @@ function Editor({ product, demo }: { product?: AdminProduct; demo: string | null
 
 /** M2 Tambah dan edit produk. Tanpa `id` = tambah. */
 export function ProductFormScreen({ id }: { id?: string }) {
-  const demo = useSearchParams().get("demo");
   const result = useAsync(() => (id ? getAdminProduct(id) : Promise.resolve(undefined)), [id]);
 
   if (result.status === "loading") {
@@ -616,5 +649,11 @@ export function ProductFormScreen({ id }: { id?: string }) {
       />
     );
   }
-  return <Editor key={result.data?.id ?? "baru"} product={result.data} demo={demo} />;
+  return (
+    <Editor
+      key={`${result.data?.id ?? "baru"}:${result.data?.updatedAt ?? ""}`}
+      product={result.data}
+      onReload={result.reload}
+    />
+  );
 }

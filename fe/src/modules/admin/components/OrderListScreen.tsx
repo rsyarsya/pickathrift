@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Button, ButtonLink, buttonClass } from "@/components/ui/Button";
+import { Button, buttonClass } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
 import { StatusMessage } from "@/components/ui/StatusMessage";
 import { useAsync } from "@/hooks/useAsync";
@@ -18,7 +18,7 @@ import {
   shortName,
 } from "@/modules/admin/components/OrderParts";
 import { listAdminOrders } from "@/modules/admin/data/orders";
-import { orderTotal, type Order, type OrderStatus } from "@/modules/orders/order";
+import { orderAmount, type Order, type OrderStatus } from "@/modules/orders/order";
 
 type Filter = "semua" | OrderStatus;
 
@@ -76,30 +76,41 @@ const headCell = "px-12 py-12 text-left font-mono text-nano font-normal tracking
 export function OrderListScreen() {
   const params = useSearchParams();
   const router = useRouter();
-  const demo = params.get("demo");
   const filter = FILTERS.find((f) => f.param === params.get("status"))?.value ?? "semua";
-  const result = useAsync(() => listAdminOrders(demo), [demo]);
+  const rawPage = Number(params.get("halaman") ?? 1);
+  const page = Number.isSafeInteger(rawPage) && rawPage > 0 && rawPage <= 1000000 ? rawPage : 1;
+  const result = useAsync(
+    () => listAdminOrders({ status: filter === "semua" ? undefined : filter, page }),
+    [filter, page],
+  );
 
   function setFilter(value: Filter) {
     const next = new URLSearchParams(params);
+    next.delete("halaman");
     const param = FILTERS.find((f) => f.value === value)!.param;
     if (param) next.set("status", param);
     else next.delete("status");
     router.replace(`/admin/pesanan${next.size ? `?${next}` : ""}`, { scroll: false });
   }
 
-  const all = result.data ?? [];
+  function setPage(value: number) {
+    const next = new URLSearchParams(params);
+    if (value > 1) next.set("halaman", String(value));
+    else next.delete("halaman");
+    router.replace(`/admin/pesanan${next.size ? `?${next}` : ""}`, { scroll: false });
+  }
+  const allCount = Object.values(result.data?.counts ?? {}).reduce((sum, value) => sum + value, 0);
   const count = (value: Filter) =>
-    value === "semua" ? all.length : all.filter((o) => o.status === value).length;
+    value === "semua" ? allCount : (result.data?.counts[value] ?? 0);
   const needsAction = count("MENUNGGU_VERIFIKASI") + count("DIPROSES");
-  const visible = filter === "semua" ? all : all.filter((o) => o.status === filter);
-  const loading = result.status === "loading" && !result.data;
+  const visible = result.data?.items ?? [];
+  const loading = result.status === "loading";
   const empty = EMPTY[filter];
 
   return (
     <div className="flex flex-col gap-20 px-16 pt-24 pb-64 md:px-24 lg:px-40 lg:pt-32">
       <AdminHeader
-        overline={loading ? "MEMUAT…" : `${all.length} PESANAN · ${needsAction} PERLU TINDAKAN`}
+        overline={loading ? "MEMUAT…" : `${allCount} PESANAN · ${needsAction} PERLU TINDAKAN`}
         title="Pesanan masuk"
       />
 
@@ -164,21 +175,11 @@ export function OrderListScreen() {
           ) : (
             <StatusMessage
               tone="empty"
-              title={
-                all.length === 0 ? "Belum ada pesanan masuk" : "Tidak ada pesanan di status ini"
-              }
+              title={allCount === 0 ? "Belum ada pesanan masuk" : "Tidak ada pesanan di status ini"}
               description={
-                all.length === 0
+                allCount === 0
                   ? "Pesanan dari Buyer akan muncul di sini setelah checkout."
                   : "Pilih status lain untuk melihat pesanan."
-              }
-              actions={
-                all.length === 0 &&
-                demo !== "contoh" && (
-                  <ButtonLink href="/admin/pesanan?demo=contoh" variant="outline" size="md">
-                    Lihat pesanan contoh
-                  </ButtonLink>
-                )
               }
             />
           )}
@@ -234,7 +235,7 @@ export function OrderListScreen() {
                           </div>
                         </td>
                         <td className="hidden px-12 py-10 font-mono text-caption font-medium whitespace-nowrap lg:table-cell">
-                          {formatRupiah(orderTotal(order.product))}
+                          {formatRupiah(orderAmount(order))}
                         </td>
                         <td className="px-12 py-10">
                           <AdminOrderStatus status={order.status} />
@@ -273,7 +274,7 @@ export function OrderListScreen() {
                         </p>
                         <p className="truncate text-body font-medium">{order.product.name}</p>
                         <p className="font-mono text-caption font-medium">
-                          {formatRupiah(orderTotal(order.product))}
+                          {formatRupiah(orderAmount(order))}
                         </p>
                       </div>
                     </div>
@@ -285,6 +286,26 @@ export function OrderListScreen() {
                 ))}
           </ul>
         </>
+      )}
+      {result.status === "success" && result.data.totalPages > 1 && (
+        <nav
+          aria-label="Halaman pesanan"
+          className="flex flex-wrap items-center justify-between gap-12"
+        >
+          <Button variant="outline" disabled={page <= 1} onClick={() => setPage(page - 1)}>
+            Sebelumnya
+          </Button>
+          <p className="text-sm">
+            Halaman {page} dari {result.data.totalPages} · {result.data.total} pesanan
+          </p>
+          <Button
+            variant="outline"
+            disabled={page >= result.data.totalPages}
+            onClick={() => setPage(page + 1)}
+          >
+            Berikutnya
+          </Button>
+        </nav>
       )}
     </div>
   );
