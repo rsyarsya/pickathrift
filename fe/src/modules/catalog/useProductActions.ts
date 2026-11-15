@@ -1,24 +1,50 @@
+import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/useToast";
+import { ApiError } from "@/lib/api";
 import { useCompare } from "@/modules/compare/useCompare";
 import type { Product } from "@/modules/catalog/types";
 import { useWishlist } from "@/modules/wishlist/useWishlist";
 
 const WISHLIST_LINK = { label: "Lihat wishlist", href: "/wishlist" };
-// QA-006: penyimpanan browser penuh/diblokir. Jangan klaim tersimpan permanen.
-const TEMPORARY = "Tersimpan sementara. Penyimpanan browser penuh, hilang saat dimuat ulang.";
 const COMPARE_LINK = { label: "Lihat meja", href: "/meja-perbandingan" };
 
 /** Aksi wishlist dan bandingkan yang sama di katalog dan detail, lengkap dengan toast-nya. */
 export function useProductActions() {
   const wishlist = useWishlist();
+  const router = useRouter();
   const compare = useCompare();
   const { toast, show, fail, clear } = useToast();
 
-  function toggle(product: Product) {
-    const { saved, persisted } = wishlist.toggle(product.id);
-    if (!persisted) show(TEMPORARY, WISHLIST_LINK);
-    else if (saved) show("✓ Disimpan ke wishlist", WISHLIST_LINK);
-    else show("Dihapus dari wishlist");
+  function requireBuyer() {
+    if (wishlist.isLoggedIn) return true;
+    const back = window.location.pathname + window.location.search + window.location.hash;
+    router.push(`/masuk?kembali=${encodeURIComponent(back)}`);
+    return false;
+  }
+
+  async function save(productId: string, saved: boolean) {
+    if (!requireBuyer()) return;
+    try {
+      await wishlist.setSaved(productId, saved);
+      if (saved) show("✓ Disimpan ke wishlist", WISHLIST_LINK);
+      else show("Dihapus dari wishlist");
+    } catch (error) {
+      fail(error instanceof ApiError ? error.message : "Gagal memperbarui wishlist.", () => {
+        void save(productId, saved);
+      });
+    }
+  }
+
+  async function remove(ids: string[]) {
+    if (!requireBuyer()) return;
+    try {
+      await wishlist.remove(ids);
+      show("Dihapus dari wishlist");
+    } catch (error) {
+      fail(error instanceof ApiError ? error.message : "Gagal menghapus dari wishlist.", () => {
+        void remove(ids);
+      });
+    }
   }
 
   return {
@@ -28,17 +54,15 @@ export function useProductActions() {
     showError: (message: string, retry?: () => void) => fail(message, retry),
     isSaved: wishlist.has,
     toggleWishlist(product: Product) {
-      // SEMENTARA: wishlist belum memanggil server, jadi galatnya hanya bisa dipaksa lewat
-      // ?demo=aksi-gagal. Nanti galat dari POST /wishlist memakai jalur yang sama.
-      if (new URLSearchParams(window.location.search).get("demo") === "aksi-gagal") {
-        fail("Gagal menyimpan ke wishlist.", () => toggle(product));
-        return;
-      }
-      toggle(product);
+      if (!requireBuyer()) return;
+      const saved = !wishlist.has(product.id);
+      void save(product.id, saved);
     },
     saveToWishlist(product: Product) {
-      const persisted = wishlist.has(product.id) || wishlist.toggle(product.id).persisted;
-      show(persisted ? "✓ Disimpan ke wishlist" : TEMPORARY, WISHLIST_LINK);
+      void save(product.id, true);
+    },
+    removeFromWishlist: (ids: string[]) => {
+      void remove(ids);
     },
     /** Dipakai tombol "+ Bandingkan" dan drag ke tray, jadi aturannya sama. */
     compare(product: Pick<Product, "id" | "category">) {

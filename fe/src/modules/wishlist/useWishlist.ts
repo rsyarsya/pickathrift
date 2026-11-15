@@ -1,23 +1,36 @@
-import { createStore } from "@/lib/store";
+import { useCallback, useEffect } from "react";
+import { useSession } from "@/modules/auth/useSession";
+import { loadWishlist, setWishlistSaved, wishlistSessionKey, wishlistState } from "./data/wishlist";
 
-/*
- * Wishlist Buyer. SEMENTARA disimpan di localStorage; begitu backend ada, toggle()
- * memanggil POST/DELETE /wishlist/:id lewat api() dan isi awal diambil dari GET /wishlist.
- */
-const store = createStore<string[]>([], "pickathrift.wishlist");
-
+/** Wishlist berasal dari API; cache memori hanya berlaku untuk sesi Buyer saat ini. */
 export function useWishlist() {
-  const ids = store.use();
+  const { user } = useSession();
+  const state = wishlistState.use();
+  const key = user ? wishlistSessionKey() : null;
+  const current = key !== null && state.sessionKey === key;
+  const items = current ? state.items : [];
+  const reload = useCallback(() => {
+    void loadWishlist(true).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.removeItem("pickathrift.wishlist");
+    } catch {
+      // Wishlist API tetap berfungsi ketika penyimpanan browser diblokir.
+    }
+    if (key) void loadWishlist().catch(() => {});
+  }, [key]);
+
   return {
-    ids,
-    has: (id: string) => ids.includes(id),
-    /** `saved`: barang sekarang ada di wishlist. `persisted`: false = hanya di memori. */
-    toggle(id: string) {
-      const current = store.get();
-      const saved = !current.includes(id);
-      const persisted = store.set(saved ? [...current, id] : current.filter((x) => x !== id));
-      return { saved, persisted };
-    },
-    remove: (remove: string[]) => store.set(store.get().filter((x) => !remove.includes(x))),
+    items,
+    ids: items.map((item) => item.productId),
+    isLoggedIn: key !== null,
+    status: !key ? "success" : current ? state.status : "loading",
+    error: current ? state.error : undefined,
+    has: (id: string) => items.some((item) => item.productId === id),
+    setSaved: setWishlistSaved,
+    remove: (ids: string[]) => Promise.all(ids.map((id) => setWishlistSaved(id, false))),
+    reload,
   };
 }
