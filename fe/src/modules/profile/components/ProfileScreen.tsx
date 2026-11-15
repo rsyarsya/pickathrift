@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
+import { useState, type ChangeEvent, type FormEvent } from "react";
 import { shopContent } from "@/components/layout/shopContent";
 import { Button } from "@/components/ui/Button";
 import { PageHeader, asideLink } from "@/components/ui/PageHeader";
@@ -13,27 +12,44 @@ import { useToast } from "@/hooks/useToast";
 import { ApiError } from "@/lib/api";
 import { cn } from "@/lib/cn";
 import { BuyerOnly } from "@/modules/auth/components/BuyerOnly";
-import { useSession, type SessionUser } from "@/modules/auth/useSession";
-import { validateProfile, type ShippingAddress } from "../address";
-import { getProfile, saveProfile } from "../data/profile";
+import type { SessionUser } from "@/modules/auth/useSession";
+import { validateProfile } from "../address";
+import { getProfile, profileToValues, saveProfile, type Profile } from "../data/profile";
 
 const fields = [
-  { key: "recipient", label: "Nama lengkap", autoComplete: "name", className: "max-md:col-span-2" },
+  { key: "name", label: "Nama lengkap", autoComplete: "name", className: "max-md:col-span-2" },
   {
     key: "email",
     label: "Email · tidak bisa diubah",
     autoComplete: "email",
     className: "max-md:col-span-2",
   },
-  { key: "phone", label: "Nomor HP", autoComplete: "tel", className: "col-span-2" },
+  {
+    key: "accountPhone",
+    label: "Nomor HP akun · opsional",
+    autoComplete: "tel",
+    className: "col-span-2",
+  },
+  {
+    key: "recipient",
+    label: "Nama penerima",
+    autoComplete: "shipping name",
+    className: "max-md:col-span-2",
+  },
+  {
+    key: "phone",
+    label: "Nomor HP penerima",
+    autoComplete: "shipping tel",
+    className: "max-md:col-span-2",
+  },
   {
     key: "street",
     label: "Alamat lengkap",
-    autoComplete: "street-address",
+    autoComplete: "shipping street-address",
     className: "col-span-2",
   },
-  { key: "city", label: "Kota", autoComplete: "address-level2", className: "" },
-  { key: "postalCode", label: "Kode pos", autoComplete: "postal-code", className: "" },
+  { key: "city", label: "Kota", autoComplete: "shipping address-level2", className: "" },
+  { key: "postalCode", label: "Kode pos", autoComplete: "shipping postal-code", className: "" },
 ] as const;
 
 const links = [
@@ -85,35 +101,27 @@ function AccountNav({ name, onLogout }: { name: string; onLogout: () => void }) 
 function ProfileEditor({
   initial,
   user,
-  demo,
   onLogout,
 }: {
-  initial: ShippingAddress;
+  initial: Profile;
   user: SessionUser;
-  demo: string | null;
   onLogout: () => void;
 }) {
   const [saved, setSaved] = useState(initial);
-  const [values, setValues] = useState(initial);
-  const [showErrors, setShowErrors] = useState(demo === "validasi");
+  const [values, setValues] = useState(() => profileToValues(initial));
+  const [showErrors, setShowErrors] = useState(false);
   const [pending, setPending] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const { toast, show, clear } = useToast();
-  const session = useSession();
-  const errors = showErrors ? validateProfile(values) : {};
-  const dirty = fields.some(({ key }) => key !== "email" && values[key] !== saved[key]);
-  const canSave = dirty || (demo === "validasi" && Object.keys(errors).length > 0);
-
-  useEffect(() => {
-    if (demo === "tersimpan") show("✓ Perubahan disimpan");
-  }, [demo, show]);
-
+  const errors = showErrors ? validateProfile(values, saved.address !== null) : {};
+  const savedValues = profileToValues(saved);
+  const dirty = fields.some(({ key }) => key !== "email" && values[key] !== savedValues[key]);
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (pending || !canSave) return;
+    if (pending || !dirty) return;
     setSaveError(null);
     setShowErrors(true);
-    const invalid = validateProfile(values);
+    const invalid = validateProfile(values, saved.address !== null);
     const firstInvalid = fields.find(({ key }) => key !== "email" && invalid[key]);
     if (firstInvalid) {
       event.currentTarget.querySelector<HTMLElement>(`#profile-${firstInvalid.key}`)?.focus();
@@ -121,11 +129,10 @@ function ProfileEditor({
     }
     setPending(true);
     try {
-      const result = await saveProfile(user.email, values, demo);
-      setSaved(result.address);
-      setValues(result.address);
+      const result = await saveProfile(values, saved.address !== null);
+      setSaved(result);
+      setValues(profileToValues(result));
       setShowErrors(false);
-      if (result.persisted) session.updateName(user.email, result.address.recipient);
       show("✓ Perubahan disimpan");
     } catch (error) {
       setSaveError(
@@ -143,9 +150,13 @@ function ProfileEditor({
         "grid items-start gap-32 lg:grid-cols-[240px_minmax(0,720px)] lg:gap-56",
       )}
     >
-      <AccountNav name={saved.recipient || user.name} onLogout={onLogout} />
+      <AccountNav name={saved.name} onLogout={onLogout} />
       <div className="grid min-w-0 gap-16">
         <PageHeader title="Akun & alamat" />
+        <p className="text-sm text-muted">
+          Nama akun dan penerima bisa berbeda. Alamat boleh diisi nanti; jika diisi, lengkapi semua
+          kolom pengiriman.
+        </p>
         {Object.keys(errors).length > 0 && (
           <p role="alert" className="rounded-md bg-danger-bg p-14 text-body">
             Periksa kolom yang ditandai merah.
@@ -164,7 +175,9 @@ function ProfileEditor({
                 name: key,
                 value: key === "email" ? user.email : values[key],
                 readOnly: key === "email",
-                required: key !== "email",
+                required:
+                  key === "name" ||
+                  (key !== "email" && key !== "accountPhone" && saved.address !== null),
                 autoComplete,
                 "aria-invalid": error ? true : undefined,
                 "aria-describedby": hint ? `${id}-hint` : undefined,
@@ -194,7 +207,13 @@ function ProfileEditor({
                   ) : (
                     <input
                       {...props}
-                      type={key === "phone" ? "tel" : key === "email" ? "email" : "text"}
+                      type={
+                        key === "phone" || key === "accountPhone"
+                          ? "tel"
+                          : key === "email"
+                            ? "email"
+                            : "text"
+                      }
                       inputMode={key === "postalCode" ? "numeric" : undefined}
                     />
                   )}
@@ -215,7 +234,7 @@ function ProfileEditor({
               {saveError}
             </p>
           )}
-          <Button type="submit" disabled={!canSave || pending} className="mt-16 w-full md:w-auto">
+          <Button type="submit" disabled={!dirty || pending} className="mt-16 w-full md:w-auto">
             {pending ? "Menyimpan…" : "Simpan perubahan"}
           </Button>
         </form>
@@ -232,16 +251,8 @@ function ProfileEditor({
   );
 }
 
-function ProfileLoader({
-  user,
-  demo,
-  onLogout,
-}: {
-  user: SessionUser;
-  demo: string | null;
-  onLogout: () => void;
-}) {
-  const result = useAsync(() => getProfile(user, demo), [user.email, demo]);
+function ProfileLoader({ user, onLogout }: { user: SessionUser; onLogout: () => void }) {
+  const result = useAsync(getProfile, [user.email]);
   if (result.status === "loading")
     return (
       <p className={shopContent} role="status">
@@ -260,16 +271,13 @@ function ProfileLoader({
         />
       </div>
     );
-  return <ProfileEditor initial={result.data} user={user} demo={demo} onLogout={onLogout} />;
+  return <ProfileEditor initial={result.data} user={user} onLogout={onLogout} />;
 }
 
 export function ProfileScreen() {
-  const demo = useSearchParams().get("demo");
   return (
     <BuyerOnly>
-      {(user, logout) => (
-        <ProfileLoader key={`${user.email}:${demo}`} user={user} demo={demo} onLogout={logout} />
-      )}
+      {(user, logout) => <ProfileLoader key={user.email} user={user} onLogout={logout} />}
     </BuyerOnly>
   );
 }

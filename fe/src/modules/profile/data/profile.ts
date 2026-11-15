@@ -1,61 +1,70 @@
-import { ApiError } from "@/lib/api";
-import { createStore } from "@/lib/store";
-import type { SessionUser } from "@/modules/auth/useSession";
-import { validateProfile, type ShippingAddress } from "../address";
-import { DEMO_ADDRESS } from "./fixtures";
+import { apiData, ApiError } from "@/lib/api";
+import { getToken } from "@/lib/auth-token";
+import { authState, type AuthUser } from "@/modules/auth/lib/auth-service";
+import { hasAddress, validateProfile, type ProfileValues, type ShippingAddress } from "../address";
 
-// SEMENTARA: profil lokal sampai endpoint profil tersedia. Checkout memakai alamat yang sama.
-const legacyAddresses = createStore<Record<string, ShippingAddress>>({}, "pickathrift.addresses");
-const delay = () => new Promise<void>((resolve) => setTimeout(resolve, 450));
-const profileDemos = ["default", "validasi", "tersimpan", "gagal-simpan"];
+export type Profile = AuthUser & { phone: string; address: ShippingAddress | null };
 
-function addressStore(email: string) {
-  return createStore<ShippingAddress | null>(null, `pickathrift.profile.${email.toLowerCase()}`);
-}
-
-export async function getShippingAddress(email: string) {
-  return addressStore(email).get() ?? legacyAddresses.get()?.[email.toLowerCase()] ?? null;
-}
-
-export async function getProfile(user: SessionUser, demo: string | null): Promise<ShippingAddress> {
-  await delay();
-  if (demo === "gagal") throw new ApiError(503, "Profil gagal dimuat.");
-  if (demo && profileDemos.includes(demo)) {
-    return {
-      ...DEMO_ADDRESS,
-      ...(demo === "validasi" && { phone: "0812 34", postalCode: "55a81" }),
-    };
+function clearLegacyProfile(email: string) {
+  try {
+    localStorage.removeItem(`pickathrift.profile.${email.toLowerCase()}`);
+    localStorage.removeItem("pickathrift.addresses");
+  } catch {
+    // Profil API tetap berfungsi ketika penyimpanan browser diblokir.
   }
-  return (
-    (await getShippingAddress(user.email)) ?? {
-      recipient: user.name,
-      phone: "",
-      street: "",
-      city: "",
-      postalCode: "",
-    }
-  );
 }
 
-export async function saveProfile(email: string, input: ShippingAddress, demo: string | null) {
-  await delay();
-  if (Object.keys(validateProfile(input)).length)
+async function requestProfile(init?: RequestInit) {
+  const token = getToken();
+  const userId = authState.get().user?.id;
+  const profile = await apiData<Profile>("/api/users/me", init);
+  if (getToken() !== token || authState.get().user?.id !== userId)
+    throw new ApiError(401, "Sesi berubah. Masuk kembali untuk melanjutkan.");
+  clearLegacyProfile(profile.email);
+  return profile;
+}
+
+export function profileToValues(profile: Profile): ProfileValues {
+  return {
+    name: profile.name,
+    accountPhone: profile.phone,
+    recipient: "",
+    phone: "",
+    street: "",
+    city: "",
+    postalCode: "",
+    ...profile.address,
+  };
+}
+
+export async function getShippingAddress() {
+  return (await requestProfile()).address;
+}
+
+export function getProfile(): Promise<Profile> {
+  return requestProfile();
+}
+
+export async function saveProfile(input: ProfileValues, requireAddress = false) {
+  if (Object.keys(validateProfile(input, requireAddress)).length)
     throw new ApiError(422, "Periksa data yang ditandai.");
-  if (demo === "gagal-simpan") throw new ApiError(503, "Perubahan gagal disimpan. Coba lagi.");
-  const saved: ShippingAddress = {
+  const address: ShippingAddress = {
     recipient: input.recipient.trim(),
-    phone: input.phone.trim(),
+    phone: input.phone.trim().replace(/[\s()-]/g, ""),
     street: input.street.trim(),
     city: input.city.trim(),
     postalCode: input.postalCode.trim(),
   };
-  const isDemo = Boolean(demo && profileDemos.includes(demo));
-  if (!isDemo) {
-    try {
-      addressStore(email).set(saved, { requireStorage: true });
-    } catch {
-      throw new ApiError(503, "Penyimpanan profil tidak dapat diakses. Coba lagi.");
-    }
-  }
-  return { address: saved, persisted: !isDemo };
+  const profile = await requestProfile({
+    method: "PATCH",
+    body: JSON.stringify({
+      name: input.name.trim(),
+      phone: input.accountPhone.trim().replace(/[\s()-]/g, ""),
+      ...(hasAddress(input) ? { address } : {}),
+    }),
+  });
+  const current = authState.get();
+  if (current.user?.id === profile.id)
+    authState.set({ ...current, user: { ...current.user, name: profile.name } });
+  return profile;
 }
