@@ -6,6 +6,7 @@ import { cn } from "@/lib/cn";
 import { formatRupiah } from "@/lib/format";
 import { StatusLabel } from "@/modules/catalog/components/StatusLabel";
 import type { Product } from "@/modules/catalog/types";
+import { COMPARE_DRAG_TYPE } from "@/modules/compare/useCompare";
 
 type ProductCardProps = {
   product: Product;
@@ -32,7 +33,19 @@ export function ProductCard({
   return (
     <article className="flex flex-col gap-14">
       <div className="relative">
-        <Link href={href} tabIndex={-1} aria-hidden className="block">
+        {/* Foto bisa diseret ke tray Meja Perbandingan (desktop). Tombol + Bandingkan tetap ada. */}
+        <Link
+          href={href}
+          tabIndex={-1}
+          aria-hidden
+          draggable
+          onDragStart={(event) => {
+            const payload = JSON.stringify({ id: product.id, category: product.category });
+            event.dataTransfer.setData(COMPARE_DRAG_TYPE, payload);
+            event.dataTransfer.effectAllowed = "copy";
+          }}
+          className="group block overflow-hidden rounded-sm"
+        >
           <Image
             src={product.images[0]!}
             alt=""
@@ -40,8 +53,9 @@ export function ProductCard({
             height={800}
             sizes="(min-width: 1024px) 30vw, (min-width: 768px) 33vw, 50vw"
             priority={priority}
+            draggable={false}
             className={cn(
-              "aspect-[4/5] w-full rounded-sm bg-subtle object-cover transition-opacity",
+              "photo-zoom aspect-[4/5] w-full bg-subtle object-cover",
               sold && "opacity-50",
             )}
           />
@@ -51,7 +65,7 @@ export function ProductCard({
           onClick={onToggleWishlist}
           aria-pressed={saved}
           aria-label={saved ? `Hapus ${product.name} dari wishlist` : `Simpan ${product.name}`}
-          className="absolute top-10 right-10 flex rounded-full bg-surface p-8 transition-transform hover:scale-105 lg:top-14 lg:right-14"
+          className="press absolute top-10 right-10 flex rounded-full bg-surface p-8 lg:top-14 lg:right-14"
         >
           <Icon
             name="heart"

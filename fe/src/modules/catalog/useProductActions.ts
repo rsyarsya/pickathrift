@@ -4,6 +4,8 @@ import type { Product } from "@/modules/catalog/types";
 import { useWishlist } from "@/modules/wishlist/useWishlist";
 
 const WISHLIST_LINK = { label: "Lihat wishlist", href: "/wishlist" };
+// QA-006: penyimpanan browser penuh/diblokir. Jangan klaim tersimpan permanen.
+const TEMPORARY = "Tersimpan sementara. Penyimpanan browser penuh, hilang saat dimuat ulang.";
 const COMPARE_LINK = { label: "Lihat meja", href: "/meja-perbandingan" };
 
 /** Aksi wishlist dan bandingkan yang sama di katalog dan detail, lengkap dengan toast-nya. */
@@ -13,7 +15,9 @@ export function useProductActions() {
   const { toast, show, fail, clear } = useToast();
 
   function toggle(product: Product) {
-    if (wishlist.toggle(product.id)) show("✓ Disimpan ke wishlist", WISHLIST_LINK);
+    const { saved, persisted } = wishlist.toggle(product.id);
+    if (!persisted) show(TEMPORARY, WISHLIST_LINK);
+    else if (saved) show("✓ Disimpan ke wishlist", WISHLIST_LINK);
     else show("Dihapus dari wishlist");
   }
 
@@ -33,14 +37,17 @@ export function useProductActions() {
       toggle(product);
     },
     saveToWishlist(product: Product) {
-      if (!wishlist.has(product.id)) wishlist.toggle(product.id);
-      show("✓ Disimpan ke wishlist", WISHLIST_LINK);
+      const persisted = wishlist.has(product.id) || wishlist.toggle(product.id).persisted;
+      show(persisted ? "✓ Disimpan ke wishlist" : TEMPORARY, WISHLIST_LINK);
     },
-    compare(product: Product) {
-      const result = compare.add(product.id);
+    /** Dipakai tombol "+ Bandingkan" dan drag ke tray, jadi aturannya sama. */
+    compare(product: Pick<Product, "id" | "category">) {
+      const result = compare.add(product);
       if (result === "added") show("✓ Masuk Meja Perbandingan", COMPARE_LINK);
       if (result === "exists") show("Sudah ada di Meja Perbandingan", COMPARE_LINK);
-      if (result === "full") show("Meja Perbandingan penuh, maksimal 2 barang", COMPARE_LINK);
+      if (result === "full") show("Meja penuh. Hapus satu barang dulu, maksimal 2.", COMPARE_LINK);
+      if (result === "mismatch")
+        show("Hanya bisa membandingkan barang sejenis. Kosongkan meja dulu.", COMPARE_LINK);
     },
   };
 }
