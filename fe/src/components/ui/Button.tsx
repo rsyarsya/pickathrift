@@ -22,7 +22,7 @@ const sizes: Record<Size, string> = {
 /** Kelas tombol pil, dipakai bersama oleh <Button> dan <ButtonLink>. */
 export function buttonClass(variant: Variant = "primary", size: Size = "lg", className?: string) {
   return cn(
-    "inline-flex items-center justify-center gap-8 rounded-full font-medium whitespace-nowrap transition-colors disabled:cursor-not-allowed",
+    "press inline-flex items-center justify-center gap-8 rounded-full font-medium whitespace-nowrap disabled:cursor-not-allowed",
     variants[variant],
     sizes[size],
     className,
