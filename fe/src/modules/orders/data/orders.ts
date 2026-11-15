@@ -49,6 +49,11 @@ type BuyerAction = { type: "cancel" } | { type: "receive" } | { type: "upload"; 
 
 export async function updateBuyerOrder(order: Order, action: BuyerAction) {
   await delay();
+  // QA-001: MIME dan ukuran bisa dipalsukan. Tolak berkas yang tidak bisa didekode
+  // sebelum status berubah. BE tetap memeriksa isi berkas sendiri.
+  if (action.type === "upload" && !validateProof(action.file) && !(await canDecode(action.file))) {
+    throw new ApiError(422, "Gambar tidak bisa dibuka. Pilih file JPG atau PNG yang tidak rusak.");
+  }
 
   function update(current: Order, now: number): Order {
     if (!buyerOrderAction(current, action.type, now)) {
@@ -78,4 +83,13 @@ export async function updateBuyerOrder(order: Order, action: BuyerAction) {
     save(updated);
     return updated;
   });
+}
+
+async function canDecode(file: Blob) {
+  try {
+    (await createImageBitmap(file)).close();
+    return true;
+  } catch {
+    return false;
+  }
 }
