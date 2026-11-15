@@ -6,4 +6,7 @@ Dokumen analisis kebutuhan, analisis fitur, rancangan API, dan bukti pengujian P
 
 Aturan status pesanan, pembatalan, batas bayar, dan kunci stok yang disepakati FE dan BE ada di [aturan-pesanan.md](aturan-pesanan.md).
 
+Pekerjaan tersisa berdasarkan audit US6 dan rubrik mode reguler diurutkan dalam
+[Prioritas Penyelesaian PickaThrift](prioritas-penyelesaian.md).
+
 Laporan akhir Milestone 1 menjadi sumber utama apabila terdapat perbedaan dengan draf atau catatan yang lebih lama. Berkas laporan tidak disalin ke repositori ini agar sumber dokumen tetap terpusat dan repositori tidak memuat biner yang tidak diperlukan.
