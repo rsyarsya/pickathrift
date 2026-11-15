@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { DM_Mono, Instrument_Sans } from "next/font/google";
 import "@/styles/globals.css";
+import { AuthBoundary } from "@/modules/auth/components/auth-boundary";
 
 const instrumentSans = Instrument_Sans({
   variable: "--font-instrument-sans",
@@ -29,7 +30,9 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="id" className={`${instrumentSans.variable} ${dmMono.variable} antialiased`}>
-      <body className="font-sans">{children}</body>
+      <body className="font-sans">
+        <AuthBoundary>{children}</AuthBoundary>
+      </body>
     </html>
   );
 }

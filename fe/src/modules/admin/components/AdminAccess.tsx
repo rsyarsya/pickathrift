@@ -4,9 +4,9 @@ import { useState, type FormEvent } from "react";
 import { Logo } from "@/components/layout/Logo";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
-import { AUTH_SIMULATION_ENABLED } from "@/lib/env";
 import { cn } from "@/lib/cn";
-import { MockAuthError, mockAuth } from "@/modules/auth/lib/mock-auth";
+import { ApiError } from "@/lib/api";
+import { login } from "@/modules/auth/lib/auth-service";
 import { validateBuyerLogin } from "@/modules/auth/lib/validate-buyer-login";
 
 /** Lencana kecil "ADMIN" di samping logo. */
@@ -81,9 +81,9 @@ export function SessionExpired({
     if (Object.keys(found).length) return;
     setPending(true);
     try {
-      onLoggedIn(await mockAuth.login(values, "admin"));
+      onLoggedIn(await login(values, "admin"));
     } catch (error) {
-      setFailure(error instanceof MockAuthError ? error.message : "Gagal masuk. Coba lagi.");
+      setFailure(error instanceof ApiError ? error.message : "Gagal masuk. Coba lagi.");
       setPending(false);
     }
   }
@@ -167,7 +167,7 @@ export function SessionExpired({
             </p>
           )}
         </div>
-        <Button type="submit" size="md" disabled={!AUTH_SIMULATION_ENABLED || pending}>
+        <Button type="submit" size="md" disabled={pending}>
           {pending ? "Memproses…" : "Masuk lagi"}
         </Button>
         <p className="font-mono text-nano tracking-label text-muted">KODE · 401 SESI KEDALUWARSA</p>

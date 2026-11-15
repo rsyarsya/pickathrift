@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { AuthFeedbackState } from "../hooks/use-auth-simulation";
+import type { AuthFeedbackState } from "../hooks/use-auth-submit";
 import styles from "./auth.module.css";
 
 export function AuthFeedback({

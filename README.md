@@ -2,7 +2,7 @@
 
 PickaThrift adalah web store untuk satu usaha thrift yang memusatkan katalog, ketersediaan produk unik, dan pengelolaan pesanan. Aplikasi dirancang untuk mencegah dua pembeli berhasil membeli barang yang sama, sekaligus membantu Buyer mencari, menyimpan, membandingkan, memesan, dan mengulas produk.
 
-Repositori ini menggunakan satu monorepo untuk frontend dan backend. Saat ini repositori baru berisi fondasi struktur dan dokumentasi; kode aplikasi belum tersedia.
+Repositori ini menggunakan satu monorepo untuk frontend Next.js dan API Express/MongoDB. Registrasi, login Buyer/Admin, dan verifikasi sesi frontend sudah terhubung ke API. Modul belanja frontend lainnya masih menggunakan fixtures. Lihat [panduan autentikasi](docs/auth-integration.md) untuk konfigurasi lokal dan hasil pengujian.
 
 ## Tim
 
@@ -54,7 +54,7 @@ pickathrift/
 ```
 
 - `fe` berisi frontend. Strukturnya dijelaskan di [fe/README.md](fe/README.md).
-- `be` disiapkan untuk API ExpressJS dan MongoDB. Belum ada kode.
+- `be` berisi API ExpressJS dan MongoDB, termasuk pengujian dengan database terisolasi. Lihat [be/README.md](be/README.md).
 - `docs` menjadi indeks dokumentasi proyek dan laporan Milestone 1.
 
 Repositori ini satu pnpm workspace. Jalankan `pnpm install` sekali di root, lalu

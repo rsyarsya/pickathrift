@@ -1,3 +1,4 @@
+import { getToken, setToken } from "./auth-token";
 import { API_URL } from "@/lib/env";
 
 /*
@@ -25,12 +26,15 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
     headers.set("Content-Type", "application/json");
   }
 
+  const token = getToken();
+  if (token && !path.startsWith("/api/auth/") && !headers.has("Authorization"))
+    headers.set("Authorization", `Bearer ${token}`);
   let response: Response;
   try {
     response = await fetch(`${API_URL}${path}`, {
       ...init,
       headers,
-      credentials: "include",
+      credentials: "omit",
     });
   } catch {
     // Jaringan putus atau server mati: layar harus bisa membedakannya dari galat 4xx.
@@ -41,6 +45,8 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const data = body === "" ? null : safeParse(body);
 
   if (!response.ok) {
+    if (response.status === 401 && token && getToken() === token && !path.startsWith("/api/auth/"))
+      setToken(null);
     throw new ApiError(
       response.status,
       messageOf(data) ?? `Permintaan gagal (${response.status}).`,

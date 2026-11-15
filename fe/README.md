@@ -1,7 +1,7 @@
 # Frontend PickaThrift
 
-Next.js (App Router), TypeScript, Tailwind CSS 4, Vitest. Baru kerangka: token desain dan
-setup, belum ada layar.
+Next.js (App Router), TypeScript, Tailwind CSS 4, Vitest. Autentikasi sudah menggunakan
+API backend; halaman belanja lainnya masih memakai service dan fixtures yang dijelaskan di bawah.
 
 ## Menjalankan
 
@@ -15,22 +15,19 @@ Buka http://localhost:3000.
 
 Sebelum push: `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm format:check` dari root.
 
-## Simulasi auth lokal
+## Autentikasi dengan backend
 
-Tambahkan `NEXT_PUBLIC_AUTH_SIMULATION=on` ke `fe/.env.local`, lalu jalankan server dev.
-File lingkungan tetap lokal. Simulasi otomatis mati pada build production.
+Jalankan backend dengan konfigurasi lokal MongoDB dan JWT dari tim. Frontend menggunakan
+`NEXT_PUBLIC_API_URL=http://localhost:5000` (juga URL bawaan). Berkas `.env` tetap lokal.
 
-- Buyer: `buyer@pickathrift.test` / `Buyer123!`
-- Admin: `admin@pickathrift.test` / `Admin123!`
+Form `/daftar`, `/masuk`, dan `/admin/masuk` memanggil API sebenarnya. Registrasi menyimpan
+akun buyer ke database, lalu pengguna masuk melalui halaman login. Admin memakai akun yang
+sudah disiapkan pengelola backend. Kredensial fiktif pada tes tidak berlaku sebagai akun database.
 
-Buka `/daftar`, `/masuk`, atau `/admin/masuk`. Akun uji dibagikan lewat dokumentasi ini;
-halaman aplikasi tidak menampilkan panel simulasi.
-Coba sandi salah, email yang sudah terdaftar, serta akun Buyer di halaman Admin.
-Pendaftaran membuat akun Buyer baru di memori tab.
-Refresh mereset akun baru yang didaftarkan. Login Buyer dan pendaftaran menyimpan sesi
-sementara di localStorage (`pickathrift.session`) supaya navbar berganti ke versi Buyer;
-tidak ada database, cookie, JWT, atau akses dasbor. Login Admin belum mengalihkan ke
-mana pun karena dasbor admin belum ada. Gunakan data uji.
+JWT berada di `sessionStorage` pada tab yang sama, dikirim melalui header Bearer, dan sesi
+diverifikasi melalui `/api/users/me` saat refresh. Logout menghapus token dan sesi lokal.
+Data sesi simulasi lama di localStorage diabaikan; flag simulasi tidak mengendalikan form lagi.
+Lihat [panduan integrasi autentikasi](../docs/auth-integration.md) untuk konfigurasi dan pengujian.
 
 ## Struktur
 
@@ -77,8 +74,8 @@ Semua panggilan backend lewat `src/lib/api.ts`. Jangan memanggil `fetch` langsun
 komponen: base URL, header, dan penanganan galat hanya ditulis sekali di sana, dan `ApiError`
 membawa status HTTP supaya layar bisa membedakan 409 "sudah dipesan" dari jaringan putus.
 
-Selama backend belum ada, modul boleh memakai fixtures lokal di `modules/<bagian>/data/`.
-Itu sementara.
+Modul di luar autentikasi masih memakai fixtures lokal di `modules/<bagian>/data/`.
+Integrasi autentikasi tidak mengubah sumber data modul tersebut.
 
 Layar tidak membaca fixtures langsung, tapi lewat fungsi service seperti
 `modules/catalog/data/products.ts` (`listProducts`, `getProduct`, `reserveProduct`). Begitu
@@ -149,9 +146,9 @@ untuk demo B7–B9 tidak disimpan.
 
 ### Admin (M1–M4)
 
-Masuk lewat `/admin/masuk` dengan `admin@pickathrift.test` / `Admin123!` (simulasi auth harus
-aktif). Sesi admin terpisah dari sesi Buyer, disimpan di localStorage
-(`pickathrift.admin-session`), dan berakhir setelah 2 jam tidak aktif.
+Masuk lewat `/admin/masuk` dengan akun admin yang tersedia di backend. Satu tab memiliki satu
+sesi aktif dengan peran buyer atau admin. JWT admin berlaku 2 jam menurut backend, dan UI
+admin juga memeriksa batas tidak aktif 2 jam. Refresh memverifikasi kembali identitas ke API.
 
 | URL                                            | State                                                                       |
 | ---------------------------------------------- | --------------------------------------------------------------------------- |
