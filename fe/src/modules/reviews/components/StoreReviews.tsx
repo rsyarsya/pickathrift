@@ -65,7 +65,7 @@ export function StoreReviews({ email, demo }: { email?: string; demo: string | n
   if (result.status === "error")
     return (
       <div className={shopContent}>
-        <PageHeader title={title} overline="Ulasan" />
+        <PageHeader title={title} />
         <StatusMessage
           tone="error"
           title="Ulasan gagal dimuat"

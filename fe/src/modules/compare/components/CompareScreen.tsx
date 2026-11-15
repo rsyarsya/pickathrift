@@ -206,8 +206,8 @@ export function CompareScreen() {
   return (
     <div className="flex flex-col gap-20 px-16 pt-24 pb-64 md:px-24 lg:px-48 lg:pt-32 lg:pb-96">
       <PageHeader
-        overline="MAKSIMAL DUA BARANG SEJENIS · TIDAK MENGUNCI BARANG"
         title="Meja Perbandingan"
+        description="Pilih dua barang sejenis untuk membandingkan harga dan ukurannya."
         aside={
           compare.ids.length > 0 && (
             <button type="button" onClick={compare.clear} className={asideLink}>

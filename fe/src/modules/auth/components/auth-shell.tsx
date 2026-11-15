@@ -50,7 +50,6 @@ export function AuthShell({ photoSrc, variant, children }: AuthShellProps) {
             sizes="180px"
             className={styles.logo}
           />
-          <p className={styles.caption}>SATU TOKO · SATU UNIT PER BARANG</p>
         </div>
       </div>
 
