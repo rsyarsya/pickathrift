@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { api, ApiError } from "@/lib/api";
+import { api, apiData, ApiError } from "@/lib/api";
 
 function mockFetch(body: string, init: ResponseInit) {
   const fetchMock = vi.fn<typeof fetch>(async () => new Response(body, init));
@@ -10,6 +10,32 @@ function mockFetch(body: string, init: ResponseInit) {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("api", () => {
+  it("membuka envelope dan meneruskan opsi permintaan", async () => {
+    const fetchMock = mockFetch(JSON.stringify({ success: true, data: { id: "p-1" } }), {
+      status: 201,
+    });
+    await expect(apiData("/api/products", { method: "POST", body: "{}" })).resolves.toEqual({
+      id: "p-1",
+    });
+    expect(fetchMock.mock.calls[0]?.[1]?.method).toBe("POST");
+  });
+
+  it("menyimpan kode konflik dan galat validasi backend", async () => {
+    const errors = { name: "Nama wajib diisi." };
+    mockFetch(JSON.stringify({ code: "VALIDATION_ERROR", message: "Periksa isian.", errors }), {
+      status: 422,
+    });
+    await expect(apiData("/api/products")).rejects.toMatchObject({
+      status: 422,
+      code: "VALIDATION_ERROR",
+      errors,
+    });
+    mockFetch(JSON.stringify({ code: "STOCK_CONFLICT", message: "Stok sudah dipesan." }), {
+      status: 409,
+    });
+    await expect(api("/api/orders")).rejects.toMatchObject({ status: 409, code: "STOCK_CONFLICT" });
+  });
+
   it("mengembalikan JSON saat sukses", async () => {
     mockFetch(JSON.stringify({ id: "p-1" }), { status: 200 });
     await expect(api("/produk/p-1")).resolves.toEqual({ id: "p-1" });

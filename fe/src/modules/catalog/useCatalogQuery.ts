@@ -9,18 +9,15 @@ export function useCatalogQuery() {
   const router = useRouter();
   const pathname = usePathname();
   const query = useMemo(() => parseQuery(new URLSearchParams(params)), [params]);
-  const demo = params.get("demo");
 
   function update(patch: Partial<CatalogQuery>) {
     const next = toSearchParams({ ...query, ...patch });
-    if (demo) next.set("demo", demo);
     const search = next.toString();
     router.replace(search ? `${pathname}?${search}` : pathname, { scroll: false });
   }
 
   return {
     query,
-    demo,
     /** Kunci stabil untuk mendeteksi pergantian filter. */
     key: toSearchParams(query).toString(),
     update,

@@ -3,7 +3,6 @@ import {
   CONDITIONS,
   ALL_SIZES,
   type CatalogQuery,
-  type Product,
   type SortKey,
 } from "@/modules/catalog/types";
 
@@ -56,6 +55,22 @@ export function toSearchParams(query: CatalogQuery): URLSearchParams {
   return params;
 }
 
+/** Nama parameter API berbeda dari URL halaman katalog. */
+export function toApiSearchParams(query: CatalogQuery, limit: number, page = 1): URLSearchParams {
+  const params = new URLSearchParams();
+  if (query.q?.trim()) params.set("q", query.q.trim());
+  if (query.category) params.set("category", query.category);
+  if (query.sizes.length) params.set("sizes", query.sizes.join(","));
+  if (query.conditions.length) params.set("conditions", query.conditions.join(","));
+  if (query.minPrice !== undefined) params.set("minPrice", String(query.minPrice));
+  if (query.maxPrice !== undefined) params.set("maxPrice", String(query.maxPrice));
+  if (query.availableOnly) params.set("availableOnly", "true");
+  params.set("sort", query.sort);
+  params.set("page", String(page));
+  params.set("limit", String(Math.min(100, Math.max(1, Math.floor(limit)))));
+  return params;
+}
+
 export const EMPTY_QUERY: CatalogQuery = {
   sizes: [],
   conditions: [],
@@ -73,31 +88,4 @@ export function hasFilters(query: CatalogQuery): boolean {
     query.maxPrice !== undefined ||
     query.availableOnly
   );
-}
-
-/*
- * Penyaringan di sisi klien, dipakai selama data masih fixtures. Begitu backend jadi,
- * parameter yang sama dikirim ke GET /products dan fungsi ini tidak dipakai lagi.
- */
-export function applyQuery(products: Product[], query: CatalogQuery): Product[] {
-  const q = query.q?.toLowerCase();
-  const result = products.filter(
-    (p) =>
-      (!q || `${p.name} ${p.brand} ${p.category}`.toLowerCase().includes(q)) &&
-      (!query.category || p.category === query.category) &&
-      (query.sizes.length === 0 || query.sizes.some((s) => s === p.size)) &&
-      (query.conditions.length === 0 || query.conditions.includes(p.condition)) &&
-      (query.minPrice === undefined || p.price >= query.minPrice) &&
-      (query.maxPrice === undefined || p.price <= query.maxPrice) &&
-      (!query.availableOnly || p.status === "available"),
-  );
-
-  const byDate = (a: Product, b: Product) => b.createdAt.localeCompare(a.createdAt);
-  const compare = {
-    terbaru: byDate,
-    termurah: (a: Product, b: Product) => a.price - b.price,
-    termahal: (a: Product, b: Product) => b.price - a.price,
-  }[query.sort];
-
-  return result.sort(compare);
 }
