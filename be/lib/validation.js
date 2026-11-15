@@ -48,8 +48,7 @@ function registration(body) {
     invalid("confirmPassword");
   if (body.phone !== undefined)
     result.phone = text(body.phone, "phone", { max: 30, required: false });
-  if (body.address !== undefined)
-    result.address = text(body.address, "address", { max: 1000, required: false });
+  if (body.address !== undefined) result.address = require("./address").addressInput(body.address);
   return result;
 }
 

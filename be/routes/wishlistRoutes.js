@@ -1,5 +1,6 @@
 const router = require("express").Router();
 const Wishlist = require("../models/wishlist");
+const Product = require("../models/products");
 const { authenticateToken, requireBuyer } = require("../middleware/auth");
 const { ApiError } = require("../lib/errors");
 const validate = require("../lib/validation");
@@ -12,10 +13,13 @@ router.get("/", async (req, res) => {
 });
 
 router.post("/:productId", validate.idParam("productId"), async (req, res) => {
+  if (!(await Product.exists({ _id: req.params.productId, active: true })))
+    throw new ApiError(404, "NOT_FOUND", "Barang tidak ditemukan.");
   const key = { user_id: req.user.id, product_id: req.params.productId };
   if (await Wishlist.exists(key))
     throw new ApiError(409, "CONFLICT", "Barang sudah ada di wishlist.");
   const item = await Wishlist.create(key);
+  await item.populate("product_id");
   res.status(201).json({ success: true, data: serialize.wishlist(item) });
 });
 

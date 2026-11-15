@@ -7,7 +7,14 @@ function user(value) {
     email: value.email,
     role: value.role,
     phone: value.phone,
-    address: value.address,
+    address: value.address
+      ? Object.fromEntries(
+          ["recipient", "phone", "street", "city", "postalCode"].map((key) => [
+            key,
+            value.address[key],
+          ]),
+        )
+      : null,
     createdAt: value.createdAt,
     updatedAt: value.updatedAt,
   };
@@ -57,7 +64,14 @@ function order(value) {
 }
 
 function wishlist(value) {
-  return { id: id(value), product_id: productRef(value.product_id), createdAt: value.createdAt };
+  const unavailable = !value.product_id?.active;
+  return {
+    id: id(value),
+    productId: id(value.populated?.("product_id") ?? value.product_id),
+    product_id: unavailable ? null : product(value.product_id),
+    unavailable,
+    createdAt: value.createdAt,
+  };
 }
 
 function review(value) {

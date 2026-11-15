@@ -436,15 +436,15 @@ test("katalog tanpa produk memberi counts nol dan halaman kosong untuk publik/Ad
   }
 });
 
-test("filter match sementara tetap bekerja pada model baru dan menyembunyikan nonaktif", async () => {
+test("match memakai kontrak batch 3 dan menyembunyikan nonaktif", async () => {
   await seedCatalog();
   const result = await request("/products/match", {
     method: "POST",
-    body: { clothing_type: "Jaket", style: "Kasual", size: "M", max_budget: 80000 },
+    body: { category: "Jaket", style: "Kasual", size: "M", maxPrice: 80000 },
   });
   assert.equal(result.status, 200);
   assert.equal(result.json.data.length, 2);
-  for (const product of result.json.data) {
+  for (const { product } of result.json.data) {
     assert.equal(product.category, "Jaket");
     assert.equal(product.active, true);
     assert.equal(product.status, "available");

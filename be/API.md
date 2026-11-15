@@ -1,8 +1,38 @@
-# Kontrak API BE — batch 1–2
+# Kontrak API BE — batch 1–3
+
+## Pencocokan, wishlist, dan alamat (batch 3)
+
+`POST /api/products/match` publik mengganti body lama (`clothing_type`, `max_budget`)
+dengan `category` wajib; `style`, `size`, `minPrice`, `maxPrice`, dan
+`measurements: [{label, cm}]` opsional. Pilihan mengikuti produk/kategori; pengukuran
+positif hingga 200 cm, tanpa label duplikat. Harga bilangan bulat rupiah tidak negatif,
+min <= max. Field lama/asing ditolak 422. Hanya produk aktif dan available.
+Semua ukuran yang diminta harus tersedia dan selisih <=2 cm. Respons `data` berupa
+array `{product, diffCm}`; tanpa pengukuran diffCm=0. Urutan total selisih terkecil,
+createdAt terbaru, lalu ID menurun. Hasil kosong tetap 200 dengan array kosong.
+
+Wishlist tetap memakai GET `/api/wishlist` dan POST/DELETE `/api/wishlist/:productId`,
+khusus Buyer sendiri. POST produk hilang/nonaktif 404; duplikat termasuk request
+bersamaan 409. Produk Dipesan/Terjual boleh disimpan. GET mengembalikan item
+`{id, productId, product_id, unavailable, createdAt}`. Produk aktif menggunakan DTO produk;
+produk yang nonaktif/hilang menggunakan `product_id: null, unavailable: true`.
+`productId` tetap tersedia untuk DELETE, termasuk produk yang kemudian tidak tersedia.
+
+`address` pada registrasi opsional, GET/PATCH `/api/users/me`, dan respons auth
+sekarang berupa null (belum diisi) atau objek lengkap
+`{recipient, phone, street, city, postalCode}`. PATCH alamat mengganti seluruh objek;
+null/string/objek parsial ditolak 422. Semua teks di-trim. Batas recipient/city 100,
+street 1000; nomor Indonesia 08 sepanjang 10–13 digit, pemisah spasi/kurung/tanda
+hubung dihapus; kode pos lima digit. Nama akun tetap terpisah dari penerima.
+Nomor `phone` tingkat akun tetap field terpisah sesuai kontrak sebelumnya.
+Alamat lama dipindah ke `legacy_address` internal melalui migrasi eksplisit; tidak
+ditampilkan melalui API dan tidak dipakai checkout. Lihat MIGRATION.md.
+Migrator melaporkan wishlist duplikat, pemilik bukan Buyer/hilang, serta produk
+yang sudah hilang sebagai blocker sebelum unique index dipasang.
 
 Baseline: `5c506d1`. Batch ini menangani akses, validasi dasar, dan respons galat.
-Batch 2 melengkapi produk dan katalog berdasarkan FE di `185ee54`. Alamat terstruktur,
-pencocokan ukuran, transaksi stok, pembayaran, serta aturan ulasan lengkap masih menyusul.
+Batch 2 melengkapi produk dan katalog berdasarkan FE di `185ee54`. Batch 3 melengkapi alamat terstruktur, wishlist dan pencocokan ukuran. Transaksi stok,
+pembayaran, serta aturan ulasan lengkap masih menyusul.
 BE secara keseluruhan belum siap produksi.
 
 ## Produk dan katalog (batch 2)
@@ -61,9 +91,7 @@ Nama query lama seperti `search`, `min_price`, dan `price_asc` tidak lagi diteri
 Urutan `terbaru` pada daftar Admin memakai waktu edit (`updatedAt`), mengikuti FE Admin;
 katalog publik memakai waktu penambahan (`createdAt`).
 
-`POST /products/match` sementara masih menerima `clothing_type`, `style`, `size`,
-dan `max_budget`; `clothing_type` dipetakan ke kategori baru. Hasil hanya produk aktif
-dan Tersedia. Algoritme ukuran sentimeter dan kontrak pencocokan lengkap masuk batch 3.
+Kontrak lengkap `POST /products/match` sekarang mengikuti bagian batch 3 di atas.
 
 Pesanan baru menyimpan `product_snapshot`. Respons `product_id` pesanan memakai salinan
 tersebut, sehingga edit/penonaktifan produk tidak mengubah informasi riwayatnya.
@@ -98,7 +126,7 @@ foto, atau kondisi. Apply hanya dijalankan secara eksplisit, bukan saat startup.
 | POST   | `/auth/register` | Publik     | `name`, `email`, `password`; opsional `confirmPassword`, `phone`, `address`. Hasil `201`, `data` pengguna Buyer.           |
 | POST   | `/auth/login`    | Publik     | `email`, `password`, opsional `role: buyer/admin` untuk memeriksa halaman masuk yang dipilih. Hasil `data: {token, user}`. |
 | GET    | `/users/me`      | Akun aktif | `data` profil akun dari token.                                                                                             |
-| PATCH  | `/users/me`      | Akun aktif | Hanya `name`, `phone`, `address`; minimal satu field. `address` sementara masih string.                                    |
+| PATCH  | `/users/me`      | Akun aktif | Hanya `name`, `phone`, `address`; minimal satu field. `address` mengikuti objek lengkap pada bagian batch 3.               |
 
 Email di-trim dan dijadikan huruf kecil. Nama tidak kosong, maksimal 100 karakter; email
 maksimal 254 karakter dengan format `nama@domain.tld`. Sandi registrasi minimal 8 karakter
@@ -106,7 +134,7 @@ dan maksimal 72 byte UTF-8 (batas bcrypt); sandi tidak di-trim. Login tidak mema
 minimal 8 karakter agar kredensial lama tetap dapat diperiksa. `confirmPassword`, bila
 dikirim, harus cocok. Field `role` saat registrasi diabaikan: hasil selalu Buyer.
 Registrasi duplikat, termasuk request bersamaan, menghasilkan `409 EMAIL_EXISTS`.
-`phone` maksimal 30 karakter dan `address` maksimal 1000 karakter pada model sementara.
+`phone` akun maksimal 30 karakter. Aturan alamat mengikuti bagian batch 3.
 PATCH profil tidak menerima email, password, role, ID, ataupun operator MongoDB.
 
 ## Akses endpoint domain yang sudah ada
@@ -114,7 +142,7 @@ PATCH profil tidak menerima email, password, role, ID, ataupun operator MongoDB.
 | Method              | Route                        | Akses / catatan                                                                                          |
 | ------------------- | ---------------------------- | -------------------------------------------------------------------------------------------------------- |
 | GET                 | `/products`, `/products/:id` | Publik; kontrak batch 2 di atas.                                                                         |
-| POST                | `/products/match`            | Publik; body filter lama tetap berlaku.                                                                  |
+| POST                | `/products/match`            | Publik; body pencocokan batch 3.                                                                         |
 | POST, PATCH, DELETE | `/products`, `/products/:id` | Admin; POST hanya route koleksi.                                                                         |
 | GET                 | `/wishlist`                  | Buyer, hanya milik sendiri.                                                                              |
 | POST, DELETE        | `/wishlist/:productId`       | Buyer, hanya milik sendiri.                                                                              |

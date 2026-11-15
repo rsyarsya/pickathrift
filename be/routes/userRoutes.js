@@ -9,6 +9,10 @@ router.patch("/me", async (req, res) => {
   validate.fields(req.body, ["name", "phone", "address"]);
   if (!Object.keys(req.body).length) validate.invalid("body", "Isi minimal satu field.");
   for (const [key, value] of Object.entries(req.body)) {
+    if (key === "address") {
+      req.account.address = require("../lib/address").addressInput(value);
+      continue;
+    }
     req.account[key] = validate.text(value, key, {
       max: key === "name" ? 100 : key === "phone" ? 30 : 1000,
       required: key === "name",

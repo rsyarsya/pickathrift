@@ -3,13 +3,15 @@ const { once } = require("node:events");
 const { getConfig } = require("./config");
 const { createApp } = require("./app");
 const User = require("./models/user");
+const Wishlist = require("./models/wishlist");
 const { assertDataReady } = require("./lib/legacy-data");
 
 async function start(config = getConfig()) {
   try {
-    await mongoose.connect(config.mongoUri, { serverSelectionTimeoutMS: 5000 });
+    await mongoose.connect(config.mongoUri, { serverSelectionTimeoutMS: 5000, autoIndex: false });
     await assertDataReady(mongoose.connection);
-    await User.init();
+    await User.createIndexes();
+    await Wishlist.createIndexes();
     const server = createApp(config).listen(config.port);
     await once(server, "listening");
     return server;

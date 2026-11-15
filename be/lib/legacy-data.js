@@ -2,6 +2,7 @@ const { isDeepStrictEqual } = require("node:util");
 const Product = require("../models/products");
 const serialize = require("./serializers");
 const { CATEGORIES } = require("./product-options");
+const { addressInput } = require("./address");
 
 class DataMigrationRequired extends Error {
   constructor() {
@@ -34,6 +35,7 @@ async function inspectLegacyData(connection, session) {
   const users = await connection.db.collection("users").find({}, options).toArray();
   const products = await connection.db.collection("products").find({}, options).toArray();
   const orders = await connection.db.collection("orders").find({}, options).toArray();
+  const wishlists = await connection.db.collection("wishlists").find({}, options).toArray();
   const plan = { users: [], products: [], orders: [], issues: [] };
   const issue = (collection, id, code, fields) =>
     plan.issues.push({ collection, id: String(id), code, fields });
@@ -47,10 +49,49 @@ async function inspectLegacyData(connection, session) {
     const ids = emails.get(email) ?? [];
     ids.push(user._id);
     emails.set(email, ids);
-    if (email !== user.email) plan.users.push({ id: user._id, set: { email } });
+    const set = {};
+    if (email !== user.email) set.email = email;
+    if (typeof user.address === "string") {
+      if (user.legacy_address !== undefined && user.legacy_address !== user.address) {
+        issue("users", user._id, "ADDRESS_REVIEW_REQUIRED", ["address", "legacy_address"]);
+      } else {
+        set.address = null;
+        set.legacy_address = user.address;
+      }
+    } else if (user.address === undefined) {
+      set.address = null;
+    } else if (user.address !== null) {
+      try {
+        const address = addressInput(user.address);
+        if (!isDeepStrictEqual(address, user.address)) set.address = address;
+      } catch (error) {
+        if (error.status !== 422) throw error;
+        issue("users", user._id, "ADDRESS_REVIEW_REQUIRED", ["address"]);
+      }
+    }
+    if (Object.keys(set).length) plan.users.push({ id: user._id, set });
   }
   for (const ids of emails.values()) {
     if (ids.length > 1) for (const id of ids) issue("users", id, "EMAIL_COLLISION", ["email"]);
+  }
+  const buyerIds = new Set(
+    users.filter((user) => user.role === "buyer").map((user) => String(user._id)),
+  );
+  const productIds = new Set(products.map((product) => String(product._id)));
+  const wishlistKeys = new Map();
+  for (const item of wishlists) {
+    if (!buyerIds.has(String(item.user_id)))
+      issue("wishlists", item._id, "WISHLIST_OWNER_REVIEW_REQUIRED", ["user_id"]);
+    if (!productIds.has(String(item.product_id)))
+      issue("wishlists", item._id, "WISHLIST_PRODUCT_REVIEW_REQUIRED", ["product_id"]);
+    const key = `${item.user_id}:${item.product_id}`;
+    const ids = wishlistKeys.get(key) ?? [];
+    ids.push(item._id);
+    wishlistKeys.set(key, ids);
+  }
+  for (const ids of wishlistKeys.values()) {
+    if (ids.length > 1)
+      for (const id of ids) issue("wishlists", id, "WISHLIST_DUPLICATE", ["user_id", "product_id"]);
   }
   const canonicalProducts = new Map();
   for (const raw of products) {
@@ -134,6 +175,9 @@ async function migrateLegacyData(connection, apply = false) {
   if (preview.issues.length) throw new DataMigrationRequired();
   // DDL di luar transaksi; perubahan data di bawah tetap seluruhnya atomik.
   await connection.db.collection("users").createIndex({ email: 1 }, { unique: true });
+  await connection.db
+    .collection("wishlists")
+    .createIndex({ user_id: 1, product_id: 1 }, { unique: true });
   const session = await connection.startSession();
   try {
     let applied;

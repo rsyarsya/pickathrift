@@ -1,5 +1,19 @@
 # Memakai data dari BE lama
 
+## Tambahan batch 3
+
+Alamat string lama dipindahkan utuh ke `legacy_address` internal dan `address` menjadi
+null. Nilainya tidak dicetak atau dikembalikan API. Tidak ada tebakan penerima/kota/kode
+pos; Buyer melengkapi alamat terstruktur sebelum checkout. ID, hash sandi dan nama akun
+tetap. Benturan dengan arsip alamat yang sudah ada atau objek alamat tidak valid
+menjadi blocker. Alamat baru yang valid dinormalisasi menggunakan aturan API.
+
+Dry-run juga memeriksa koleksi `wishlists`: pasangan pemilik–produk duplikat, produk
+hilang, serta pemilik hilang/bukan Buyer menjadi blocker. Operator memutuskan koreksi
+record berdasarkan data asli setelah backup; migrator tidak menghapus item otomatis.
+Unique index pasangan dipasang hanya setelah pemeriksaan blocker berhasil. Startup
+menonaktifkan auto-index dan memeriksa data sebelum memasang index serta membuka port.
+
 Perbaikan batch 1–2 mengubah normalisasi email dan model produk. Startup sekarang
 memeriksa data mentah sebelum membuka port. Data yang perlu ditinjau tidak otomatis
 dinormalisasi, disembunyikan diam-diam, dihapus, atau digabungkan ke akun lain.

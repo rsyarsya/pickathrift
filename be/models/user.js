@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { addressSchema } = require("../lib/address");
 
 const userSchema = new mongoose.Schema(
   {
@@ -14,7 +15,8 @@ const userSchema = new mongoose.Schema(
     },
     password: { type: String, required: true, select: false },
     phone: { type: String, default: "", maxlength: 30 },
-    address: { type: String, default: "", maxlength: 1000 },
+    address: { type: addressSchema, default: null },
+    legacy_address: { type: String, select: false },
     role: { type: String, enum: ["buyer", "admin"], default: "buyer" },
   },
   { timestamps: true },
