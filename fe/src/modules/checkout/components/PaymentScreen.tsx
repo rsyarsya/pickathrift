@@ -1,4 +1,3 @@
-import Image from "next/image";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { PageHeader, asideLink } from "@/components/ui/PageHeader";
@@ -8,7 +7,7 @@ import { cn } from "@/lib/cn";
 import { formatRupiah } from "@/lib/format";
 import {
   formatCountdown,
-  orderTotal,
+  orderAmount,
   PAYMENT_WINDOW_HOURS,
   PROOF_TYPES,
   validateProof,
@@ -16,7 +15,8 @@ import {
 } from "@/modules/orders/order";
 import { CancelOrderDialog } from "@/modules/orders/components/CancelOrderDialog";
 import { OrderStatusLabel, orderStatuses } from "@/modules/orders/components/OrderStatusLabel";
-import { updateBuyerOrder } from "@/modules/orders/data/orders";
+import { getOrder, updateBuyerOrder } from "@/modules/orders/data/orders";
+import { PaymentProof } from "@/modules/orders/components/PaymentProof";
 import { orderHref, orderReference } from "@/modules/orders/links";
 import { usePaymentCountdown } from "@/modules/orders/usePaymentCountdown";
 import type { loadCheckout } from "../data/checkout";
@@ -26,7 +26,6 @@ import { PaymentProgress } from "./PaymentProgress";
 type PaymentProps = {
   order: Order;
   account: Awaited<ReturnType<typeof loadCheckout>>["account"];
-  rejectedProof: Awaited<ReturnType<typeof loadCheckout>>["rejectedProof"];
   onChange: (order: Order) => void;
   onRestart: () => void;
 };
@@ -47,12 +46,20 @@ function TransferInstructions({
   return (
     <section className="grid gap-4 rounded-md bg-butter p-16">
       <h2 className={cn(overline, "text-fg")}>Transfer ke rekening toko</h2>
-      <p className="font-mono text-card">
-        {account.bank} · {account.number}
-      </p>
-      <p className="text-caption">
-        a.n. {account.holder} · nominal tepat {formatRupiah(orderTotal(order.product))}
-      </p>
+      {account ? (
+        <>
+          <p className="font-mono text-card">
+            {account.bank} · {account.number}
+          </p>
+          <p className="text-caption">
+            a.n. {account.holder} · nominal tepat {formatRupiah(orderAmount(order))}
+          </p>
+        </>
+      ) : (
+        <p role="status" className="text-caption">
+          Rekening toko belum tersedia. Hubungi admin sebelum melakukan pembayaran.
+        </p>
+      )}
       {seconds !== null && (
         <p className="text-caption">
           Bayar sebelum {time.format(order.expiresAt)} WIB ({PAYMENT_WINDOW_HOURS} jam). Lewat dari
@@ -66,64 +73,14 @@ function TransferInstructions({
   );
 }
 
-function ProofReceived({ proof }: { proof: Order["proof"] }) {
-  const dialog = useRef<HTMLDialogElement>(null);
-  const [url, setUrl] = useState<string>();
-  const file = proof?.file;
-
-  useEffect(() => {
-    if (!file) return;
-    const nextUrl = URL.createObjectURL(file);
-    setUrl(nextUrl);
-    return () => URL.revokeObjectURL(nextUrl);
-  }, [file]);
-
+function ProofReceived({ order }: { order: Order }) {
   return (
     <>
       <p role="status" className="rounded-md bg-success-bg p-16 text-body">
         Bukti transfer sudah kami terima. Admin biasanya memverifikasi dalam 1–24 jam. Barang tetap
         terkunci untukmu.
       </p>
-      {proof && (
-        <div className="flex items-center gap-14 rounded-md border border-line bg-surface p-12">
-          <span aria-hidden className="h-56 w-44 shrink-0 rounded-sm bg-lilac" />
-          <div className="min-w-0 flex-1">
-            <p className="text-body wrap-anywhere">{proof.name}</p>
-            <p className={overline}>
-              {fileSize(proof.size)} · Diunggah {time.format(proof.uploadedAt)} WIB
-            </p>
-          </div>
-          <button type="button" className={asideLink} onClick={() => dialog.current?.showModal()}>
-            Lihat
-          </button>
-          <dialog
-            ref={dialog}
-            aria-labelledby="proof-title"
-            className="m-auto w-[calc(100%-32px)] max-w-580 rounded-xl bg-canvas p-24 text-fg shadow-overlay"
-          >
-            <div className="grid gap-16">
-              <h2 id="proof-title" className="text-card wrap-anywhere">
-                {proof.name}
-              </h2>
-              {url ? (
-                <Image
-                  unoptimized
-                  src={url}
-                  alt="Bukti pembayaran yang diunggah"
-                  width={500}
-                  height={500}
-                  className="max-h-[65dvh] w-full object-contain"
-                />
-              ) : (
-                <p>Bukti pembayaran simulasi.</p>
-              )}
-              <Button variant="outline" onClick={() => dialog.current?.close()}>
-                Tutup
-              </Button>
-            </div>
-          </dialog>
-        </div>
-      )}
+      <PaymentProof order={order} />
       <ButtonLink href="/pesanan" variant="outline" className="md:justify-self-start">
         Lihat riwayat pesanan
       </ButtonLink>
@@ -133,19 +90,17 @@ function ProofReceived({ proof }: { proof: Order["proof"] }) {
 
 function ProofForm({
   order,
-  rejectedProof,
   pending,
   error,
   onSubmit,
 }: {
   order: Order;
-  rejectedProof: PaymentProps["rejectedProof"];
   pending: boolean;
   error: string | null;
   onSubmit: (file: File) => void;
 }) {
   const [file, setFile] = useState<File | null>(null);
-  const selection = file ?? rejectedProof;
+  const selection = file;
   const fieldError = selection ? validateProof(selection) : undefined;
   const reupload = order.status === "PERLU_UNGGAH_ULANG";
 
@@ -223,13 +178,7 @@ function ProofForm({
   );
 }
 
-export function PaymentScreen({
-  order,
-  account,
-  rejectedProof,
-  onChange,
-  onRestart,
-}: PaymentProps) {
+export function PaymentScreen({ order, account, onChange, onRestart }: PaymentProps) {
   const cancelDialog = useRef<HTMLDialogElement>(null);
   const [action, setAction] = useState<"cancel" | "upload" | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -238,7 +187,38 @@ export function PaymentScreen({
   const reupload = order.status === "PERLU_UNGGAH_ULANG";
   const verifying = order.status === "MENUNGGU_VERIFIKASI";
   const seconds = usePaymentCountdown(order);
-  const ended = seconds === 0 || order.status === "DIBATALKAN";
+  const ended = order.status === "DIBATALKAN";
+  const deadlineReached = waiting && seconds === 0;
+  useEffect(() => {
+    if (!deadlineReached) return;
+    let active = true;
+    getOrder(order.id, order.buyerEmail).then(
+      (next) => {
+        if (active) onChange(next);
+      },
+      (failure) => {
+        if (active)
+          setCancelError(
+            failure instanceof ApiError ? failure.message : "Status pesanan gagal dimuat.",
+          );
+      },
+    );
+    return () => {
+      active = false;
+    };
+    // Identitas pesanan dan perpindahan deadline menentukan kapan status diperiksa.
+  }, [deadlineReached, order.id, order.buyerEmail]);
+
+  async function reload() {
+    setCancelError(null);
+    try {
+      onChange(await getOrder(order.id, order.buyerEmail));
+    } catch (failure) {
+      setCancelError(
+        failure instanceof ApiError ? failure.message : "Status pesanan gagal dimuat.",
+      );
+    }
+  }
 
   async function update(next: { type: "cancel" } | { type: "upload"; file: File }) {
     if (action) return;
@@ -257,6 +237,20 @@ export function PaymentScreen({
   }
 
   const heading = `Pesanan ${orderReference(order)}`;
+  if (deadlineReached)
+    return (
+      <>
+        <PageHeader title="Batas waktu pembayaran tercapai" overline={heading} />
+        <StatusMessage
+          tone="warning"
+          title="Periksa status pesanan"
+          description={
+            cancelError ?? "Memeriksa status terbaru dari server sebelum kamu melanjutkan."
+          }
+          actions={<Button onClick={() => void reload()}>Muat ulang pesanan</Button>}
+        />
+      </>
+    );
   if (ended) {
     return (
       <>
@@ -297,13 +291,12 @@ export function PaymentScreen({
       <div className={checkoutColumns}>
         <div className="grid min-w-0 gap-14">
           {verifying ? (
-            <ProofReceived proof={order.proof} />
+            <ProofReceived order={order} />
           ) : (
             <>
               <TransferInstructions order={order} account={account} seconds={seconds} />
               <ProofForm
                 order={order}
-                rejectedProof={rejectedProof}
                 pending={action === "upload"}
                 error={uploadError}
                 onSubmit={(file) => void update({ type: "upload", file })}
@@ -321,7 +314,7 @@ export function PaymentScreen({
             </>
           )}
         </div>
-        <OrderSummary product={order.product} />
+        <OrderSummary product={order.product} order={order} />
       </div>
       {waiting && (
         <CancelOrderDialog

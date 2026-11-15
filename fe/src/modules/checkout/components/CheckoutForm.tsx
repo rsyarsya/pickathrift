@@ -28,7 +28,6 @@ type CheckoutFormProps = {
   product: Product;
   initialAddress: ShippingAddress;
   fromProfile: boolean;
-  invalid: boolean;
   pending: boolean;
   error: string | null;
   onSubmit: (address: ShippingAddress) => void;
@@ -38,13 +37,12 @@ export function CheckoutForm({
   product,
   initialAddress,
   fromProfile,
-  invalid,
   pending,
   error,
   onSubmit,
 }: CheckoutFormProps) {
   const [address, setAddress] = useState(initialAddress);
-  const [showErrors, setShowErrors] = useState(invalid);
+  const [showErrors, setShowErrors] = useState(false);
   const errors = validateAddress(address);
 
   function submit(event: FormEvent<HTMLFormElement>) {

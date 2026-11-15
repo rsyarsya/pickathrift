@@ -7,7 +7,7 @@ export const MAX_REVIEW_LENGTH = 500;
 export type Review = NonNullable<Order["review"]>;
 export type PublicReview = Review & {
   id: string;
-  product: Pick<Order["product"], "id" | "name" | "images">;
+  product?: Pick<Order["product"], "id" | "name" | "images">;
 };
 export type ReviewInput = { rating: number; body: string };
 

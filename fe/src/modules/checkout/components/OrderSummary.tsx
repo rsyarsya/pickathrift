@@ -2,7 +2,7 @@ import Image from "next/image";
 import type { ReactNode } from "react";
 import { formatRupiah } from "@/lib/format";
 import type { Product } from "@/modules/catalog/types";
-import { orderTotal, SHIPPING_FEE } from "@/modules/orders/order";
+import { orderAmount, orderTotal, SHIPPING_FEE, type Order } from "@/modules/orders/order";
 
 export const overline = "font-mono text-micro tracking-label text-muted uppercase";
 export const checkoutColumns = "grid items-start gap-16 lg:grid-cols-[10fr_7fr] lg:gap-48";
@@ -11,10 +11,12 @@ export function OrderSummary({
   product,
   children,
   title = "Ringkasan pesanan",
+  order,
 }: {
   product: Product;
   children?: ReactNode;
   title?: string;
+  order?: Order;
 }) {
   return (
     <section
@@ -44,15 +46,17 @@ export function OrderSummary({
       <dl className="grid gap-10 text-body">
         <div className="flex justify-between gap-12">
           <dt>Subtotal</dt>
-          <dd className="font-mono">{formatRupiah(product.price)}</dd>
+          <dd className="font-mono">{formatRupiah(order?.itemPrice ?? product.price)}</dd>
         </div>
         <div className="flex justify-between gap-12">
           <dt>Ongkir tetap</dt>
-          <dd className="font-mono">{formatRupiah(SHIPPING_FEE)}</dd>
+          <dd className="font-mono">{formatRupiah(order?.shippingFee ?? SHIPPING_FEE)}</dd>
         </div>
         <div className="flex justify-between gap-12 border-t border-line pt-10 text-card">
           <dt>Total</dt>
-          <dd className="font-mono">{formatRupiah(orderTotal(product))}</dd>
+          <dd className="font-mono">
+            {formatRupiah(order ? orderAmount(order) : orderTotal(product))}
+          </dd>
         </div>
       </dl>
       {children}

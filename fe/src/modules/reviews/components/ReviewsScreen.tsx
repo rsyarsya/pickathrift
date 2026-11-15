@@ -14,10 +14,10 @@ import { cn } from "@/lib/cn";
 import { BuyerOnly } from "@/modules/auth/components/BuyerOnly";
 import type { SessionUser } from "@/modules/auth/useSession";
 import { OrderStatusLabel } from "@/modules/orders/components/OrderStatusLabel";
-import { updateBuyerOrder } from "@/modules/orders/data/orders";
+import { getOrder, updateBuyerOrder } from "@/modules/orders/data/orders";
 import { orderHref, orderReference } from "@/modules/orders/links";
 import type { Order } from "@/modules/orders/order";
-import { getReviewOrder, REVIEW_DEMOS, submitReview } from "../data/reviews";
+import { submitReview } from "../data/reviews";
 import { reviewEligibility, type ReviewInput } from "../review";
 import { ReviewCard } from "./ReviewCard";
 import { ReviewForm } from "./ReviewForm";
@@ -151,18 +151,10 @@ function LockedReview({
   );
 }
 
-function ReviewEditor({
-  initial,
-  user,
-  invalid,
-}: {
-  initial: Order;
-  user: SessionUser;
-  invalid: boolean;
-}) {
+function ReviewEditor({ initial, user }: { initial: Order; user: SessionUser }) {
   const [order, setOrder] = useState(initial);
   const [pending, setPending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ApiError | null>(null);
   const eligibility = reviewEligibility(order);
 
   async function update(save: () => Promise<Order>) {
@@ -172,7 +164,9 @@ function ReviewEditor({
     try {
       setOrder(await save());
     } catch (error) {
-      setError(error instanceof ApiError ? error.message : "Perubahan gagal disimpan. Coba lagi.");
+      setError(
+        error instanceof ApiError ? error : new ApiError(0, "Perubahan gagal disimpan. Coba lagi."),
+      );
     } finally {
       setPending(false);
     }
@@ -185,20 +179,24 @@ function ReviewEditor({
         {eligibility === "sent" ? "Ulasan terkirim" : "Tulis ulasan"}
       </h1>
       <OrderPreview order={order} />
+      {error?.status === 409 && (
+        <Button variant="outline" onClick={() => void update(() => getOrder(order.id, user.email))}>
+          Muat ulang pesanan
+        </Button>
+      )}
       {eligibility === "locked" && (
         <LockedReview
           order={order}
           pending={pending}
-          error={error}
+          error={error?.message ?? null}
           onReceive={() => void update(() => updateBuyerOrder(order, { type: "receive" }))}
         />
       )}
       {eligibility === "ready" && (
         <ReviewForm
-          invalid={invalid}
           pending={pending}
-          error={error}
-          onSubmit={(input: ReviewInput) => void update(() => submitReview(order, user, input))}
+          error={error?.message}
+          onSubmit={(input: ReviewInput) => void update(() => submitReview(order, input))}
         />
       )}
       {eligibility === "sent" && order.review && (
@@ -224,16 +222,8 @@ function ReviewEditor({
   );
 }
 
-function ReviewLoader({
-  id,
-  demo,
-  user,
-}: {
-  id: string | null;
-  demo: string | null;
-  user: SessionUser;
-}) {
-  const result = useAsync(() => getReviewOrder(id, user.email, demo), [id, demo, user.email]);
+function ReviewLoader({ id, user }: { id: string; user: SessionUser }) {
+  const result = useAsync(() => getOrder(id, user.email), [id, user.email]);
   if (result.status === "loading")
     return (
       <p className={shopContent} role="status">
@@ -257,27 +247,20 @@ function ReviewLoader({
         />
       </div>
     );
-  return <ReviewEditor initial={result.data} user={user} invalid={demo === "validasi"} />;
+  return <ReviewEditor initial={result.data} user={user} />;
 }
 
 export function ReviewsScreen() {
   const search = useSearchParams();
   const id = search.get("pesanan");
-  const demo = search.get("demo");
-  if (id || (demo && REVIEW_DEMOS.includes(demo))) {
+  if (id) {
     return (
       <BuyerOnly>
-        {(user) => (
-          <ReviewLoader key={`${user.email}:${id}:${demo}`} user={user} id={id} demo={demo} />
-        )}
+        {(user) => <ReviewLoader key={`${user.email}:${id}`} user={user} id={id} />}
       </BuyerOnly>
     );
   }
   if (search.get("milik") === "saya")
-    return (
-      <BuyerOnly>
-        {(user) => <StoreReviews key={user.email} email={user.email} demo={demo} />}
-      </BuyerOnly>
-    );
-  return <StoreReviews demo={demo} />;
+    return <BuyerOnly>{(user) => <StoreReviews key={user.email} email={user.email} />}</BuyerOnly>;
+  return <StoreReviews />;
 }
