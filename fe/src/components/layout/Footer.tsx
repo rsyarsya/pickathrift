@@ -26,7 +26,7 @@ const HELP = [
   { href: "/profil", label: "Akun saya" },
 ];
 
-const label = "font-mono text-xs tracking-label text-night-muted";
+const label = "font-mono text-xs tracking-label text-muted";
 
 function Column({ title, links }: { title: string; links: typeof SHOP }) {
   return (
@@ -71,13 +71,13 @@ function Newsletter() {
 
   return (
     <form noValidate className="flex flex-col gap-14" onSubmit={submit}>
-      <label htmlFor="newsletter" className="text-lg font-medium">
+      <label htmlFor="newsletter" className="text-base font-medium">
         Kabari aku kalau ada barang baru
       </label>
       <div
         className={cn(
-          "flex items-center justify-between rounded-full border bg-night-raised py-6 pr-6 pl-18",
-          state === "error" ? "border-danger" : "border-transparent focus-within:border-peach",
+          "flex items-center justify-between rounded-full border bg-surface py-6 pr-6 pl-18",
+          state === "error" ? "border-danger" : "border-line focus-within:border-fg",
         )}
       >
         <input
@@ -90,11 +90,11 @@ function Newsletter() {
           onChange={() => state === "error" && setState("idle")}
           aria-invalid={state === "error"}
           aria-describedby="newsletter-help"
-          className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-night-muted"
+          className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted"
         />
         <button
           disabled={busy}
-          className="rounded-full bg-peach px-18 py-10 text-sm font-medium text-fg disabled:opacity-70"
+          className="rounded-full bg-fg px-18 py-10 text-sm font-medium text-canvas disabled:opacity-70"
         >
           {state === "loading" ? "Mengirim…" : state === "success" ? "✓ Terdaftar" : "Daftar"}
         </button>
@@ -102,7 +102,7 @@ function Newsletter() {
       <p
         id="newsletter-help"
         aria-live="polite"
-        className={cn("text-caption", state === "error" ? "text-[#ff9d94]" : "text-night-soft")}
+        className={cn("text-caption", state === "error" ? "text-danger" : "text-muted")}
       >
         {message}
       </p>
@@ -112,38 +112,32 @@ function Newsletter() {
 
 export function Footer() {
   return (
-    <footer className="flex flex-col gap-40 bg-night px-16 pt-48 pb-32 text-night-fg md:px-24 lg:gap-64 lg:px-48 lg:pt-72 lg:pb-40">
-      <div className="grid grid-cols-2 gap-x-24 gap-y-32 lg:flex lg:gap-48">
-        <div className="col-span-2 flex flex-col gap-16 lg:flex-1">
-          <Logo size={36} tone="light" />
-          <p className="max-w-320 text-base leading-normal text-night-soft">
-            Thrift pilihan dari satu toko. Setiap barang cuma ada satu.
-          </p>
+    // Overlap ala palette.supply: tautan menggulung biasa, wordmark di bawahnya menempel di
+    // dasar layar (sticky) sehingga terbuka saat tautan naik.
+    <footer className="text-fg">
+      <div className="relative z-10 flex flex-col gap-40 border-t border-line bg-canvas px-16 pt-48 pb-24 shadow-[0_16px_32px_rgb(30_30_28/0.08)] md:px-24 lg:gap-56 lg:px-48 lg:pt-64 lg:pb-32">
+        <div className="grid grid-cols-2 gap-x-24 gap-y-32 lg:flex lg:gap-48">
+          <div className="lg:w-160">
+            <Column title="BELANJA" links={SHOP} />
+          </div>
+          <div className="lg:w-160">
+            <Column title="FITUR" links={FEATURES} />
+          </div>
+          <div className="lg:w-160">
+            <Column title="BANTUAN" links={HELP} />
+          </div>
+          <div className="col-span-2 lg:ml-auto lg:w-340">
+            <Newsletter />
+          </div>
         </div>
-        <div className="col-span-2 lg:order-last lg:w-340">
-          <Newsletter />
-        </div>
-        <div className="lg:w-160">
-          <Column title="BELANJA" links={SHOP} />
-        </div>
-        <div className="lg:w-160">
-          <Column title="FITUR" links={FEATURES} />
-        </div>
-        <div className="hidden lg:block lg:w-160">
-          <Column title="BANTUAN" links={HELP} />
-        </div>
-        <div className="col-span-2 flex flex-wrap gap-x-16 gap-y-8 lg:hidden">
-          {HELP.map((link) => (
-            <Link key={link.label} href={link.href} className="text-caption underline">
-              {link.label}
-            </Link>
-          ))}
-        </div>
+        <p className={`${label} border-t border-line pt-16`}>© 2026 PickaThrift · Kelompok 19</p>
       </div>
 
-      <div className={`${label} flex justify-between border-t border-night-line pt-24`}>
-        <p>© 2026 PICKATHRIFT · KELOMPOK 19</p>
-        <p className="hidden lg:block">SATU TOKO · SATU UNIT PER BARANG</p>
+      {/* Wordmark besar selebar area isi sebagai penutup halaman (DS-002). */}
+      {/* Blok gelap selebar layar, rasio 7:3 seperti palette.supply. Wordmark membentang dengan
+          jarak 4% ke tepi kiri-kanan, di tengah secara vertikal. */}
+      <div className="footer-reveal sticky bottom-0 flex aspect-[7/3] items-center overflow-hidden bg-night px-[4vw]">
+        <Logo tone="light" className="flex w-full [&>svg]:h-auto [&>svg]:w-full" />
       </div>
     </footer>
   );
