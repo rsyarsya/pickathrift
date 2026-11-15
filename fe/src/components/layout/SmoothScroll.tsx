@@ -2,7 +2,8 @@
 
 import Lenis from "lenis";
 import "lenis/dist/lenis.css";
-import { useEffect } from "react";
+import { usePathname } from "next/navigation";
+import { useEffect, useRef } from "react";
 
 /**
  * Smooth scroll Lenis untuk seluruh situs. Scroll tetap native (Lenis hanya menghaluskan
@@ -10,9 +11,13 @@ import { useEffect } from "react";
  * Mati kalau pengguna memilih "kurangi animasi".
  */
 export function SmoothScroll() {
+  const lenis = useRef<Lenis | null>(null);
+  const fromHistory = useRef(false);
+  const pathname = usePathname();
+
   useEffect(() => {
     if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const lenis = new Lenis({
+    const instance = new Lenis({
       autoRaf: true,
       anchors: true,
       stopInertiaOnNavigate: true,
@@ -21,8 +26,27 @@ export function SmoothScroll() {
       // Dialog modal (menu ponsel, filter, konfirmasi) tidak ikut dihaluskan.
       prevent: (node) => node.closest("dialog") !== null,
     });
-    return () => lenis.destroy();
+    lenis.current = instance;
+    // Back/Forward: biarkan browser mengembalikan posisi scroll sebelumnya.
+    const onPopState = () => (fromHistory.current = true);
+    window.addEventListener("popstate", onPopState);
+    return () => {
+      window.removeEventListener("popstate", onPopState);
+      instance.destroy();
+      lenis.current = null;
+    };
   }, []);
+
+  // Pindah halaman lewat tautan: mulai dari atas. Tanpa ini Lenis menahan posisi scroll
+  // halaman sebelumnya, jadi halaman baru terbuka di tengah atau bawah. Ganti filter
+  // (query string) tidak mengubah pathname, jadi posisi katalog tetap.
+  useEffect(() => {
+    if (fromHistory.current) {
+      fromHistory.current = false;
+      return;
+    }
+    lenis.current?.scrollTo(0, { immediate: true, force: true });
+  }, [pathname]);
 
   return null;
 }
