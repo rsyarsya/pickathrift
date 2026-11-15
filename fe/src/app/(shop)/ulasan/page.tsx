@@ -1,5 +1,8 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { ReviewsScreen } from "@/modules/reviews/components/ReviewsScreen";
+
+export const metadata: Metadata = { title: "Ulasan" };
 
 export default function ReviewsPage() {
   return (
