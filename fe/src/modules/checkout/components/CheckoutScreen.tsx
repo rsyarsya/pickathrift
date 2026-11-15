@@ -30,21 +30,15 @@ function LoadingCheckout() {
 
 function CheckoutContent({
   data,
-  demo,
   user,
 }: {
   data: Awaited<ReturnType<typeof loadCheckout>>;
-  demo: string | null;
   user: SessionUser;
 }) {
   const [order, setOrder] = useState<Order | null>(data.order);
-  const [pending, setPending] = useState(demo === "memproses");
-  const [conflict, setConflict] = useState(demo === "konflik");
-  const [error, setError] = useState<string | null>(
-    demo === "koneksi"
-      ? "Koneksi terputus sebelum ada hasil. Coba lagi untuk memeriksa pesananmu."
-      : null,
-  );
+  const [pending, setPending] = useState(false);
+  const [conflict, setConflict] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const actions = useProductActions();
   const { product } = data;
 
@@ -53,7 +47,7 @@ function CheckoutContent({
     setPending(true);
     setError(null);
     try {
-      setOrder(await createOrder(product.id, user.email, address, demo));
+      setOrder(await createOrder(product.id, user.email, address));
     } catch (error) {
       if (error instanceof ApiError && error.status === 409) setConflict(true);
       else
@@ -70,7 +64,6 @@ function CheckoutContent({
           key={`${order.id}:${order.status}`}
           order={order}
           account={data.account}
-          rejectedProof={data.rejectedProof}
           onChange={setOrder}
           onRestart={() => setOrder(null)}
         />
@@ -89,7 +82,6 @@ function CheckoutContent({
               postalCode: "",
             }
           }
-          invalid={demo === "alamat"}
           onSubmit={(address) => void submit(address)}
         />
       )}
@@ -111,14 +103,14 @@ function CheckoutContent({
 
 function CheckoutLoader({
   id,
-  demo,
   user,
+  orderId,
 }: {
   id: string;
-  demo: string | null;
   user: SessionUser;
+  orderId: string | null;
 }) {
-  const checkout = useAsync(() => loadCheckout(id, user.email, demo), [id, demo, user.email]);
+  const checkout = useAsync(() => loadCheckout(id, user.email, orderId), [id, user.email, orderId]);
   if (checkout.status === "loading") return <LoadingCheckout />;
   if (checkout.status === "error") {
     return (
@@ -136,15 +128,21 @@ function CheckoutLoader({
       />
     );
   }
-  return <CheckoutContent data={checkout.data} demo={demo} user={user} />;
+  return <CheckoutContent data={checkout.data} user={user} />;
 }
 
 export function CheckoutScreen({ id }: { id: string }) {
-  const demo = useSearchParams().get("demo");
+  const params = useSearchParams();
+  const orderId = params.get("pesanan");
   return (
     <BuyerOnly>
       {(user) => (
-        <CheckoutLoader key={`${user.email}:${id}:${demo ?? ""}`} id={id} demo={demo} user={user} />
+        <CheckoutLoader
+          key={`${user.email}:${id}:${orderId ?? ""}`}
+          id={id}
+          user={user}
+          orderId={orderId}
+        />
       )}
     </BuyerOnly>
   );

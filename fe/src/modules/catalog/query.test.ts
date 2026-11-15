@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { PRODUCTS } from "@/modules/catalog/data/fixtures";
-import { applyQuery, EMPTY_QUERY, parseQuery, toSearchParams } from "@/modules/catalog/query";
+import {
+  EMPTY_QUERY,
+  parseQuery,
+  toApiSearchParams,
+  toSearchParams,
+} from "@/modules/catalog/query";
 
 describe("query katalog", () => {
   it("bolak-balik URL tanpa kehilangan filter", () => {
@@ -16,27 +20,6 @@ describe("query katalog", () => {
   it("menerima ukuran pinggang celana dari URL (QA-003)", () => {
     const query = parseQuery(new URLSearchParams("kategori=Celana&ukuran=31"));
     expect(query.sizes).toEqual(["31"]);
-    const hits = applyQuery(PRODUCTS, query);
-    expect(hits.every((p) => p.category === "Celana" && p.size === "31")).toBe(true);
-  });
-
-  it("menyaring dan mengurutkan", () => {
-    const result = applyQuery(PRODUCTS, {
-      ...EMPTY_QUERY,
-      category: "Jaket",
-      availableOnly: true,
-      sort: "termurah",
-    });
-    expect(result.every((p) => p.category === "Jaket" && p.status === "available")).toBe(true);
-    expect(result.map((p) => p.price)).toEqual(
-      [...result.map((p) => p.price)].sort((a, b) => a - b),
-    );
-  });
-
-  it("mencari nama dan merek tanpa peduli huruf besar", () => {
-    expect(applyQuery(PRODUCTS, { ...EMPTY_QUERY, q: "levi" }).map((p) => p.brand)).toEqual([
-      "Levi's",
-      "Levi's",
-    ]);
+    expect(toApiSearchParams(query, 6).get("sizes")).toBe("31");
   });
 });

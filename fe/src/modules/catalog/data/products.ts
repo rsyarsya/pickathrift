@@ -1,106 +1,67 @@
-import { ApiError } from "@/lib/api";
-import { applyQuery } from "@/modules/catalog/query";
-import {
-  CATEGORIES,
-  type CatalogPage,
-  type CatalogQuery,
-  type Product,
-} from "@/modules/catalog/types";
-import { isActive, loadProducts } from "@/modules/catalog/data/productStore";
-import { matchProducts, type Criteria, type Match } from "@/modules/match/criteria";
-import { applyOrderStock } from "@/modules/orders/order";
-import { withOrders } from "@/modules/orders/data/orderStore";
+import { apiData, ApiError } from "@/lib/api";
+import { API_URL } from "@/lib/env";
+import { toApiSearchParams } from "@/modules/catalog/query";
+import type { CatalogPage, CatalogQuery, Product } from "@/modules/catalog/types";
+import { criteriaToRequest, type Criteria, type Match } from "@/modules/match/criteria";
 
-/*
- * Satu-satunya pintu layar ke data produk. Sekarang membaca fixtures; nanti tiap
- * fungsi cukup diganti satu panggilan api(), misalnya
- *   listProducts → api<CatalogPage>(`/products?${toSearchParams(query)}&limit=${limit}`)
- * tanpa menyentuh komponen.
- *
- * `demo` memaksa state yang sulit dipicu tanpa backend (?demo=gagal di URL).
- * Hilang bersama fixtures.
- */
+export function fromApiProduct(product: Product): Product {
+  return {
+    ...product,
+    images: product.images.map((url) =>
+      url.startsWith("/uploads/products/") ? new URL(url, API_URL).href : url,
+    ),
+  };
+}
 
-export type Demo = string | null;
-
-const LATENCY = 450;
-
-function delay<T>(value: () => T | Promise<T>, ms = LATENCY): Promise<T> {
-  return new Promise((resolve, reject) =>
-    setTimeout(() => {
-      try {
-        resolve(value());
-      } catch (error) {
-        reject(error);
-      }
-    }, ms),
+export async function listProducts(query: CatalogQuery, limit: number): Promise<CatalogPage> {
+  const requested = Math.max(1, Math.floor(limit));
+  const pageSize = Math.min(requested, 100);
+  const first = await apiData<CatalogPage>(`/api/products?${toApiSearchParams(query, pageSize)}`);
+  const pages = await Promise.all(
+    Array.from({ length: Math.ceil(Math.min(requested, first.total) / pageSize) - 1 }, (_, i) =>
+      apiData<CatalogPage>(`/api/products?${toApiSearchParams(query, pageSize, i + 2)}`),
+    ),
   );
+  return {
+    ...first,
+    items: [first, ...pages]
+      .flatMap((page) => page.items)
+      .slice(0, requested)
+      .map(fromApiProduct),
+  };
 }
 
-/** Produk yang tampil untuk Buyer: yang dinonaktifkan admin tidak ikut. */
-function catalogProducts() {
-  return loadProducts().filter(isActive);
-}
-
-function readProducts() {
-  const products = catalogProducts();
-  if (typeof indexedDB === "undefined") return Promise.resolve(products);
-  return withOrders((orders) => products.map((product) => applyOrderStock(product, orders)));
-}
-
-export function listProducts(
-  query: CatalogQuery,
-  limit: number,
-  demo: Demo = null,
-): Promise<CatalogPage> {
-  if (demo === "memuat") return new Promise(() => {});
-
-  return delay(async () => {
-    if (demo === "gagal") {
-      throw new ApiError(503, "Koneksi ke server terputus. Periksa internetmu, lalu coba lagi.");
+export async function getProduct(id: string): Promise<Product> {
+  try {
+    return fromApiProduct(await apiData<Product>(`/api/products/${encodeURIComponent(id)}`));
+  } catch (error) {
+    if (error instanceof ApiError && (error.status === 404 || error.status === 422)) {
+      throw new ApiError(404, "Barang ini tidak ada atau sudah dihapus.", error.code, error.errors);
     }
-    const matches = demo === "kosong" ? [] : applyQuery(await readProducts(), query);
-    const all = catalogProducts();
-    const counts = { Semua: all.length } as CatalogPage["counts"];
-    for (const c of CATEGORIES) counts[c] = all.filter((p) => p.category === c).length;
-    return { items: matches.slice(0, limit), total: matches.length, counts };
-  });
+    throw error;
+  }
 }
 
-export function getProduct(id: string, { includeOrderStock = true } = {}): Promise<Product> {
-  return delay(async () => {
-    const products = includeOrderStock ? await readProducts() : catalogProducts();
-    const product = products.find((p) => p.id === id);
-    if (!product) throw new ApiError(404, "Barang ini tidak ada atau sudah dihapus.");
-    return product;
-  });
-}
-
-/** Cek stok sebelum checkout. Pesanan yang berhasil dibuat akan mengunci barang. */
-export function reserveProduct(id: string, demo: Demo = null): Promise<void> {
-  return getProduct(id).then((product) => {
-    if (demo === "konflik" || product.status !== "available")
-      throw new ApiError(409, "Stok sudah dipesan.");
-  });
-}
-
-/** Barang untuk wishlist dan meja perbandingan, urut sesuai `ids`. Yang sudah dihapus dilewati. */
-export function listProductsByIds(ids: string[], demo: Demo = null): Promise<Product[]> {
-  return delay(async () => {
-    if (demo === "gagal") {
-      throw new ApiError(503, "Koneksi ke server terputus. Periksa internetmu, lalu coba lagi.");
-    }
-    const products = await readProducts();
-    return ids.flatMap((id) => products.find((p) => p.id === id) ?? []);
-  });
+/** Barang untuk meja perbandingan, urut sesuai `ids`. Yang sudah dihapus dilewati. */
+export async function listProductsByIds(ids: string[]): Promise<Product[]> {
+  const products = await Promise.all(
+    ids.map(async (id) => {
+      try {
+        return await getProduct(id);
+      } catch (error) {
+        if (error instanceof ApiError && error.status === 404) return null;
+        throw error;
+      }
+    }),
+  );
+  return products.filter((product): product is Product => product !== null);
 }
 
 /** Cari yang Cocok (B4). */
-export function findMatches(criteria: Criteria, demo: Demo = null): Promise<Match[]> {
-  return delay(async () => {
-    if (demo === "gagal") {
-      throw new ApiError(503, "Koneksi ke server terputus. Periksa internetmu, lalu coba lagi.");
-    }
-    return demo === "kosong" ? [] : matchProducts(await readProducts(), criteria);
+export async function findMatches(criteria: Criteria): Promise<Match[]> {
+  const matches = await apiData<Match[]>("/api/products/match", {
+    method: "POST",
+    body: JSON.stringify(criteriaToRequest(criteria)),
   });
+  return matches.map((match) => ({ ...match, product: fromApiProduct(match.product) }));
 }

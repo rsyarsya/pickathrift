@@ -60,13 +60,7 @@ export function AccessDenied({
 }
 
 /** M4.2: sesi admin kedaluwarsa. Masuk lagi langsung dari sini tanpa kehilangan halaman. */
-export function SessionExpired({
-  email,
-  onLoggedIn,
-}: {
-  email: string;
-  onLoggedIn: (user: { name: string; email: string }) => void;
-}) {
+export function SessionExpired({ email }: { email: string }) {
   const [values, setValues] = useState({ email, password: "" });
   const [errors, setErrors] = useState<Partial<Record<"email" | "password", string>>>({});
   const [failure, setFailure] = useState<string | null>(null);
@@ -81,7 +75,7 @@ export function SessionExpired({
     if (Object.keys(found).length) return;
     setPending(true);
     try {
-      onLoggedIn(await login(values, "admin"));
+      await login(values, "admin");
     } catch (error) {
       setFailure(error instanceof ApiError ? error.message : "Gagal masuk. Coba lagi.");
       setPending(false);

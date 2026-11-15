@@ -15,7 +15,7 @@ import {
 
 /** Isian form M2 dalam bentuk teks mentah, sebelum divalidasi. */
 export type ProductForm = {
-  /** Data URL atau path foto. Indeks 0 = foto utama. */
+  /** URL/path publik hasil unggah. Indeks 0 = foto utama. */
   images: string[];
   name: string;
   category: Category | "";
@@ -73,6 +73,7 @@ export function validateProductForm(
   const price = parseRupiah(form.price);
 
   if (form.images.length === 0) errors.images = "Tambahkan minimal satu foto utama.";
+  else if (form.images.length > MAX_IMAGES) errors.images = "Maksimal 4 foto produk.";
   if (!name) errors.name = "Nama barang wajib diisi.";
   if (!form.category) errors.category = "Pilih kategori.";
   if (!brand) errors.brand = "Merek wajib diisi. Tanpa merek? Tulis Vintage.";

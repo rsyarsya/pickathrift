@@ -1,8 +1,9 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
 import type { ReactNode } from "react";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
@@ -13,11 +14,10 @@ import { useAsync } from "@/hooks/useAsync";
 import { cn } from "@/lib/cn";
 import { formatRupiah } from "@/lib/format";
 import { StatusLabel } from "@/modules/catalog/components/StatusLabel";
-import { listProductsByIds, type Demo } from "@/modules/catalog/data/products";
+import { listProductsByIds } from "@/modules/catalog/data/products";
 import type { Product } from "@/modules/catalog/types";
 import { useProductActions } from "@/modules/catalog/useProductActions";
 import { useCompare } from "@/modules/compare/useCompare";
-import { StockConflictDialog } from "@/modules/product/components/StockConflictDialog";
 import { useBuyNow } from "@/modules/product/useBuyNow";
 
 /* Kolom label (desktop) + dua kolom barang. Di ponsel label pindah ke atas tiap baris. */
@@ -101,44 +101,21 @@ const BUY_LABEL: Record<Product["status"], string> = {
   sold: "Sudah terjual",
 };
 
-function BuyButton({ product, demo, actions }: { product: Product; demo: Demo; actions: Actions }) {
-  const purchase = useBuyNow(product.id, demo, actions.showError);
-  const status = purchase.conflict ? "reserved" : product.status;
+function BuyButton({ product, actions }: { product: Product; actions: Actions }) {
+  const purchase = useBuyNow(product.id, actions.showError);
   return (
-    <>
-      <Button
-        size="md"
-        className="w-full"
-        disabled={status !== "available" || purchase.buying}
-        onClick={purchase.buy}
-      >
-        {purchase.buying ? "Mengunci…" : BUY_LABEL[status]}
-      </Button>
-      <StockConflictDialog
-        open={purchase.conflict}
-        productName={product.name}
-        similarHref={`/katalog?kategori=${product.category}&tersedia=1`}
-        onClose={purchase.closeConflict}
-        onSave={() => {
-          actions.saveToWishlist(product);
-          purchase.closeConflict();
-        }}
-      />
-    </>
+    <Button
+      size="md"
+      className="w-full"
+      disabled={product.status !== "available" || purchase.buying}
+      onClick={purchase.buy}
+    >
+      {purchase.buying ? "Mengunci…" : BUY_LABEL[product.status]}
+    </Button>
   );
 }
 
-function ComparisonTable({
-  a,
-  b,
-  demo,
-  actions,
-}: {
-  a: Product;
-  b: Product;
-  demo: Demo;
-  actions: Actions;
-}) {
+function ComparisonTable({ a, b, actions }: { a: Product; b: Product; actions: Actions }) {
   const cheaper = a.price === b.price ? null : a.price < b.price ? a.id : b.id;
   const labels = [...new Set([...a.measurements, ...b.measurements].map((m) => m.label))];
   const cm = (p: Product, label: string) => {
@@ -178,8 +155,8 @@ function ComparisonTable({
       </dl>
       <div className={cn(columns, "pt-12")}>
         <span className="hidden lg:block" />
-        <BuyButton product={a} demo={demo} actions={actions} />
-        <BuyButton product={b} demo={demo} actions={actions} />
+        <BuyButton product={a} actions={actions} />
+        <BuyButton product={b} actions={actions} />
       </div>
     </>
   );
@@ -187,11 +164,10 @@ function ComparisonTable({
 
 /** B5 Meja Perbandingan: kosong, satu barang, dua barang, tidak sejenis, satu sedang dipesan. */
 export function CompareScreen() {
-  const demo = useSearchParams().get("demo");
   const router = useRouter();
   const compare = useCompare();
   const actions = useProductActions();
-  const result = useAsync(() => listProductsByIds(compare.ids, demo), [compare.ids.join(), demo]);
+  const result = useAsync(() => listProductsByIds(compare.ids), [compare.ids.join()]);
 
   const products = (result.data ?? []).filter((p) => compare.ids.includes(p.id));
   const [a, b] = products;
@@ -304,7 +280,7 @@ export function CompareScreen() {
             </div>
           )}
 
-          {a && b && !mismatch && <ComparisonTable a={a} b={b} demo={demo} actions={actions} />}
+          {a && b && !mismatch && <ComparisonTable a={a} b={b} actions={actions} />}
         </>
       )}
 

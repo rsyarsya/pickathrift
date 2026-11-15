@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { shopContent, shopPanel } from "@/components/layout/shopContent";
 import { BackLink } from "@/components/ui/BackLink";
@@ -24,9 +23,10 @@ import { PaymentProgress } from "@/modules/checkout/components/PaymentProgress";
 import { getTransferAccount } from "@/modules/checkout/data/checkout";
 import { getOrder, updateBuyerOrder } from "../data/orders";
 import { checkoutHref, orderReference, reviewHref } from "../links";
-import { expireOrder, formatCountdown, orderTotal, type Order } from "../order";
+import { formatCountdown, orderAmount, type Order } from "../order";
 import { usePaymentCountdown } from "../usePaymentCountdown";
 import { CancelOrderDialog } from "./CancelOrderDialog";
+import { PaymentProof } from "./PaymentProof";
 import { OrderStatusLabel, orderStatuses } from "./OrderStatusLabel";
 
 function ShippingAddress({ order }: { order: Order }) {
@@ -79,31 +79,36 @@ function cancellationReason(order: Order) {
   return "Pesanan sudah kamu batalkan.";
 }
 
-function OrderDetail({
-  initial,
-  openCancel,
-  onReload,
-}: {
-  initial: Order;
-  openCancel: boolean;
-  onReload: () => void;
-}) {
-  const [current, setCurrent] = useState(initial);
+function OrderDetail({ initial, onReload }: { initial: Order; onReload: () => void }) {
+  const [order, setCurrent] = useState(initial);
   const [pending, setPending] = useState<"cancel" | "receive" | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
   const dialog = useRef<HTMLDialogElement>(null);
-  const seconds = usePaymentCountdown(current);
-  const order = seconds === 0 ? expireOrder(current, current.expiresAt) : current;
+  const seconds = usePaymentCountdown(order);
   const { status } = order;
   const { title, step } = orderStatuses[status];
   const waiting = status === "MENUNGGU_PEMBAYARAN";
   const account = getTransferAccount();
-  const historyHref = order.demo ? "/pesanan?demo=riwayat" : "/pesanan";
-
+  const historyHref = "/pesanan";
+  const deadlineReached = seconds === 0 && waiting;
   useEffect(() => {
-    const modal = dialog.current;
-    if (openCancel && waiting && modal && !modal.open) modal.showModal();
-  }, [openCancel, waiting]);
+    if (!deadlineReached) return;
+    let active = true;
+    getOrder(order.id, order.buyerEmail).then(
+      (next) => {
+        if (active) setCurrent(next);
+      },
+      (failure) => {
+        if (active)
+          setError(
+            failure instanceof ApiError ? failure : new ApiError(0, "Status pesanan gagal dimuat."),
+          );
+      },
+    );
+    return () => {
+      active = false;
+    };
+  }, [deadlineReached, order.id, order.buyerEmail]);
 
   async function update(type: "cancel" | "receive") {
     if (pending) return;
@@ -209,13 +214,30 @@ function OrderDetail({
               </ButtonLink>
             </>
           )}
-          {waiting && (
+          {deadlineReached && (
+            <StatusMessage
+              tone="warning"
+              title="Periksa status pesanan"
+              description={
+                error?.message ??
+                "Batas waktu pembayaran tercapai. Memeriksa status terbaru dari server."
+              }
+              actions={<Button onClick={onReload}>Muat ulang pesanan</Button>}
+            />
+          )}
+          {waiting && !deadlineReached && (
             <>
               <div className="rounded-md bg-butter p-16 text-body">
-                <p>
-                  Transfer {formatRupiah(orderTotal(order.product))} ke {account.bank}{" "}
-                  {account.number} a.n. {account.holder}, lalu unggah buktinya.
-                </p>
+                {account ? (
+                  <p>
+                    Transfer {formatRupiah(orderAmount(order))} ke {account.bank} {account.number}{" "}
+                    a.n. {account.holder}, lalu unggah buktinya.
+                  </p>
+                ) : (
+                  <p className="text-caption">
+                    Rekening toko belum tersedia. Hubungi admin sebelum melakukan pembayaran.
+                  </p>
+                )}
                 <p role="timer" className="mt-6 font-mono text-caption">
                   Sisa waktu {formatCountdown(seconds ?? 0)}
                 </p>
@@ -258,16 +280,17 @@ function OrderDetail({
             </>
           )}
         </div>
-        <OrderSummary product={order.product} title="Ringkasan">
+        <OrderSummary product={order.product} order={order} title="Ringkasan">
           <ShippingAddress order={order} />
+          <PaymentProof order={order} />
         </OrderSummary>
       </div>
     </div>
   );
 }
 
-function DetailLoader({ id, demo, email }: { id: string; demo: string | null; email: string }) {
-  const result = useAsync(() => getOrder(id, email, demo), [id, email, demo]);
+function DetailLoader({ id, email }: { id: string; email: string }) {
+  const result = useAsync(() => getOrder(id, email), [id, email]);
   if (result.status === "loading")
     return (
       <p className={shopContent} role="status">
@@ -280,7 +303,7 @@ function DetailLoader({ id, demo, email }: { id: string; demo: string | null; em
         <BackLink href="/pesanan">Pesanan saya</BackLink>
         <StatusMessage
           tone="error"
-          title="Pesanan gagal dimuat"
+          title={result.error.status === 403 ? "Bukan milikmu" : "Pesanan gagal dimuat"}
           description={result.error.message}
           actions={
             result.error.status === 404 ? (
@@ -292,18 +315,13 @@ function DetailLoader({ id, demo, email }: { id: string; demo: string | null; em
         />
       </div>
     );
-  return (
-    <OrderDetail initial={result.data} openCancel={demo === "batal"} onReload={result.reload} />
-  );
+  return <OrderDetail initial={result.data} onReload={result.reload} />;
 }
 
 export function OrderDetailScreen({ id }: { id: string }) {
-  const demo = useSearchParams().get("demo");
   return (
     <BuyerOnly>
-      {(user) => (
-        <DetailLoader key={`${user.email}:${id}:${demo}`} email={user.email} id={id} demo={demo} />
-      )}
+      {(user) => <DetailLoader key={`${user.email}:${id}`} email={user.email} id={id} />}
     </BuyerOnly>
   );
 }

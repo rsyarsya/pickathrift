@@ -1,92 +1,56 @@
-import { ApiError } from "@/lib/api";
-import { getProduct, type Demo } from "@/modules/catalog/data/products";
-import { paymentExpiry, type Order } from "@/modules/orders/order";
-import { withOrders } from "@/modules/orders/data/orderStore";
+import { apiData, ApiError } from "@/lib/api";
+import { getProduct } from "@/modules/catalog/data/products";
+import type { Product } from "@/modules/catalog/types";
+import type { Order } from "@/modules/orders/order";
+import { getOrder, listOrders } from "@/modules/orders/data/orders";
+import { fromApiOrder, type OrderDto } from "@/modules/orders/data/orderDto";
 import { validateAddress, type ShippingAddress } from "@/modules/profile/address";
 import { getShippingAddress } from "@/modules/profile/data/profile";
-import { DEMO_ADDRESS } from "@/modules/profile/data/fixtures";
-import { REJECTED_PROOF, TRANSFER_ACCOUNT, demoOrder } from "./fixtures";
-
-const ORDER_DEMOS = ["bayar", "file-ditolak", "verifikasi", "unggah-ulang"];
-const FORM_DEMOS = ["memproses", "konflik", "koneksi", "alamat"];
 
 export function getTransferAccount() {
-  return TRANSFER_ACCOUNT;
+  const bank = process.env.NEXT_PUBLIC_TRANSFER_BANK?.trim();
+  const number = process.env.NEXT_PUBLIC_TRANSFER_NUMBER?.trim();
+  const holder = process.env.NEXT_PUBLIC_TRANSFER_HOLDER?.trim();
+  return bank && number && holder ? { bank, number, holder } : null;
 }
 
-function activeOrder(orders: Order[], productId: string, email: string) {
-  return (
-    orders.find(
-      (order) =>
-        order.product.id === productId &&
-        order.buyerEmail === email &&
-        order.status !== "DIBATALKAN",
-    ) ?? null
-  );
-}
-
-export async function loadCheckout(productId: string, buyerEmail: string, demo: Demo) {
+export async function loadCheckout(productId: string, buyerEmail: string, orderId?: string | null) {
   const email = buyerEmail.toLowerCase();
-  const [product, savedAddress] = await Promise.all([
-    getProduct(productId, { includeOrderStock: false }),
-    getShippingAddress(email),
-  ]);
-  if (demo === "gagal") throw new ApiError(503, "Checkout gagal dimuat. Coba lagi.");
+  if (orderId) {
+    const order = await getOrder(orderId, email);
+    if (order.product.id !== productId)
+      throw new ApiError(404, "Pesanan tidak sesuai dengan barang ini.");
+    return checkoutData(order.product, order.address, order);
+  }
+  const orders = await listOrders(email);
+  const existing = orders.find(
+    (order) => order.product.id === productId && order.status !== "DIBATALKAN",
+  );
+  if (existing) return checkoutData(existing.product, existing.address, existing);
+  const [product, address] = await Promise.all([getProduct(productId), getShippingAddress()]);
+  return checkoutData(product, address, null);
+}
 
-  const order =
-    demo && ORDER_DEMOS.includes(demo)
-      ? demoOrder(product, email, demo, Date.now())
-      : demo && FORM_DEMOS.includes(demo)
-        ? null
-        : await withOrders((orders) => activeOrder(orders, productId, email));
-
+function checkoutData(product: Product, address: ShippingAddress | null, order: Order | null) {
   return {
     product,
     order,
-    address:
-      demo && FORM_DEMOS.includes(demo)
-        ? {
-            ...DEMO_ADDRESS,
-            ...(demo === "alamat" && { phone: "", postalCode: "552" }),
-          }
-        : savedAddress,
-    fromProfile: Boolean(savedAddress || (demo && FORM_DEMOS.includes(demo))),
+    address,
+    fromProfile: Boolean(address),
     account: getTransferAccount(),
-    rejectedProof: demo === "file-ditolak" ? REJECTED_PROOF : null,
   };
 }
 
 export async function createOrder(
   productId: string,
   buyerEmail: string,
-  address: ShippingAddress,
-  demo: Demo = null,
+  address?: ShippingAddress,
 ) {
-  const product = await getProduct(productId, { includeOrderStock: false });
-  if (Object.keys(validateAddress(address)).length)
+  if (address && Object.keys(validateAddress(address)).length)
     throw new ApiError(422, "Periksa alamat pengiriman.");
-  if (demo === "konflik") throw new ApiError(409, "Stok sudah dipesan.");
-  const email = buyerEmail.toLowerCase();
-
-  return withOrders((orders, save, now) => {
-    const existing = activeOrder(orders, productId, email);
-    if (existing) return existing;
-    if (
-      product.status !== "available" ||
-      orders.some((order) => order.product.id === productId && order.status !== "DIBATALKAN")
-    ) {
-      throw new ApiError(409, "Stok sudah dipesan.");
-    }
-    const order: Order = {
-      id: `PCT-${crypto.randomUUID()}`,
-      buyerEmail: email,
-      product,
-      address,
-      status: "MENUNGGU_PEMBAYARAN",
-      createdAt: now,
-      expiresAt: paymentExpiry(now),
-    };
-    save(order);
-    return order;
+  const dto = await apiData<OrderDto>("/api/orders", {
+    method: "POST",
+    body: JSON.stringify({ product_id: productId, ...(address ? { address } : {}) }),
   });
+  return fromApiOrder(dto, buyerEmail.toLowerCase());
 }

@@ -2,8 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { BackLink } from "@/components/ui/BackLink";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { StatusMessage } from "@/components/ui/StatusMessage";
@@ -30,8 +29,9 @@ import {
   trackingError,
   type AdminOrderAction,
 } from "@/modules/admin/orderActions";
-import { TRANSFER_ACCOUNT } from "@/modules/checkout/data/fixtures";
-import { SHIPPING_FEE, orderTotal, type Order } from "@/modules/orders/order";
+import { SHIPPING_FEE, orderAmount, type Order } from "@/modules/orders/order";
+
+import { PaymentProof } from "@/modules/orders/components/PaymentProof";
 
 const overline = "font-mono text-micro tracking-label text-muted";
 
@@ -54,74 +54,20 @@ function Row({
   );
 }
 
-/** Bukti transfer: foto asli kalau ada, atau struk contoh untuk pesanan demo. */
+/** Bukti privat diambil melalui fetch berautentikasi, lalu dibuka sebagai blob URL. */
 function ProofCard({ order }: { order: Order }) {
-  const file = order.proof?.file;
-  const [url, setUrl] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!file) return;
-    const objectUrl = URL.createObjectURL(file);
-    setUrl(objectUrl);
-    return () => URL.revokeObjectURL(objectUrl);
-  }, [file]);
-
   return (
     <Panel className="border border-line">
-      <div className="flex items-start justify-between gap-12">
-        <p className={overline}>BUKTI TRANSFER · DIUNGGAH BUYER</p>
-        {url && (
-          <a
-            href={url}
-            target="_blank"
-            rel="noreferrer"
-            className="shrink-0 text-caption font-medium underline"
-          >
-            Buka penuh ↗
-          </a>
-        )}
-      </div>
-      {!order.proof ? (
-        <p className="rounded-[8px] bg-canvas px-16 py-24 text-center text-sm text-muted">
-          Buyer belum mengunggah bukti transfer.
-        </p>
-      ) : url ? (
-        // Foto bukti dari Buyer; ukuran asli tidak diketahui, jadi pakai img biasa.
-        <img
-          src={url}
-          alt={`Bukti transfer ${orderCode(order)}`}
-          className="max-h-560 w-full rounded-[8px] bg-canvas object-contain"
-        />
+      <p className={overline}>BUKTI TRANSFER · DIUNGGAH BUYER</p>
+      {order.proof ? (
+        <>
+          <PaymentProof order={order} />
+          <p className="text-caption text-muted">
+            Diunggah {shortDateTime(order.proof.uploadedAt)}
+          </p>
+        </>
       ) : (
-        <div className="flex flex-col items-center gap-10 rounded-[8px] bg-[#f7f7fb] p-16 md:p-22">
-          <p className="font-mono text-xs font-medium tracking-label text-success">
-            TRANSFER BERHASIL
-          </p>
-          <p className="text-[32px] font-medium tracking-[-0.03em] md:text-[36px]">
-            {formatRupiah(orderTotal(order.product))}
-          </p>
-          <dl className="flex w-full flex-col gap-8 font-mono text-xs uppercase">
-            {[
-              [
-                "Ke",
-                `${TRANSFER_ACCOUNT.bank} ${TRANSFER_ACCOUNT.number} · ${TRANSFER_ACCOUNT.holder}`,
-              ],
-              ["Dari", order.address.recipient],
-              ["Waktu", shortDateTime(order.proof.uploadedAt)],
-              ["Ref", `TRF${order.proof.uploadedAt.toString().slice(-10)}`],
-            ].map(([term, value]) => (
-              <div key={term} className="flex justify-between gap-12">
-                <dt className="font-sans text-caption normal-case text-muted">{term}</dt>
-                <dd className="text-right">{value}</dd>
-              </div>
-            ))}
-          </dl>
-        </div>
-      )}
-      {order.proof && (
-        <p className="text-caption text-muted">
-          {order.proof.name} · diunggah {shortDateTime(order.proof.uploadedAt)}
-        </p>
+        <p className="text-sm text-muted">Buyer belum mengunggah bukti transfer.</p>
       )}
     </Panel>
   );
@@ -146,10 +92,10 @@ function OrderSummary({ order }: { order: Order }) {
           </p>
         </div>
       </div>
-      <Row label="Subtotal">{formatRupiah(order.product.price)}</Row>
-      <Row label="Ongkir tetap">{formatRupiah(SHIPPING_FEE)}</Row>
+      <Row label="Subtotal">{formatRupiah(order.itemPrice ?? order.product.price)}</Row>
+      <Row label="Ongkir tetap">{formatRupiah(order.shippingFee ?? SHIPPING_FEE)}</Row>
       <Row label="Total" strong>
-        {formatRupiah(orderTotal(order.product))}
+        {formatRupiah(orderAmount(order))}
       </Row>
       {order.verifiedAt && <Row label="Dibayar">{shortDate(order.verifiedAt)} · diverifikasi</Row>}
     </Panel>
@@ -181,7 +127,7 @@ function Verification({
   run: (action: AdminOrderAction, message: string) => Promise<boolean>;
   busy: boolean;
 }) {
-  const total = formatRupiah(orderTotal(order.product));
+  const total = formatRupiah(orderAmount(order));
   const checks = [
     `Nominal sama dengan total ${total}`,
     "Rekening tujuan rekening toko",
@@ -451,14 +397,35 @@ function ReadOnly({ order }: { order: Order }) {
   );
 }
 
-function Detail({ initial, demo }: { initial: Order; demo: string | null }) {
+function Detail({ initial }: { initial: Order }) {
   const [order, setOrder] = useState(initial);
   const [busy, setBusy] = useState(false);
   const [justShipped, setJustShipped] = useState(false);
+  const [conflict, setConflict] = useState<ApiError | null>(null);
   const { toast, show, fail, clear } = useToast();
-  const back = `/admin/pesanan${demo === "contoh" ? "?demo=contoh" : ""}`;
+  const back = "/admin/pesanan";
+
+  async function reload() {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const latest = await getAdminOrder(order.id);
+      setOrder(latest);
+      setJustShipped(false);
+      setConflict(null);
+      clear();
+      show("Status pesanan diperbarui. Periksa kembali sebelum mengambil keputusan.");
+    } catch (error) {
+      fail(error instanceof ApiError ? error.message : "Pesanan gagal dimuat.", () => {
+        void reload();
+      });
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function run(action: AdminOrderAction, message: string) {
+    if (busy || conflict) return false;
     setBusy(true);
     try {
       const updated = await updateAdminOrder(order, action);
@@ -467,9 +434,13 @@ function Detail({ initial, demo }: { initial: Order; demo: string | null }) {
       show(message, { label: "Ke daftar", href: back });
       return true;
     } catch (error) {
-      fail(error instanceof ApiError ? error.message : "Gagal menyimpan.", () => {
-        void run(action, message);
-      });
+      if (error instanceof ApiError && error.status === 409) {
+        setConflict(error);
+        fail(error.message);
+      } else
+        fail(error instanceof ApiError ? error.message : "Gagal menyimpan.", () => {
+          void run(action, message);
+        });
       return false;
     } finally {
       setBusy(false);
@@ -494,11 +465,34 @@ function Detail({ initial, demo }: { initial: Order; demo: string | null }) {
         title={`${title} ${orderCode(order)}`}
         actions={<AdminOrderStatus status={order.status} />}
       />
+      {conflict && (
+        <StatusMessage
+          tone="warning"
+          title="Periksa status pesanan terbaru"
+          description={conflict.message}
+          actions={
+            <Button disabled={busy} onClick={() => void reload()}>
+              Muat ulang pesanan
+            </Button>
+          }
+        />
+      )}
       {verifying ? (
         // key: checklist kembali kosong kalau status berubah.
-        <Verification key={order.status} order={order} run={run} busy={busy} />
+        <Verification
+          key={`${order.status}:${order.version}:${order.proof?.id}:${Boolean(conflict)}`}
+          order={order}
+          run={run}
+          busy={busy || conflict !== null}
+        />
       ) : shipping ? (
-        <Shipping order={order} run={run} busy={busy} justShipped={justShipped} />
+        <Shipping
+          key={`${order.id}:${order.version}`}
+          order={order}
+          run={run}
+          busy={busy || conflict !== null}
+          justShipped={justShipped}
+        />
       ) : (
         <ReadOnly order={order} />
       )}
@@ -509,8 +503,7 @@ function Detail({ initial, demo }: { initial: Order; demo: string | null }) {
 
 /** M3 detail pesanan admin. */
 export function OrderDetailScreen({ id }: { id: string }) {
-  const demo = useSearchParams().get("demo");
-  const result = useAsync(() => getAdminOrder(id, demo), [id, demo]);
+  const result = useAsync(() => getAdminOrder(id), [id]);
 
   if (result.status === "loading") {
     return (
@@ -541,5 +534,5 @@ export function OrderDetailScreen({ id }: { id: string }) {
       />
     );
   }
-  return <Detail key={result.data.id} initial={result.data} demo={demo} />;
+  return <Detail key={result.data.id} initial={result.data} />;
 }

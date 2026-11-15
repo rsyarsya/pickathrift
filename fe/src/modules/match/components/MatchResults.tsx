@@ -7,7 +7,7 @@ import { StatusMessage } from "@/components/ui/StatusMessage";
 import { Toast } from "@/components/ui/Toast";
 import { useAsync } from "@/hooks/useAsync";
 import { ProductCard, ProductCardSkeleton } from "@/modules/catalog/components/ProductCard";
-import { findMatches, type Demo } from "@/modules/catalog/data/products";
+import { findMatches } from "@/modules/catalog/data/products";
 import { useProductActions } from "@/modules/catalog/useProductActions";
 import {
   TOLERANCE_CM,
@@ -20,7 +20,6 @@ import {
 const grid = "grid grid-cols-2 gap-x-12 gap-y-24 md:grid-cols-3 md:gap-x-24 lg:gap-x-32";
 
 function fitNote(match: Match, index: number) {
-  if (match.diffCm === undefined) return null;
   const parts = [`Selisih ${match.diffCm} cm`];
   if (index === 0) parts.push("paling pas");
   if (match.product.status === "reserved") parts.push("sedang dipesan");
@@ -28,10 +27,10 @@ function fitNote(match: Match, index: number) {
 }
 
 /** B4.4 Hasil dan B4.5 Hasil kosong. */
-export function MatchResults({ criteria, demo }: { criteria: Criteria; demo: Demo }) {
+export function MatchResults({ criteria }: { criteria: Criteria }) {
   const actions = useProductActions();
   const key = criteriaToParams(criteria).toString();
-  const result = useAsync(() => findMatches(criteria, demo), [key, demo]);
+  const result = useAsync(() => findMatches(criteria), [key]);
   const editHref = `/cari-yang-cocok?${key}`;
   const hasBody = Object.keys(criteria.body).length > 0;
   const matches = result.data ?? [];
@@ -122,7 +121,7 @@ export function MatchResults({ criteria, demo }: { criteria: Criteria; demo: Dem
                   saved={actions.isSaved(match.product.id)}
                   onToggleWishlist={() => actions.toggleWishlist(match.product)}
                   onCompare={() => actions.compare(match.product)}
-                  footer={fitNote(match, i) ?? undefined}
+                  footer={hasBody ? fitNote(match, i) : undefined}
                 />
               </li>
             ))}

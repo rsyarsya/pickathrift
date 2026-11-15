@@ -53,8 +53,8 @@ function RatingOverview({ summary }: { summary: ReturnType<typeof ratingSummary>
   );
 }
 
-export function StoreReviews({ email, demo }: { email?: string; demo: string | null }) {
-  const result = useAsync(() => listReviews(demo, email), [email, demo]);
+export function StoreReviews({ email }: { email?: string }) {
+  const result = useAsync(() => listReviews(email), [email]);
   const title = email ? "Ulasan saya" : "Ulasan toko";
   if (result.status === "loading")
     return (

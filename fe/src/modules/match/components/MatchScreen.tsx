@@ -11,7 +11,7 @@ export function MatchScreen() {
   const checked = validate(formFromParams(new URLSearchParams(params)));
 
   if (params.get("cari") === "1" && checked.ok) {
-    return <MatchResults criteria={checked.criteria} demo={params.get("demo")} />;
+    return <MatchResults criteria={checked.criteria} />;
   }
   // key: form diisi ulang dari URL setiap kali kembali lewat "Ubah kriteria".
   return <MatchForm key={params.toString()} />;

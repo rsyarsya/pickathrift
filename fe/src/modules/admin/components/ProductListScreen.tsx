@@ -2,7 +2,6 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
@@ -154,8 +153,7 @@ function MobileMenu({
 
 /** M1 Kelola produk: daftar, cari dan filter, memuat, belum ada produk, konfirmasi nonaktifkan. */
 export function ProductListScreen() {
-  const demo = useSearchParams().get("demo");
-  const result = useAsync(() => listAdminProducts(demo), [demo]);
+  const result = useAsync(listAdminProducts, []);
   const { toast, show, fail, clear } = useToast();
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("semua");

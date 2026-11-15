@@ -1,15 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useEffect } from "react";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
 import { PageHeader, asideLink } from "@/components/ui/PageHeader";
 import { StatusMessage } from "@/components/ui/StatusMessage";
 import { Toast } from "@/components/ui/Toast";
-import { useAsync } from "@/hooks/useAsync";
+import { BuyerOnly } from "@/modules/auth/components/BuyerOnly";
 import { ProductCard, ProductCardSkeleton } from "@/modules/catalog/components/ProductCard";
-import { listProductsByIds } from "@/modules/catalog/data/products";
 import { useProductActions } from "@/modules/catalog/useProductActions";
 import { useWishlist } from "@/modules/wishlist/useWishlist";
 
@@ -18,23 +17,30 @@ const note = "font-mono text-micro tracking-label text-muted";
 
 /** B3 Wishlist: ada isi, kosong, dan ada yang terjual. */
 export function WishlistScreen() {
-  const demo = useSearchParams().get("demo");
+  return <BuyerOnly>{() => <WishlistContent />}</BuyerOnly>;
+}
+
+function WishlistContent() {
   const wishlist = useWishlist();
   const actions = useProductActions();
-  const result = useAsync(() => listProductsByIds(wishlist.ids, demo), [wishlist.ids.join(), demo]);
-
-  // Hapus dari wishlist langsung hilang dari layar, tanpa menunggu muat ulang.
-  const products = (result.data ?? [])
-    .filter((p) => wishlist.ids.includes(p.id))
+  useEffect(() => wishlist.reload(), [wishlist.reload]);
+  const items = wishlist.items;
+  const products = items
+    .flatMap((item) => (item.unavailable || !item.product_id ? [] : [item.product_id]))
     .sort((a, b) => Number(b.status === "sold") - Number(a.status === "sold"));
   const sold = products.filter((p) => p.status === "sold");
-  const loading = result.status === "loading" && !result.data;
-  const empty = !loading && result.status !== "error" && products.length === 0;
+  const unavailable = items.filter((item) => item.unavailable || !item.product_id);
+  const error = wishlist.error;
+  const loading =
+    (wishlist.status === "loading" || wishlist.status === "idle") && items.length === 0;
+  const empty = !loading && !error && items.length === 0;
 
   return (
     <div className="flex flex-col gap-20 px-16 pt-24 pb-64 md:px-24 lg:px-48 lg:pt-32 lg:pb-96">
       <PageHeader
-        overline={empty ? "0 BARANG" : loading ? "MEMUAT…" : `${products.length} BARANG DISIMPAN`}
+        overline={
+          error ? "—" : empty ? "0 BARANG" : loading ? "MEMUAT…" : `${items.length} BARANG DISIMPAN`
+        }
         title="Wishlist"
         aside={
           <Link href="/katalog" className={asideLink}>
@@ -50,7 +56,7 @@ export function WishlistScreen() {
           </p>
           <button
             type="button"
-            onClick={() => wishlist.remove(sold.map((p) => p.id))}
+            onClick={() => actions.removeFromWishlist(sold.map((p) => p.id))}
             className="self-start text-caption underline md:self-auto"
           >
             Hapus yang terjual
@@ -58,17 +64,17 @@ export function WishlistScreen() {
         </div>
       )}
 
-      {result.status === "error" ? (
+      {error ? (
         <StatusMessage
           tone="error"
           title="Wishlist gagal dimuat"
-          description={result.error.message}
+          description={error.message}
           actions={
-            <Button size="md" onClick={result.reload}>
+            <Button size="md" onClick={wishlist.reload}>
               Coba lagi
             </Button>
           }
-          footnote={`KODE GALAT · ${result.error.status || "JARINGAN"}`}
+          footnote={`KODE GALAT · ${error.status || "JARINGAN"}`}
         />
       ) : empty ? (
         <StatusMessage
@@ -105,6 +111,27 @@ export function WishlistScreen() {
                     />
                   </li>
                 ))}
+            {!loading &&
+              unavailable.map((item) => (
+                <li
+                  key={item.id}
+                  className="flex flex-col gap-12 rounded-md border border-line bg-subtle p-20"
+                >
+                  <Icon name="heart" size={24} />
+                  <h2 className="text-body font-medium">Barang tidak tersedia</h2>
+                  <p className="text-sm text-muted">
+                    Barang ini sudah dihapus atau dinonaktifkan. Kamu masih bisa menghapusnya dari
+                    wishlist.
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => actions.removeFromWishlist([item.productId])}
+                  >
+                    Hapus dari wishlist
+                  </Button>
+                </li>
+              ))}
           </ul>
         </>
       )}

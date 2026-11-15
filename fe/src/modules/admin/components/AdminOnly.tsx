@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useSyncExternalStore, type ReactNode } from "react";
 import { useSession } from "@/modules/auth/useSession";
 import { AccessDenied, SessionExpired } from "@/modules/admin/components/AdminAccess";
@@ -11,13 +11,10 @@ const subscribe = () => () => {};
 /**
  * Penjaga semua halaman admin (M4). Belum masuk → /admin/masuk; masuk sebagai Buyer →
  * M4.1 Akses ditolak; sesi admin kedaluwarsa → M4.2 Sesi berakhir.
- * `?demo=ditolak` dan `?demo=sesi-berakhir` memaksa kedua layar itu.
  */
 export function AdminOnly({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const params = useSearchParams();
-  const demo = params.get("demo");
   const buyer = useSession();
   const admin = useAdminSession();
   const hydrated = useSyncExternalStore(
@@ -28,12 +25,12 @@ export function AdminOnly({ children }: { children: ReactNode }) {
   // Dihitung saat render: cukup untuk sesi yang kedaluwarsa dalam hitungan jam.
   const status = hydrated ? adminSessionStatus(admin.session, Date.now()) : "none";
   const loginHref = `/admin/masuk?kembali=${encodeURIComponent(pathname)}`;
-  const denied = demo === "ditolak" || (status === "none" && buyer.isLoggedIn);
-  const expired = demo === "sesi-berakhir" || status === "expired";
+  const denied = status === "none" && buyer.isLoggedIn;
+  const expired = status === "expired";
 
   useEffect(() => {
-    if (hydrated && status === "none" && !buyer.isLoggedIn && !demo) router.replace(loginHref);
-  }, [hydrated, status, buyer.isLoggedIn, demo, router, loginHref]);
+    if (hydrated && status === "none" && !buyer.isLoggedIn) router.replace(loginHref);
+  }, [hydrated, status, buyer.isLoggedIn, router, loginHref]);
 
   // Setiap pindah halaman admin dihitung sebagai aktivitas.
   const { touch } = admin;
@@ -49,19 +46,12 @@ export function AdminOnly({ children }: { children: ReactNode }) {
     );
   }
   if (expired) {
-    return (
-      <SessionExpired
-        email={admin.session?.email ?? "admin@pickathrift.test"}
-        onLoggedIn={() => {
-          if (demo) router.replace(pathname);
-        }}
-      />
-    );
+    return <SessionExpired email={admin.session?.email ?? ""} />;
   }
   if (denied) {
     return (
       <AccessDenied
-        buyerName={buyer.user?.name ?? (demo ? "Dinda" : undefined)}
+        buyerName={buyer.user?.name}
         onSwitch={() => {
           buyer.logOut();
           router.push(loginHref);

@@ -73,7 +73,7 @@ function ActiveFilters({
 }
 
 export function CatalogScreen() {
-  const { query, demo, key, update, reset } = useCatalogQuery();
+  const { query, key, update, reset } = useCatalogQuery();
   const actions = useProductActions();
   const sheet = useRef<HTMLDialogElement>(null);
 
@@ -81,7 +81,7 @@ export function CatalogScreen() {
   const [paging, setPaging] = useState({ key, limit: PAGE_SIZE });
   const limit = paging.key === key ? paging.limit : PAGE_SIZE;
 
-  const page = useAsync(() => listProducts(query, limit, demo), [key, limit, demo]);
+  const page = useAsync(() => listProducts(query, limit), [key, limit]);
   const data = page.data;
   const loadingMore = page.status === "loading" && limit > PAGE_SIZE;
   const showSkeleton = page.status === "loading" && !loadingMore;

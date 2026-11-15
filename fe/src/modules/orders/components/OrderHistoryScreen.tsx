@@ -2,7 +2,6 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { shopContent, shopPanel } from "@/components/layout/shopContent";
 import { Button, ButtonLink } from "@/components/ui/Button";
@@ -16,7 +15,7 @@ import { formatRupiah } from "@/lib/format";
 import { BuyerOnly } from "@/modules/auth/components/BuyerOnly";
 import { listOrders } from "../data/orders";
 import { checkoutHref, orderHref, orderReference, reviewHref } from "../links";
-import { orderTotal, type Order } from "../order";
+import { orderAmount, type Order } from "../order";
 import { OrderStatusLabel } from "./OrderStatusLabel";
 
 const date = new Intl.DateTimeFormat("id-ID", {
@@ -74,7 +73,7 @@ function OrderRow({ order }: { order: Order }) {
             {orderReference(order)} · {date.format(order.createdAt)}
           </p>
           <p className="text-card wrap-anywhere group-hover:underline">{product.name}</p>
-          <p className="font-mono text-body">{formatRupiah(orderTotal(product))}</p>
+          <p className="font-mono text-body">{formatRupiah(orderAmount(order))}</p>
         </div>
       </Link>
       <div className="flex flex-wrap items-center justify-between gap-8 md:shrink-0 md:gap-14">
@@ -87,9 +86,9 @@ function OrderRow({ order }: { order: Order }) {
   );
 }
 
-function OrderHistory({ email, demo }: { email: string; demo: string | null }) {
+function OrderHistory({ email }: { email: string }) {
   const [filter, setFilter] = useState<Filter>("Semua");
-  const history = useAsync(() => listOrders(email, demo), [email, demo]);
+  const history = useAsync(() => listOrders(email), [email]);
 
   if (history.status === "loading")
     return (
@@ -151,10 +150,5 @@ function OrderHistory({ email, demo }: { email: string; demo: string | null }) {
 }
 
 export function OrderHistoryScreen() {
-  const demo = useSearchParams().get("demo");
-  return (
-    <BuyerOnly>
-      {(user) => <OrderHistory key={user.email} email={user.email} demo={demo} />}
-    </BuyerOnly>
-  );
+  return <BuyerOnly>{(user) => <OrderHistory key={user.email} email={user.email} />}</BuyerOnly>;
 }

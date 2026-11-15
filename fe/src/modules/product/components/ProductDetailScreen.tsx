@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 import { useEffect } from "react";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
@@ -15,7 +14,6 @@ import { getProduct } from "@/modules/catalog/data/products";
 import type { Product } from "@/modules/catalog/types";
 import { useProductActions } from "@/modules/catalog/useProductActions";
 import { Gallery } from "@/modules/product/components/Gallery";
-import { StockConflictDialog } from "@/modules/product/components/StockConflictDialog";
 import { useBuyNow } from "@/modules/product/useBuyNow";
 
 const label = "font-mono text-micro tracking-label text-muted uppercase";
@@ -49,18 +47,15 @@ function Notice({ product }: { product: Product }) {
   return null;
 }
 
-function Detail({ product: loaded, demo }: { product: Product; demo: string | null }) {
+function Detail({ product }: { product: Product }) {
   const actions = useProductActions();
-  const purchase = useBuyNow(loaded.id, demo, (message) => actions.showError(message));
-  // Setelah 409, tampilkan barang sebagai Dipesan tanpa memuat ulang.
-  const product: Product = purchase.conflict ? { ...loaded, status: "reserved" } : loaded;
+  const purchase = useBuyNow(product.id, actions.showError);
   const saved = actions.isSaved(product.id);
   const available = product.status === "available";
-  const similarHref = `/katalog?kategori=${product.category}&tersedia=1`;
 
   const buyButton = (className?: string) => (
     <Button onClick={purchase.buy} disabled={!available || purchase.buying} className={className}>
-      {purchase.buying ? "Mengunci barang…" : BUY_LABEL[product.status]}
+      {purchase.buying ? "Memproses…" : BUY_LABEL[product.status]}
     </Button>
   );
 
@@ -180,16 +175,6 @@ function Detail({ product: loaded, demo }: { product: Product; demo: string | nu
         {buyButton("max-w-200 flex-1 truncate px-16")}
       </div>
 
-      <StockConflictDialog
-        open={purchase.conflict}
-        productName={product.name}
-        similarHref={similarHref}
-        onClose={purchase.closeConflict}
-        onSave={() => {
-          actions.saveToWishlist(product);
-          purchase.closeConflict();
-        }}
-      />
       <Toast toast={actions.toast} onDone={actions.clearToast} />
     </>
   );
@@ -214,7 +199,6 @@ function DetailSkeleton() {
 }
 
 export function ProductDetailScreen({ id }: { id: string }) {
-  const demo = useSearchParams().get("demo");
   const result = useAsync(() => getProduct(id), [id]);
   // Judul tab "Detail produk" diganti nama barang begitu datanya ada (OP-002).
   const name = result.data?.name;
@@ -251,5 +235,5 @@ export function ProductDetailScreen({ id }: { id: string }) {
     );
   }
 
-  return <Detail product={result.data} demo={demo} />;
+  return <Detail product={result.data} />;
 }

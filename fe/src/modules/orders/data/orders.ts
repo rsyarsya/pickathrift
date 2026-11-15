@@ -1,88 +1,55 @@
-import { ApiError } from "@/lib/api";
-import { buyerOrderAction, expireOrder, validateProof, type Order } from "../order";
-import { HISTORY_EXAMPLES, orderExample } from "./fixtures";
-import { withOrders } from "./orderStore";
+import { apiBlob, apiData, ApiError } from "@/lib/api";
+import { PROOF_TYPES, validateProof, type Order } from "../order";
+import { fromApiOrder, type OrderDto } from "./orderDto";
 
-const delay = () => new Promise<void>((resolve) => setTimeout(resolve, 450));
-
-export function ownedOrder(orders: Order[], id: string, email: string) {
-  const order = orders.find((item) => item.id === id);
-  if (!order) throw new ApiError(404, "Pesanan tidak ditemukan.");
-  // X1.3: pesanan ada tapi milik akun lain.
-  if (order.buyerEmail !== email.toLowerCase()) {
-    throw new ApiError(403, "Kamu hanya bisa melihat pesanan dari akunmu sendiri.");
-  }
-  return order;
+export async function listOrders(email: string): Promise<Order[]> {
+  const orders = await apiData<OrderDto[]>("/api/orders/my");
+  return orders
+    .map((order) => fromApiOrder(order, email))
+    .sort((a, b) => b.createdAt - a.createdAt);
 }
 
-export async function listOrders(email: string, demo: string | null) {
-  if (demo === "riwayat") {
-    const samples = await Promise.all(HISTORY_EXAMPLES.map((id) => orderExample(id, email, demo)));
-    return samples.filter((order) => order !== null);
+export async function getOrder(id: string, email: string): Promise<Order> {
+  try {
+    return fromApiOrder(await apiData<OrderDto>(`/api/orders/${encodeURIComponent(id)}`), email);
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 422)
+      throw new ApiError(404, "Pesanan tidak ditemukan.", error.code);
+    throw error;
   }
-  await delay();
-  if (demo === "gagal") throw new ApiError(503, "Riwayat pesanan gagal dimuat.");
-  if (demo === "kosong") return [];
-  return withOrders((orders) =>
-    orders
-      .filter((order) => order.buyerEmail === email.toLowerCase())
-      .sort((a, b) => b.createdAt - a.createdAt),
-  );
-}
-
-const detailDemos = ["riwayat", "diproses", "dikirim", "selesai", "dibatalkan", "batal"];
-
-export async function getOrder(id: string, email: string, demo: string | null = null) {
-  if (demo && detailDemos.includes(demo)) {
-    const example = await orderExample(id, email, demo);
-    if (example) return example;
-  }
-  await delay();
-  if (demo === "gagal") throw new ApiError(503, "Detail pesanan gagal dimuat.");
-  if (demo === "bukan-milikmu") {
-    throw new ApiError(403, "Kamu hanya bisa melihat pesanan dari akunmu sendiri.");
-  }
-  return withOrders((orders) => ownedOrder(orders, id, email));
 }
 
 type BuyerAction = { type: "cancel" } | { type: "receive" } | { type: "upload"; file: File };
 
-export async function updateBuyerOrder(order: Order, action: BuyerAction) {
-  await delay();
-  // QA-001: MIME dan ukuran bisa dipalsukan. Tolak berkas yang tidak bisa didekode
-  // sebelum status berubah. BE tetap memeriksa isi berkas sendiri.
-  if (action.type === "upload" && !validateProof(action.file) && !(await canDecode(action.file))) {
-    throw new ApiError(422, "Gambar tidak bisa dibuka. Pilih file JPG atau PNG yang tidak rusak.");
-  }
-
-  function update(current: Order, now: number): Order {
-    if (!buyerOrderAction(current, action.type, now)) {
-      throw new ApiError(
-        409,
-        current.cancellation === "expired" || expireOrder(current, now) !== current
-          ? "Batas waktu pembayaran sudah habis."
-          : "Status pesanan sudah berubah. Muat ulang untuk melihat status terbaru.",
-      );
-    }
-    if (action.type === "cancel")
-      return { ...current, status: "DIBATALKAN", cancellation: "buyer" };
-    if (action.type === "receive") return { ...current, status: "SELESAI", receivedAt: now };
-    const { file } = action;
-    const error = validateProof(file);
+export async function updateBuyerOrder(order: Order, action: BuyerAction): Promise<Order> {
+  if (action.type === "upload") {
+    const error = validateProof(action.file);
     if (error) throw new ApiError(422, error);
-    return {
-      ...current,
-      status: "MENUNGGU_VERIFIKASI",
-      proof: { name: file.name, size: file.size, uploadedAt: now, file },
-    };
+    if (!(await canDecode(action.file)))
+      throw new ApiError(
+        422,
+        "Gambar tidak bisa dibuka. Pilih file JPG atau PNG yang tidak rusak.",
+      );
   }
+  const path = `/api/orders/${encodeURIComponent(order.id)}`;
+  let dto: OrderDto;
+  if (action.type === "upload") {
+    const body = new FormData();
+    body.set("file", action.file);
+    dto = await apiData<OrderDto>(`${path}/payment-proof`, { method: "POST", body });
+  } else {
+    dto = await apiData<OrderDto>(`${path}/${action.type}`, { method: "POST", body: "{}" });
+  }
+  return fromApiOrder(dto, order.buyerEmail);
+}
 
-  if (order.demo) return update(order, Date.now());
-  return withOrders((orders, save, now) => {
-    const updated = update(ownedOrder(orders, order.id, order.buyerEmail), now);
-    save(updated);
-    return updated;
+export async function loadPaymentProof(orderId: string): Promise<Blob> {
+  const blob = await apiBlob(`/api/orders/${encodeURIComponent(orderId)}/payment-proof`, {
+    cache: "no-store",
   });
+  if (!PROOF_TYPES.includes(blob.type))
+    throw new ApiError(422, "Bukti pembayaran bukan gambar JPG atau PNG.");
+  return blob;
 }
 
 async function canDecode(file: Blob) {

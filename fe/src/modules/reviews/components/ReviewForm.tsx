@@ -12,20 +12,18 @@ import {
 } from "../review";
 
 export function ReviewForm({
-  invalid = false,
   locked = false,
   pending = false,
   error,
   onSubmit,
 }: {
-  invalid?: boolean;
   locked?: boolean;
   pending?: boolean;
   error?: string | null;
   onSubmit?: (input: ReviewInput) => void;
 }) {
-  const [input, setInput] = useState({ rating: 0, body: invalid ? "Bagus" : "" });
-  const [showErrors, setShowErrors] = useState(invalid);
+  const [input, setInput] = useState({ rating: 0, body: "" });
+  const [showErrors, setShowErrors] = useState(false);
   const errors = showErrors ? validateReview(input) : {};
   const ratingHint = errors.rating || "Pilih 1 sampai 5 bintang.";
   const bodyHint = errors.body || `Minimal ${MIN_REVIEW_LENGTH} karakter.`;
@@ -145,7 +143,7 @@ export function ReviewForm({
             {pending ? "Mengirim ulasan…" : "Kirim ulasan"}
           </Button>
           <p className="text-caption text-muted">
-            Ulasan tampil di Ulasan toko dengan nama depanmu. Satu pesanan bisa diulas sekali.
+            Ulasan tampil di Ulasan toko dengan nama akunmu. Satu pesanan bisa diulas sekali.
           </p>
         </>
       )}

@@ -23,7 +23,20 @@ export type Order = {
   createdAt: number;
   expiresAt: number;
   status: OrderStatus;
-  proof?: { name: string; size: number; uploadedAt: number; file?: Blob };
+  version?: number;
+  totalPrice?: number;
+  itemPrice?: number;
+  shippingFee?: number;
+  cancelledAt?: number;
+  proof?: {
+    id?: string;
+    name: string;
+    mime?: string;
+    size: number;
+    uploadedAt: number;
+    url?: string;
+    unavailable?: boolean;
+  };
   adminNote?: string;
   /** Waktu admin menyetujui pembayaran. */
   verifiedAt?: number;
@@ -31,35 +44,11 @@ export type Order = {
   shipment?: { service: string; number: string; shippedAt: number };
   receivedAt?: number;
   review?: { rating: number; body: string; author: string; createdAt: number };
-  demo?: true;
 };
-
-export function paymentExpiry(createdAt: number) {
-  return createdAt + PAYMENT_WINDOW_HOURS * 60 * 60 * 1000;
-}
 
 export function paymentSeconds(order: Pick<Order, "status" | "expiresAt">, now: number) {
   if (order.status !== "MENUNGGU_PEMBAYARAN") return null;
   return Math.max(0, Math.ceil((order.expiresAt - now) / 1000));
-}
-
-export function expireOrder(order: Order, now: number): Order {
-  return paymentSeconds(order, now) === 0
-    ? { ...order, status: "DIBATALKAN", cancellation: "expired" }
-    : order;
-}
-
-export function buyerOrderAction(
-  order: Order,
-  action: "upload" | "cancel" | "receive",
-  now: number,
-) {
-  if (action === "receive") return order.status === "DIKIRIM";
-  if (paymentSeconds(order, now) === 0) return false;
-  return (
-    order.status === "MENUNGGU_PEMBAYARAN" ||
-    (action === "upload" && order.status === "PERLU_UNGGAH_ULANG")
-  );
 }
 
 export function formatCountdown(seconds: number) {
@@ -79,12 +68,6 @@ export function orderTotal(product: Pick<Product, "price">) {
   return product.price + SHIPPING_FEE;
 }
 
-export function applyOrderStock(product: Product, orders: Order[]): Product {
-  const active = orders.find(
-    (order) => order.product.id === product.id && order.status !== "DIBATALKAN",
-  );
-  if (!active || product.status === "sold") return product;
-  const sold =
-    active.status === "DIPROSES" || active.status === "DIKIRIM" || active.status === "SELESAI";
-  return { ...product, status: sold ? "sold" : "reserved" };
+export function orderAmount(order: Pick<Order, "totalPrice" | "product">) {
+  return order.totalPrice ?? orderTotal(order.product);
 }

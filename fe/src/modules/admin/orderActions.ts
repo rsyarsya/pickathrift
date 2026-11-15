@@ -1,4 +1,3 @@
-import { ApiError } from "@/lib/api";
 import type { Order, OrderStatus } from "@/modules/orders/order";
 
 /*
@@ -41,30 +40,4 @@ export function trackingError(number: string): string | null {
   if (!value) return "Nomor resi wajib diisi sebelum menandai Dikirim.";
   if (!/^[A-Za-z0-9 -]{8,30}$/.test(value)) return "Nomor resi 8–30 karakter, huruf dan angka.";
   return null;
-}
-
-export function applyAdminAction(order: Order, action: AdminOrderAction, now: number): Order {
-  if (!canAdmin(order, action.type)) {
-    throw new ApiError(
-      409,
-      "Status pesanan sudah berubah. Muat ulang untuk melihat status terbaru.",
-    );
-  }
-  switch (action.type) {
-    case "approve":
-      return { ...order, status: "DIPROSES", verifiedAt: now };
-    case "reupload":
-      return { ...order, status: "PERLU_UNGGAH_ULANG", adminNote: action.note };
-    case "reject":
-      return { ...order, status: "DIBATALKAN", cancellation: "admin", adminNote: action.note };
-    case "ship": {
-      const problem = trackingError(action.number);
-      if (problem) throw new ApiError(422, problem);
-      return {
-        ...order,
-        status: "DIKIRIM",
-        shipment: { service: action.service, number: action.number.trim(), shippedAt: now },
-      };
-    }
-  }
 }
