@@ -128,9 +128,6 @@ export function MobileMenu({ ref }: { ref: Ref<HTMLDialogElement> }) {
               </Link>
             </>
           )}
-          <p className="font-mono text-nano tracking-label text-muted">
-            SATU TOKO · SATU UNIT PER BARANG
-          </p>
         </div>
       </div>
     </dialog>

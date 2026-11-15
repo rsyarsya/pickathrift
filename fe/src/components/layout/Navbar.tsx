@@ -34,11 +34,6 @@ export function Navbar() {
         hidden && "-translate-y-full",
       )}
     >
-      <p className="bg-night py-10 text-center font-mono text-xs tracking-label text-night-fg">
-        SATU TOKO · SATU UNIT PER BARANG
-        <span className="hidden lg:inline"> · ONGKIR TETAP RP 15.000</span>
-      </p>
-
       <nav
         aria-label="Navigasi utama"
         className="flex items-center justify-between gap-16 border-b border-line px-16 py-14 md:px-24 lg:px-48 lg:py-20"

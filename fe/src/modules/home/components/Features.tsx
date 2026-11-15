@@ -6,19 +6,17 @@ const FEATURES = [
   {
     number: "01",
     title: "Cari yang Cocok",
-    description:
-      "Ukuran label bisa beda antarmerek. Isi ukuran pakaian favoritmu dalam sentimeter, kami carikan yang selisihnya paling kecil.",
+    description: "Masukkan ukuran baju yang sudah pas untuk mencari ukuran serupa.",
     cta: { label: "Coba Cari yang Cocok →", href: "/cari-yang-cocok" },
     image: {
-      src: "/guides/cara-mengukur.jpg",
+      src: "/guides/cara-mengukur-kaos.jpg",
       alt: "Kaos putih terbentang dengan meteran di garis dada",
     },
   },
   {
     number: "02",
     title: "Meja Perbandingan",
-    description:
-      "Dua barang mirip, satu keputusan. Lihat harga, ukuran, kondisi, dan statusnya berdampingan tanpa pindah halaman.",
+    description: "Pilih dua barang sejenis untuk membandingkan harga dan ukurannya.",
     cta: { label: "Buka Meja Perbandingan →", href: "/meja-perbandingan" },
     image: {
       src: "/images/fitur-meja-perbandingan.jpg",
@@ -40,7 +38,8 @@ export function Features() {
           <article key={feature.number} className="grid items-center gap-24 lg:grid-cols-2">
             <div
               className={cn(
-                "relative aspect-[4/3] overflow-hidden rounded-sm bg-subtle lg:aspect-auto lg:h-520",
+                // 4:3 di semua layar, sama dengan foto Cari yang Cocok, jadi kaosnya tidak terpotong.
+                "relative aspect-[4/3] overflow-hidden rounded-sm bg-subtle",
                 flipped && "lg:order-last",
               )}
             >
@@ -55,9 +54,6 @@ export function Features() {
             <div
               className={cn("flex flex-col gap-16 lg:gap-20", flipped ? "lg:pr-56" : "lg:pl-56")}
             >
-              <p className="font-mono text-xs tracking-label text-muted">
-                FITUR UNGGULAN · {feature.number}
-              </p>
               <h2 className="text-[36px] leading-none font-medium tracking-[-0.04em] md:text-[48px] lg:text-[64px]">
                 {feature.title}
               </h2>

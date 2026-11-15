@@ -6,6 +6,9 @@ import { expireOrder, type Order } from "../order";
 const STORE = "orders";
 let database: Promise<IDBDatabase> | undefined;
 
+/** Dikirim setiap ada pesanan tersimpan, supaya hitungan seperti lencana Admin ikut segar. */
+export const ORDERS_CHANGED = "pickathrift:orders-changed";
+
 function openOrders() {
   database ??= new Promise<IDBDatabase>((resolve, reject) => {
     const request = indexedDB.open("pickathrift.checkout", 1);
@@ -34,10 +37,14 @@ export async function withOrders<T>(
     let result: T;
     let failed = false;
     let failure: unknown;
+    let changed = false;
 
     request.onsuccess = () => {
       const now = Date.now();
-      const save = (order: Order) => store.put(order);
+      const save = (order: Order) => {
+        changed = true;
+        store.put(order);
+      };
       const orders = (request.result as Order[]).map((order) => {
         const current = expireOrder(order, now);
         if (current !== order) save(current);
@@ -51,7 +58,11 @@ export async function withOrders<T>(
         failure = error;
       }
     };
-    transaction.oncomplete = () => (failed ? reject(failure) : resolve(result));
+    transaction.oncomplete = () => {
+      if (changed) window.dispatchEvent(new Event(ORDERS_CHANGED));
+      if (failed) reject(failure);
+      else resolve(result);
+    };
     transaction.onabort = () => reject(storageError());
   });
 }

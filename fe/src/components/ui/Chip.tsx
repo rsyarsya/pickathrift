@@ -18,7 +18,7 @@ export function Chip({ active, onClick, children, size = "sm", invalid }: ChipPr
       aria-pressed={active}
       onClick={onClick}
       className={cn(
-        "rounded-full border font-medium transition-colors",
+        "press rounded-full border font-medium",
         size === "sm" ? "px-14 py-7 text-caption" : "px-16 py-8 text-sm",
         active ? "border-fg bg-fg text-night-fg" : "border-line bg-surface hover:border-fg",
         invalid && !active && "border-[1.5px] border-danger",

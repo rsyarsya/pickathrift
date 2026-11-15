@@ -7,8 +7,9 @@ import { formatRupiah, parseRupiah } from "@/lib/format";
 import {
   CATEGORIES,
   CONDITIONS,
-  SIZES,
+  sizesFor,
   type CatalogPage,
+  type Category,
   type CatalogQuery,
 } from "@/modules/catalog/types";
 
@@ -126,7 +127,7 @@ function AvailableSwitch({ query, update }: Pick<FilterPanelProps, "query" | "up
       >
         <span
           className={cn(
-            "absolute top-3 left-3 size-16 rounded-full bg-canvas transition-transform",
+            "absolute top-3 left-3 size-16 rounded-full bg-canvas transition-transform motion-reduce:transition-none",
             on && "translate-x-16",
           )}
         />
@@ -148,7 +149,7 @@ export function FilterPanel({ query, counts, update, variant }: FilterPanelProps
                 key={c}
                 size="lg"
                 active={(query.category ?? "Semua") === c}
-                onClick={() => update({ category: c === "Semua" ? undefined : c })}
+                onClick={() => update(withCategory(query, c))}
               >
                 {c}
               </Chip>
@@ -163,7 +164,7 @@ export function FilterPanel({ query, counts, update, variant }: FilterPanelProps
                   <button
                     type="button"
                     aria-pressed={active}
-                    onClick={() => update({ category: c === "Semua" ? undefined : c })}
+                    onClick={() => update(withCategory(query, c))}
                     className="flex w-full items-baseline justify-between text-body hover:underline"
                   >
                     <span className={cn(active && "font-medium underline")}>{c}</span>
@@ -178,7 +179,7 @@ export function FilterPanel({ query, counts, update, variant }: FilterPanelProps
 
       <Section title="UKURAN" variant={variant}>
         <div className="flex flex-wrap gap-6">
-          {SIZES.map((s) => (
+          {sizesFor(query.category).map((s) => (
             <Chip
               key={s}
               size={sheet ? "lg" : "sm"}
@@ -227,4 +228,11 @@ export function FilterPanel({ query, counts, update, variant }: FilterPanelProps
       <AvailableSwitch query={query} update={update} />
     </div>
   );
+}
+
+/** Ganti kategori dan buang ukuran yang tidak berlaku lagi (mis. "31" saat pindah ke Jaket). */
+function withCategory(query: CatalogQuery, c: Category | "Semua") {
+  const category = c === "Semua" ? undefined : c;
+  const allowed = sizesFor(category);
+  return { category, sizes: query.sizes.filter((s) => allowed.includes(s)) };
 }

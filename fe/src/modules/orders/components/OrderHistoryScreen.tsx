@@ -100,7 +100,7 @@ function OrderHistory({ email, demo }: { email: string; demo: string | null }) {
   if (history.status === "error")
     return (
       <div className={shopContent}>
-        <PageHeader title="Pesanan saya" overline="Riwayat" />
+        <PageHeader title="Pesanan saya" />
         <StatusMessage
           tone="error"
           title="Pesanan gagal dimuat"

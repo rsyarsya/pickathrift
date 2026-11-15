@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { useEffect } from "react";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
 import { StatusMessage } from "@/components/ui/StatusMessage";
@@ -145,10 +146,12 @@ function Detail({ product: loaded, demo }: { product: Product; demo: string | nu
             </div>
           </div>
 
-          <p className={label}>ONGKIR TETAP RP 15.000 · TRANSFER MANUAL · SATU UNIT</p>
+          <p className="text-caption text-muted">
+            Hanya ada satu. Ongkir Rp15.000, bayar lewat transfer bank.
+          </p>
 
           <section className="flex flex-col gap-10 border-t border-line pt-16">
-            <h2 className={label}>UKURAN PAKAIAN · DIUKUR TERBENTANG DATAR</h2>
+            <h2 className={label}>UKURAN (DIUKUR TERBENTANG DATAR)</h2>
             <dl className="grid grid-cols-4 gap-8">
               {product.measurements.map((m) => (
                 <div key={m.label} className="flex flex-col gap-2">
@@ -213,6 +216,11 @@ function DetailSkeleton() {
 export function ProductDetailScreen({ id }: { id: string }) {
   const demo = useSearchParams().get("demo");
   const result = useAsync(() => getProduct(id), [id]);
+  // Judul tab "Detail produk" diganti nama barang begitu datanya ada (OP-002).
+  const name = result.data?.name;
+  useEffect(() => {
+    if (name) document.title = `${name} · PickaThrift`;
+  }, [name]);
 
   if (result.status === "loading") return <DetailSkeleton />;
 

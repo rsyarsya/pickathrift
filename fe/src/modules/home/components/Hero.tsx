@@ -33,7 +33,6 @@ export function Hero({ children }: { children: ReactNode }) {
           </h1>
 
           <div className="flex flex-col gap-16 lg:flex-row lg:items-center lg:justify-between lg:gap-24">
-            <p className="font-mono text-caption tracking-[0.09em]">PILIHAN LAMA · CERITA BARU</p>
             <p className="text-base leading-normal md:text-lg lg:w-520">
               Thrift pilihan dari satu toko. Setiap barang hanya ada satu, jadi yang kamu lihat
               benar-benar satu-satunya.

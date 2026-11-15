@@ -13,6 +13,13 @@ describe("query katalog", () => {
     expect(query).toEqual({ ...EMPTY_QUERY, sizes: ["M"] });
   });
 
+  it("menerima ukuran pinggang celana dari URL (QA-003)", () => {
+    const query = parseQuery(new URLSearchParams("kategori=Celana&ukuran=31"));
+    expect(query.sizes).toEqual(["31"]);
+    const hits = applyQuery(PRODUCTS, query);
+    expect(hits.every((p) => p.category === "Celana" && p.size === "31")).toBe(true);
+  });
+
   it("menyaring dan mengurutkan", () => {
     const result = applyQuery(PRODUCTS, {
       ...EMPTY_QUERY,

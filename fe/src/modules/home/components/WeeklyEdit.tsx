@@ -27,13 +27,13 @@ function CategoryTile({
   image: string;
 }) {
   return (
-    <div className="relative aspect-[4/5] overflow-hidden rounded-sm bg-subtle md:aspect-[4/3] lg:aspect-auto lg:min-h-720">
+    <div className="group relative aspect-[4/5] overflow-hidden rounded-sm bg-subtle md:aspect-[4/3] lg:aspect-auto lg:min-h-720">
       <Image
         src={image}
         alt=""
         fill
         sizes="(min-width: 1024px) 46vw, 100vw"
-        className="object-cover"
+        className="photo-zoom object-cover"
       />
       <div className="absolute top-16 left-16 flex flex-col gap-2 rounded-sm bg-canvas px-14 py-10 lg:top-24 lg:left-24">
         <p className="text-2xl font-medium tracking-[-0.025em]">{category}</p>
@@ -46,7 +46,8 @@ function CategoryTile({
         className={buttonClass(
           "primary",
           "sm",
-          "absolute bottom-16 left-16 lg:bottom-24 lg:left-24",
+          // after: membentang menutupi tile, jadi seluruh foto bisa diklik.
+          "absolute bottom-16 left-16 after:absolute after:inset-[-100vmax] after:content-[''] lg:bottom-24 lg:left-24",
         )}
       >
         Belanja {category.toLowerCase()} →

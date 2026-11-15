@@ -123,8 +123,57 @@
     background: rgb(30 30 28 / 0.45);
   }
 
-  html:has([data-checkout-layout] dialog[open], dialog[data-cancel-order][open]) {
+  /* Halaman di belakang dialog modal (filter, menu ponsel, konfirmasi) tidak ikut ter-scroll. */
+  html:has(dialog:modal) {
     overflow: hidden;
+  }
+}
+
+/*
+ * DS-009 · Aturan gerak dan fokus. Hanya tiga jenis respons:
+ *   1. Kontrol (tombol, chip, tombol ikon): `.press`, warna berubah dan sedikit mengecil
+ *      saat ditekan, 150 ms.
+ *   2. Foto yang bisa diklik: `.photo-zoom` di dalam `.group`, zoom 3% di dalam bingkai,
+ *      200 ms. Teks dan tombol di sekitarnya diam.
+ *   3. Area drop: hanya warna latar dan garis, 200 ms (lihat CompareTray).
+ * Fokus keyboard: garis merah 3 px (`:focus-visible` di atas). Semua gerak skala mati saat
+ * pengguna memilih kurangi gerakan; perubahan warna tetap ada.
+ */
+:root {
+  --motion-control: 150ms;
+  --motion-photo: 200ms;
+  --ease-motion: cubic-bezier(0.2, 0, 0, 1);
+}
+
+@layer components {
+  .press {
+    transition-property: color, background-color, border-color, scale;
+    transition-duration: var(--motion-control);
+    transition-timing-function: var(--ease-motion);
+  }
+  .press:active:not(:disabled, [aria-disabled="true"]) {
+    scale: 0.98;
+  }
+
+  .photo-zoom {
+    transition: scale var(--motion-photo) var(--ease-motion);
+  }
+  .group:hover .photo-zoom,
+  .group:focus-visible .photo-zoom,
+  .group:focus-within .photo-zoom {
+    scale: 1.03;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .press {
+      transition-property: color, background-color, border-color;
+    }
+    .press:active:not(:disabled, [aria-disabled="true"]),
+    .group:hover .photo-zoom,
+    .group:focus-visible .photo-zoom,
+    .group:focus-within .photo-zoom {
+      scale: none;
+    }
   }
 }
 
@@ -140,8 +189,21 @@
   }
 }
 
+/* Wordmark footer sedikit mengecil ke ukuran aslinya saat blok gelap terbuka di bawah tautan. */
+@keyframes footer-reveal {
+  from {
+    /* 106%: wordmark selebar 92% masih muat di dalam blok selama animasi. */
+    transform: scale(1.06);
+  }
+}
+
 @media (prefers-reduced-motion: no-preference) {
   @supports (animation-timeline: scroll()) {
+    .footer-reveal > * {
+      animation: footer-reveal linear both;
+      animation-timeline: scroll();
+      animation-range: calc(100% - 43vw) 100%;
+    }
     .hero-recede {
       animation: hero-recede linear both;
       animation-timeline: scroll();

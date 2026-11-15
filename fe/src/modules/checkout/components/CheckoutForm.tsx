@@ -75,7 +75,7 @@ export function CheckoutForm({
 
   return (
     <>
-      <PageHeader overline="Langkah terakhir" title="Checkout" />
+      <PageHeader title="Checkout" />
       <form onSubmit={submit} noValidate aria-busy={pending} className={checkoutColumns}>
         <div className="order-1 grid min-w-0 gap-14 lg:order-0">
           <fieldset disabled={pending} className="grid min-w-0 grid-cols-2 gap-14">

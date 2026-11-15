@@ -145,7 +145,7 @@ function ProfileEditor({
     >
       <AccountNav name={saved.recipient || user.name} onLogout={onLogout} />
       <div className="grid min-w-0 gap-16">
-        <PageHeader title="Akun & alamat" overline="Akun" />
+        <PageHeader title="Akun & alamat" />
         {Object.keys(errors).length > 0 && (
           <p role="alert" className="rounded-md bg-danger-bg p-14 text-body">
             Periksa kolom yang ditandai merah.
@@ -251,7 +251,7 @@ function ProfileLoader({
   if (result.status === "error")
     return (
       <div className={shopContent}>
-        <PageHeader title="Akun & alamat" overline="Akun" />
+        <PageHeader title="Akun & alamat" />
         <StatusMessage
           tone="error"
           title="Profil gagal dimuat"

@@ -11,12 +11,12 @@ export function useWishlist() {
   return {
     ids,
     has: (id: string) => ids.includes(id),
-    /** Mengembalikan true kalau barang sekarang tersimpan. */
-    toggle(id: string): boolean {
+    /** `saved`: barang sekarang ada di wishlist. `persisted`: false = hanya di memori. */
+    toggle(id: string) {
       const current = store.get();
       const saved = !current.includes(id);
-      store.set(saved ? [...current, id] : current.filter((x) => x !== id));
-      return saved;
+      const persisted = store.set(saved ? [...current, id] : current.filter((x) => x !== id));
+      return { saved, persisted };
     },
     remove: (remove: string[]) => store.set(store.get().filter((x) => !remove.includes(x))),
   };

@@ -1,7 +1,13 @@
 # Frontend PickaThrift
 
-Next.js (App Router), TypeScript, Tailwind CSS 4, Vitest. Autentikasi sudah menggunakan
-API backend; halaman belanja lainnya masih memakai service dan fixtures yang dijelaskan di bawah.
+Next.js (App Router), TypeScript, Tailwind CSS 4, Vitest. Semua layar Buyer (B1–B9), Admin
+(M1–M4), auth (A1–A3), dan state sistem (X1) sudah ada.
+
+Status data: **autentikasi sudah memakai API backend**; halaman belanja lainnya (produk,
+wishlist, pesanan, Admin) masih memakai service dan fixtures yang dijelaskan di bawah, dengan
+pesanan dan bukti bayar di IndexedDB browser. Setiap modul punya satu pintu data
+(`modules/*/data/*.ts`) yang nanti diganti panggilan `api()`; komponen tidak perlu disentuh.
+Jangan anggap transaksi lokal sebagai bukti stok atau otorisasi server.
 
 ## Menjalankan
 
@@ -59,6 +65,22 @@ Jangan menulis hex mentah di komponen. Pakai nama tokennya: `text-fg`, `bg-canva
 `text-brand`, `bg-success-bg`, `rounded-lg`, `shadow-card`.
 
 Satu langkah spasi = satu piksel desain, jadi `space-4` di Figma ditulis `p-16` di kode.
+
+### Gerak dan fokus (DS-009)
+
+Hanya ada tiga jenis respons. Jangan menambah durasi atau efek baru per komponen.
+
+| Elemen                      | Kelas                                            | Respons                                                |
+| --------------------------- | ------------------------------------------------ | ------------------------------------------------------ |
+| Tombol, chip, tombol ikon   | `press` (sudah ada di `Button` dan `Chip`)       | warna berubah, mengecil 98% saat ditekan, 150 ms       |
+| Foto yang bisa diklik       | `photo-zoom` pada gambar, `group` pada tautannya | zoom 3% di dalam bingkai, 200 ms; teks dan tombol diam |
+| Area drop (tray Bandingkan) | `transition-colors duration-200`                 | warna latar dan garis saja                             |
+
+Fokus keyboard memakai garis merah 3 px dari `:focus-visible`; jangan dihapus. Semua gerak
+skala mati otomatis kalau pengguna memilih kurangi gerakan. Efek scroll cukup tiga yang
+sudah ada (foto hero, logo footer, Lenis): tanpa autoplay, parallax tambahan, atau animasi
+muncul di setiap section. Token durasinya `--motion-control` dan `--motion-photo` di
+`globals.css`.
 
 ## Layar di Figma
 
@@ -126,8 +148,9 @@ Checkout memerlukan sesi Buyer. Pesanan dan bukti gambar disimpan sementara di I
 | `/pesanan?demo=gagal`, `/pesanan/PCT-001?demo=gagal`, `/ulasan?demo=gagal`, `/profil?demo=gagal` | Galat memuat data                                        |
 | `/profil?demo=gagal-simpan`                                                                      | Galat setelah mengubah data dan menekan Simpan perubahan |
 
-Riwayat normal menampilkan pesanan Buyer yang dibuat di checkout. State diproses dan dikirim
-tersedia sebagai demo selama alur admin belum tersedia. Ulasan dari pesanan selesai tersimpan
+Riwayat normal menampilkan pesanan Buyer yang dibuat di checkout. Alur normalnya: Admin
+memverifikasi di `/admin/pesanan`, mengirim dengan resi, lalu Buyer menerima. State diproses
+dan dikirim juga tersedia sebagai demo `?demo=` untuk melihat tampilan tanpa menjalankan alur. Ulasan dari pesanan selesai tersimpan
 bersama pesanan di IndexedDB. Profil menyimpan nama dan alamat per akun di localStorage
 (`pickathrift.profile.<email>`) dan checkout membacanya saat dibuka. Pesanan dan profil contoh
 untuk demo B7–B9 tidak disimpan.

@@ -1,5 +1,8 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { OrderDetailScreen } from "@/modules/orders/components/OrderDetailScreen";
+
+export const metadata: Metadata = { title: "Detail pesanan" };
 
 export default async function OrderDetailPage({ params }: PageProps<"/pesanan/[id]">) {
   const { id } = await params;

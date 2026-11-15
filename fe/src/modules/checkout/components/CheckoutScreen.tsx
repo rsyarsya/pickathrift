@@ -97,7 +97,7 @@ function CheckoutContent({
         open={conflict}
         bottomSheet
         productName={product.name}
-        similarHref={`/katalog?jenis=${encodeURIComponent(product.category)}`}
+        similarHref={`/katalog?kategori=${encodeURIComponent(product.category)}`}
         onClose={() => setConflict(false)}
         onSave={() => {
           actions.saveToWishlist(product);

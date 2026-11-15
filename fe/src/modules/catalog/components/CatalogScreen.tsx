@@ -15,6 +15,7 @@ import { hasFilters } from "@/modules/catalog/query";
 import type { CatalogQuery } from "@/modules/catalog/types";
 import { useCatalogQuery } from "@/modules/catalog/useCatalogQuery";
 import { useProductActions } from "@/modules/catalog/useProductActions";
+import { CompareTray } from "@/modules/compare/components/CompareTray";
 
 const PAGE_SIZE = 6;
 const overline = "font-mono text-xs tracking-label text-muted uppercase";
@@ -175,7 +176,7 @@ export function CatalogScreen() {
                   </li>
                 ))}
               </ul>
-              <div className="flex flex-col items-center gap-12 pt-32 pb-64 lg:pb-96">
+              <div className="flex flex-col items-center gap-12 pt-32 pb-96 lg:pb-128">
                 <p className={overline}>
                   Menampilkan {data.items.length} dari {data.total} barang
                 </p>
@@ -225,6 +226,7 @@ export function CatalogScreen() {
         </div>
       </dialog>
 
+      <CompareTray onAdd={actions.compare} />
       <Toast toast={actions.toast} onDone={actions.clearToast} />
     </div>
   );

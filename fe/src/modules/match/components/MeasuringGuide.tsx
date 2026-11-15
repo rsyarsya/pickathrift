@@ -11,11 +11,12 @@ export function MeasuringGuide() {
   return (
     <div className="flex flex-col gap-16 rounded-[12px] bg-mint p-24">
       <Image
-        src="/guides/cara-mengukur.jpg"
+        src="/guides/cara-mengukur-kaos.jpg"
         alt="Kaos putih terbentang dengan meteran di garis dada"
-        width={1000}
-        height={520}
-        className="h-200 w-full rounded-[8px] object-cover md:h-260"
+        width={1600}
+        height={1195}
+        sizes="(min-width: 1024px) 40vw, 100vw"
+        className="h-auto w-full rounded-[8px]"
       />
       <h2 className="text-[22px] font-medium tracking-[-0.02em]">Cara mengukur</h2>
       <ol className="flex flex-col gap-16">
