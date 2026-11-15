@@ -30,6 +30,12 @@ function errorHandler(error, req, res, next) {
     failure = new ApiError(422, "VALIDATION_ERROR", "Format input tidak valid.");
   } else if (error.type === "entity.too.large") {
     failure = new ApiError(413, "PAYLOAD_TOO_LARGE", "Ukuran request terlalu besar.");
+  } else if (["encoding.unsupported", "charset.unsupported"].includes(error.type)) {
+    failure = new ApiError(
+      415,
+      "UNSUPPORTED_MEDIA_TYPE",
+      "Encoding atau charset request tidak didukung.",
+    );
   }
   if (!(failure instanceof ApiError)) {
     if (req.app.locals.config.nodeEnv !== "test") console.error("Request gagal:", error.name);

@@ -3,10 +3,12 @@ const { once } = require("node:events");
 const { getConfig } = require("./config");
 const { createApp } = require("./app");
 const User = require("./models/user");
+const { assertDataReady } = require("./lib/legacy-data");
 
 async function start(config = getConfig()) {
   try {
     await mongoose.connect(config.mongoUri, { serverSelectionTimeoutMS: 5000 });
+    await assertDataReady(mongoose.connection);
     await User.init();
     const server = createApp(config).listen(config.port);
     await once(server, "listening");
@@ -28,7 +30,14 @@ if (require.main === module) {
       process.once("SIGINT", shutdown);
       process.once("SIGTERM", shutdown);
     })
-    .catch(() => {
+    .catch((error) => {
+      if (error.code === "DATA_MIGRATION_REQUIRED") {
+        console.error(
+          "Data lama belum siap. Jalankan pnpm --filter @pickathrift/be migrate:legacy untuk pemeriksaan.",
+        );
+        process.exitCode = 1;
+        return;
+      }
       console.error(
         "Backend gagal dimulai. Periksa MONGODB_URI, JWT_SECRET, PORT, dan koneksi database.",
       );

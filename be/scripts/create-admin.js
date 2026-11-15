@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 const User = require("../models/user");
 const { registration } = require("../lib/validation");
+const { assertDataReady } = require("../lib/legacy-data");
 
 async function createAdmin(env = process.env) {
   if (typeof env.MONGODB_URI !== "string" || !env.MONGODB_URI.trim())
@@ -14,6 +15,7 @@ async function createAdmin(env = process.env) {
   const password = await bcrypt.hash(input.password, 10);
   try {
     await mongoose.connect(env.MONGODB_URI, { serverSelectionTimeoutMS: 5000 });
+    await assertDataReady(mongoose.connection);
     await User.init();
     await User.create({ ...input, password, role: "admin" });
   } finally {

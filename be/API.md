@@ -67,10 +67,13 @@ dan Tersedia. Algoritme ukuran sentimeter dan kontrak pencocokan lengkap masuk b
 
 Pesanan baru menyimpan `product_snapshot`. Respons `product_id` pesanan memakai salinan
 tersebut, sehingga edit/penonaktifan produk tidak mengubah informasi riwayatnya.
-Pesanan lama tanpa salinan masih memakai referensi lama dan perlu migrasi terpisah.
+Pesanan lama tanpa salinan perlu migrasi sebelum startup. Respons menambahkan
+`product_snapshot_source`: `checkout` untuk pesanan baru atau `legacy-current-product`
+untuk salinan berdasarkan data saat migrasi; lihat [MIGRATION.md](MIGRATION.md).
 Pemesanan produk nonaktif ditolak. Transaksi dan pemulihan stok tetap masuk batch 4.
-Tidak ada migrasi database tim otomatis. Produk model lama perlu ditinjau/dibuat ulang
-sebelum memakai kontrak baru; tidak ada fallback yang menebak ukuran, foto, atau kondisi.
+Tidak ada migrasi database tim otomatis. Startup menolak data yang belum kompatibel
+dan mengarahkan ke dry-run `migrate:legacy`; tidak ada fallback yang menebak ukuran,
+foto, atau kondisi. Apply hanya dijalankan secara eksplisit, bukan saat startup.
 
 ## Aturan umum
 
@@ -83,7 +86,8 @@ sebelum memakai kontrak baru; tidak ada fallback yang menebak ukuran, foto, atau
 - `401`: token hilang/salah/kedaluwarsa, akun sudah dihapus, atau kredensial salah.
   `403`: peran salah atau bukan pemilik data. `404`: resource tidak ada.
   `409`: duplikat/konflik. `422`: input atau ID bukan ObjectId 24 karakter heksadesimal.
-- JSON rusak menghasilkan `422`; body terlalu besar `413`; galat internal tidak memuat detail database.
+- JSON rusak menghasilkan `422`; body terlalu besar `413`; encoding/charset tidak didukung
+  menghasilkan `415 UNSUPPORTED_MEDIA_TYPE`; galat internal tidak memuat detail database.
 - Token Buyer berlaku 24 jam dan Admin 2 jam. Peran diambil ulang dari database pada setiap
   request privat. Belum ada endpoint pencabutan token/logout server.
 

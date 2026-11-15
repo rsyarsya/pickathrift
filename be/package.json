@@ -26,6 +26,7 @@
     "test": "node --test test/*.test.js",
     "lint": "eslint .",
     "format:check": "prettier --check .",
-    "admin:create": "node scripts/create-admin.js"
+    "admin:create": "node scripts/create-admin.js",
+    "migrate:legacy": "node scripts/migrate-legacy.js"
   }
 }

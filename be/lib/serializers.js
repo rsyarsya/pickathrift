@@ -47,6 +47,7 @@ function order(value) {
     product_id: value.product_snapshot
       ? product(value.product_snapshot)
       : productRef(value.product_id),
+    product_snapshot_source: value.product_snapshot_source,
     status: value.status,
     tracking_number: value.tracking_number,
     total_price: value.total_price,

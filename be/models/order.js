@@ -15,6 +15,12 @@ const orderSchema = new mongoose.Schema(
     buyer_id: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     product_id: { type: mongoose.Schema.Types.ObjectId, ref: "Product", required: true },
     product_snapshot: { type: productSnapshotSchema, immutable: true },
+    product_snapshot_source: {
+      type: String,
+      enum: ["checkout", "legacy-current-product"],
+      default: "checkout",
+      immutable: true,
+    },
     status: {
       type: String,
       enum: ["pending", "paid", "shipped", "completed", "cancelled"],

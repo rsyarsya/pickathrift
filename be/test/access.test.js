@@ -16,6 +16,7 @@ const Product = require("../models/products");
 const Review = require("../models/review");
 const Wishlist = require("../models/wishlist");
 const { productInput } = require("./fixtures");
+const serialize = require("../lib/serializers");
 
 const secret = randomBytes(48).toString("hex");
 const credentials = { email: "buyer@example.test", password: "Buyer123!" };
@@ -79,6 +80,7 @@ before(async () => {
   order = await Order.create({
     buyer_id: buyer.id,
     product_id: product.id,
+    product_snapshot: serialize.product(product),
     total_price: product.price,
   });
 });
@@ -399,6 +401,21 @@ test("galat database tidak membocorkan detail internal", async () => {
     message: "Terjadi kesalahan pada server.",
   });
   await User.deleteOne({ _id: corrupt.insertedId });
+});
+
+test("encoding dan charset tidak didukung menghasilkan 415 dengan respons aman", async () => {
+  for (const headers of [
+    { "Content-Encoding": "invalid" },
+    { "Content-Type": "application/json; charset=invalid" },
+  ]) {
+    const result = await request("/auth/login", { method: "POST", body: credentials, headers });
+    assert.equal(result.status, 415);
+    assert.deepEqual(result.json, {
+      success: false,
+      code: "UNSUPPORTED_MEDIA_TYPE",
+      message: "Encoding atau charset request tidak didukung.",
+    });
+  }
 });
 
 test("route produk tetap berjalan untuk Admin dan menolak modifikasi oleh Buyer", async () => {
