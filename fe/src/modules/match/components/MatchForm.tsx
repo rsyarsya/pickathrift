@@ -7,10 +7,9 @@ import { Chip } from "@/components/ui/Chip";
 import { Icon } from "@/components/ui/Icon";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { cn } from "@/lib/cn";
-import { CATEGORIES, STYLES } from "@/modules/catalog/types";
+import { CATEGORIES, STYLES, sizesFor } from "@/modules/catalog/types";
 import {
-  BODY_FIELDS,
-  LABEL_SIZES,
+  bodyFields,
   criteriaToParams,
   formFromParams,
   validate,
@@ -150,7 +149,10 @@ export function MatchForm() {
 
   return (
     <div className="flex flex-col gap-20 px-16 pt-24 pb-64 md:px-24 lg:px-48 lg:pt-32 lg:pb-96">
-      <PageHeader overline="FITUR UNGGULAN" title="Cari yang Cocok" />
+      <PageHeader
+        title="Cari yang Cocok"
+        description="Masukkan ukuran baju yang sudah pas untuk mencari ukuran serupa."
+      />
 
       <button
         type="button"
@@ -173,7 +175,12 @@ export function MatchForm() {
             options={CATEGORIES}
             value={form.category}
             onChange={(v) => {
-              set("category", v);
+              setForm((prev) => ({
+                ...prev,
+                category: v,
+                // Ukuran atasan tidak berlaku untuk celana, dan sebaliknya.
+                size: prev.size && sizesFor(v).includes(prev.size) ? prev.size : undefined,
+              }));
               setErrors((e) => ({ ...e, category: undefined }));
             }}
             error={errors.category}
@@ -186,7 +193,7 @@ export function MatchForm() {
           />
           <ChoiceGroup
             label="Ukuran label"
-            options={LABEL_SIZES}
+            options={sizesFor(form.category)}
             value={form.size}
             onChange={(v) => set("size", v)}
           />
@@ -213,11 +220,11 @@ export function MatchForm() {
 
           <p className={step}>LANGKAH 2 · UKURAN PAKAIANMU (OPSIONAL)</p>
           <p className="text-sm leading-[1.45] text-muted">
-            Ukur atasan yang sudah pas di badanmu, dalam posisi terbentang datar. Bukan ukuran
-            tubuh.
+            Ukur {form.category === "Celana" ? "celana" : "atasan"} yang sudah pas di badanmu, dalam
+            posisi terbentang datar. Bukan ukuran tubuh.
           </p>
           <div className="flex gap-8 md:gap-12">
-            {BODY_FIELDS.map((f) => (
+            {bodyFields(form.category).map((f) => (
               <Field
                 key={f.key}
                 id={`ukuran-${f.key}`}

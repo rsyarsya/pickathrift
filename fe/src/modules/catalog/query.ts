@@ -1,7 +1,7 @@
 import {
   CATEGORIES,
   CONDITIONS,
-  SIZES,
+  ALL_SIZES,
   type CatalogQuery,
   type Product,
   type SortKey,
@@ -34,7 +34,7 @@ export function parseQuery(params: URLSearchParams): CatalogQuery {
   return {
     q: params.get("q")?.trim() || undefined,
     category: pick(CATEGORIES, params.get("kategori")),
-    sizes: pickMany(SIZES, params.get("ukuran")),
+    sizes: pickMany(ALL_SIZES, params.get("ukuran")),
     conditions: pickMany(CONDITIONS, params.get("kondisi")),
     minPrice: toNumber(params.get("min")),
     maxPrice: toNumber(params.get("max")),

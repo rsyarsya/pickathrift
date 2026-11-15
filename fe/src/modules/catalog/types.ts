@@ -4,7 +4,19 @@ export const CONDITIONS = ["Baru dengan tag", "Sangat baik", "Baik", "Memuaskan"
 export const STYLES = ["Kasual", "Workwear", "Vintage", "Formal"] as const;
 
 export type Category = (typeof CATEGORIES)[number];
-export type Size = (typeof SIZES)[number];
+/** Celana memakai nomor pinggang, bukan XS–XL. */
+export const WAIST_SIZES = ["27", "28", "29", "30", "31", "32", "33", "34", "36"] as const;
+export const ALL_SIZES = [...SIZES, ...WAIST_SIZES] as const;
+export const TOP_MEASUREMENTS = ["Lebar dada", "Panjang", "Bahu", "Lengan"] as const;
+export const BOTTOM_MEASUREMENTS = ["Pinggang", "Panjang", "Lebar paha", "Lebar bawah"] as const;
+
+export type Size = (typeof ALL_SIZES)[number];
+
+/** Pilihan ukuran yang masuk akal untuk kategori. Tanpa kategori: semua. */
+export function sizesFor(category?: Category | ""): readonly Size[] {
+  if (category === "Celana") return WAIST_SIZES;
+  return category ? SIZES : ALL_SIZES;
+}
 export type Condition = (typeof CONDITIONS)[number];
 export type Style = (typeof STYLES)[number];
 

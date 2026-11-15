@@ -2,8 +2,11 @@ import { formatRupiah, parseRupiah } from "@/lib/format";
 import {
   CATEGORIES,
   CONDITIONS,
+  BOTTOM_MEASUREMENTS,
   SIZES,
   STYLES,
+  TOP_MEASUREMENTS,
+  WAIST_SIZES,
   type Category,
   type Condition,
   type Product,
@@ -32,12 +35,8 @@ export type ProductFormErrors = Partial<Record<string, string>>;
 
 export const MAX_IMAGES = 4;
 
-const TOP_MEASUREMENTS = ["Lebar dada", "Panjang", "Bahu", "Lengan"];
-const BOTTOM_MEASUREMENTS = ["Pinggang", "Panjang", "Lebar paha", "Lebar bawah"];
-const WAIST_SIZES = ["27", "28", "29", "30", "31", "32", "33", "34", "36"];
-
 /** Celana diukur di pinggang dan paha, atasan di dada dan bahu. */
-export function measurementLabels(category: Category | "") {
+export function measurementLabels(category: Category | ""): readonly string[] {
   return category === "Celana" ? BOTTOM_MEASUREMENTS : TOP_MEASUREMENTS;
 }
 

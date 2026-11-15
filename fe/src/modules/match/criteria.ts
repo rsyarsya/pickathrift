@@ -2,8 +2,10 @@ import { formatRupiah, parseRupiah } from "@/lib/format";
 import {
   CATEGORIES,
   STYLES,
+  sizesFor,
   type Category,
   type Product,
+  type Size,
   type Style,
 } from "@/modules/catalog/types";
 
@@ -13,23 +15,32 @@ import {
  * `cari=1` berarti tampilkan hasil; tanpa itu form ditampilkan dengan isian yang sama.
  */
 
-export const LABEL_SIZES = ["S", "M", "L", "XL"] as const;
-export type LabelSize = (typeof LABEL_SIZES)[number];
-
 /** Batas selisih per ukuran, dalam cm. */
 export const TOLERANCE_CM = 2;
 
-export const BODY_FIELDS = [
+const ALL_FIELDS = [
   { key: "dada", label: "Lebar dada", short: "Dada" },
+  { key: "pinggang", label: "Pinggang", short: "Pinggang" },
   { key: "panjang", label: "Panjang", short: "Panjang" },
   { key: "bahu", label: "Bahu", short: "Bahu" },
+  { key: "paha", label: "Lebar paha", short: "Paha" },
 ] as const;
-export type BodyKey = (typeof BODY_FIELDS)[number]["key"];
+export type BodyKey = (typeof ALL_FIELDS)[number]["key"];
+type BodyField = (typeof ALL_FIELDS)[number];
+
+const TOP_KEYS: BodyKey[] = ["dada", "panjang", "bahu"];
+const BOTTOM_KEYS: BodyKey[] = ["pinggang", "panjang", "paha"];
+
+/** Kolom ukuran untuk kategori: celana diukur di pinggang dan paha, atasan di dada dan bahu. */
+export function bodyFields(category?: Category): BodyField[] {
+  const keys = category === "Celana" ? BOTTOM_KEYS : TOP_KEYS;
+  return keys.map((key) => ALL_FIELDS.find((f) => f.key === key)!);
+}
 
 export type Criteria = {
   category?: Category;
   style?: Style;
-  size?: LabelSize;
+  size?: Size;
   minPrice?: number;
   maxPrice?: number;
   body: Partial<Record<BodyKey, number>>;
@@ -39,7 +50,7 @@ export type Criteria = {
 export type CriteriaForm = {
   category?: Category;
   style?: Style;
-  size?: LabelSize;
+  size?: Size;
   min: string;
   max: string;
   body: Record<BodyKey, string>;
@@ -56,17 +67,17 @@ export function formFromParams(params: URLSearchParams): CriteriaForm {
     const n = parseRupiah(params.get(key) ?? "");
     return n === null ? "" : formatRupiah(n);
   };
+  const category = pick(CATEGORIES, params.get("jenis"));
   return {
-    category: pick(CATEGORIES, params.get("jenis")),
+    category,
     style: pick(STYLES, params.get("gaya")),
-    size: pick(LABEL_SIZES, params.get("ukuran")),
+    size: category ? pick(sizesFor(category), params.get("ukuran")) : undefined,
     min: money("min"),
     max: money("max"),
-    body: {
-      dada: params.get("dada") ?? "",
-      panjang: params.get("panjang") ?? "",
-      bahu: params.get("bahu") ?? "",
-    },
+    body: Object.fromEntries(ALL_FIELDS.map((f) => [f.key, params.get(f.key) ?? ""])) as Record<
+      BodyKey,
+      string
+    >,
   };
 }
 
@@ -83,8 +94,9 @@ export function validate(
     errors.min = "Lebih besar dari maksimum.";
   }
 
+  // Hanya kolom milik kategori terpilih; isian kategori sebelumnya diabaikan (QA-003).
   const body: Criteria["body"] = {};
-  for (const { key } of BODY_FIELDS) {
+  for (const { key } of bodyFields(form.category)) {
     const raw = form.body[key].trim();
     if (raw === "") continue;
     const cm = Number(raw.replace(",", "."));
@@ -99,7 +111,7 @@ export function validate(
     criteria: {
       category: form.category,
       style: form.style,
-      size: form.size,
+      size: form.size && sizesFor(form.category).includes(form.size) ? form.size : undefined,
       minPrice: min,
       maxPrice: max,
       body,
@@ -114,7 +126,7 @@ export function criteriaToParams(criteria: Criteria): URLSearchParams {
   if (criteria.size) params.set("ukuran", criteria.size);
   if (criteria.minPrice !== undefined) params.set("min", String(criteria.minPrice));
   if (criteria.maxPrice !== undefined) params.set("max", String(criteria.maxPrice));
-  for (const { key } of BODY_FIELDS) {
+  for (const { key } of ALL_FIELDS) {
     const cm = criteria.body[key];
     if (cm !== undefined) params.set(key, String(cm));
   }
@@ -123,11 +135,10 @@ export function criteriaToParams(criteria: Criteria): URLSearchParams {
 
 export type Match = { product: Product; diffCm?: number };
 
-const MEASURE_LABEL: Record<BodyKey, string> = {
-  dada: "Lebar dada",
-  panjang: "Panjang",
-  bahu: "Bahu",
-};
+const MEASURE_LABEL = Object.fromEntries(ALL_FIELDS.map((f) => [f.key, f.label])) as Record<
+  BodyKey,
+  string
+>;
 
 /*
  * Pencocokan di sisi klien selama data masih fixtures. Barang terjual tidak ikut.
@@ -174,7 +185,7 @@ export function criteriaChips(criteria: Criteria): string[] {
     const k = (n?: number) => (n === undefined ? "…" : String(Math.round(n / 1000)));
     chips.push(`Rp ${k(criteria.minPrice ?? 0)}–${k(criteria.maxPrice)} rb`);
   }
-  const body = BODY_FIELDS.filter((f) => criteria.body[f.key] !== undefined).map(
+  const body = ALL_FIELDS.filter((f) => criteria.body[f.key] !== undefined).map(
     (f) => `${f.short} ${criteria.body[f.key]}`,
   );
   if (body.length) chips.push(body.join(" · "));
