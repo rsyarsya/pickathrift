@@ -17,7 +17,7 @@ function subscribe(onChange: () => void) {
 
 /**
  * X1.4 Sedang offline. Saat browser kehilangan koneksi, isi halaman diganti layar offline
- * dan otomatis kembali begitu online. `?demo=offline` memaksa layar ini.
+ * dan otomatis kembali begitu online.
  */
 export function OfflineGate({ children }: { children: ReactNode }) {
   const online = useSyncExternalStore(
@@ -25,23 +25,15 @@ export function OfflineGate({ children }: { children: ReactNode }) {
     () => navigator.onLine,
     () => true,
   );
-  const [forced, setForced] = useState(false);
   const [seconds, setSeconds] = useState(RETRY_SECONDS);
-  const offline = !online || forced;
-
-  // Dibaca dari URL langsung supaya layout tidak perlu batas Suspense.
-  useEffect(() => {
-    setForced(new URLSearchParams(window.location.search).get("demo") === "offline");
-  }, []);
-
   // Hitung mundur ulang terus selama offline; event "online" yang memulihkan halaman.
   useEffect(() => {
-    if (!offline) return;
+    if (online) return;
     const timer = setInterval(() => setSeconds((s) => (s <= 1 ? RETRY_SECONDS : s - 1)), 1000);
     return () => clearInterval(timer);
-  }, [offline]);
+  }, [online]);
 
-  if (!offline) return children;
+  if (online) return children;
 
   return (
     <SystemState
@@ -50,13 +42,7 @@ export function OfflineGate({ children }: { children: ReactNode }) {
       title="Tidak ada koneksi internet"
       description="Periksa Wi-Fi atau data selulermu. Wishlist dan meja perbandinganmu aman, tapi pembelian baru bisa dilakukan saat online."
       actions={
-        <Button
-          size="md"
-          onClick={() => {
-            setSeconds(RETRY_SECONDS);
-            if (navigator.onLine) setForced(false);
-          }}
-        >
+        <Button size="md" onClick={() => setSeconds(RETRY_SECONDS)}>
           Coba lagi
         </Button>
       }

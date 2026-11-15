@@ -3,16 +3,15 @@
 Next.js (App Router), TypeScript, Tailwind CSS 4, Vitest. Semua layar Buyer (B1–B9), Admin
 (M1–M4), auth (A1–A3), dan state sistem (X1) sudah ada.
 
-Status data: **autentikasi sudah memakai API backend**; halaman belanja lainnya (produk,
-wishlist, pesanan, Admin) masih memakai service dan fixtures yang dijelaskan di bawah, dengan
-pesanan dan bukti bayar di IndexedDB browser. Setiap modul punya satu pintu data
-(`modules/*/data/*.ts`) yang nanti diganti panggilan `api()`; komponen tidak perlu disentuh.
-Jangan anggap transaksi lokal sebagai bukti stok atau otorisasi server.
+Katalog, pencocokan ukuran, wishlist, profil, checkout, pesanan, ulasan, dan Admin
+menggunakan API backend. Meja Perbandingan disimpan di browser.
 
 ## Menjalankan
 
 ```powershell
 pnpm install
+pnpm --filter @pickathrift/be dev
+# Di terminal lain
 pnpm --filter @pickathrift/fe dev
 ```
 
@@ -88,133 +87,72 @@ muncul di setiap section. Token durasinya `--motion-control` dan `--motion-photo
 Nomor 41–45 bertanda "lanjutan" dan masuk lingkup Should/Could, bukan Milestone 1.
 
 Nama rute mengikuti nama frame, dalam bahasa Indonesia: `/katalog`, `/produk/[id]`,
-`/wishlist`, `/meja-perbandingan`, `/riwayat-pesanan`, `/admin/produk`.
+`/wishlist`, `/meja-perbandingan`, `/pesanan`, `/admin/produk`.
 
 ## Data
 
-Semua panggilan backend lewat `src/lib/api.ts`. Jangan memanggil `fetch` langsung dari
-komponen: base URL, header, dan penanganan galat hanya ditulis sekali di sana, dan `ApiError`
-membawa status HTTP supaya layar bisa membedakan 409 "sudah dipesan" dari jaringan putus.
+Panggilan backend dilakukan lewat fungsi di `src/modules/*/data/` dan klien bersama
+`src/lib/api.ts`. Klien menambahkan token Bearer, menangani respons API, dan meneruskan
+`ApiError` agar layar bisa membedakan masalah jaringan, akses ditolak, dan konflik stok.
+Bukti bayar diambil dengan autentikasi dan ditampilkan melalui blob URL.
 
-Modul di luar autentikasi masih memakai fixtures lokal di `modules/<bagian>/data/`.
-Integrasi autentikasi tidak mengubah sumber data modul tersebut.
+API menyimpan profil, alamat, wishlist, pesanan, ulasan, dan produk. Meja Perbandingan
+menyimpan ID barang di `localStorage` (`pickathrift.compare`) dan memuat detailnya dari API.
+Data contoh untuk tes hanya dipakai oleh Vitest dan Playwright.
 
-Layar tidak membaca fixtures langsung, tapi lewat fungsi service seperti
-`modules/catalog/data/products.ts` (`listProducts`, `getProduct`, `reserveProduct`). Begitu
-endpoint ada, isi fungsi itu cukup diganti satu panggilan `api()`.
+Backend belum menyediakan konfigurasi rekening transfer. Isi variabel publik berikut
+di `fe/.env.local` sebelum menjalankan atau membangun frontend. Jika belum lengkap, halaman
+pembayaran menampilkan pesan agar Buyer menghubungi admin.
 
-State yang sulit dipicu tanpa backend bisa dipaksa lewat `?demo=`:
+- `NEXT_PUBLIC_TRANSFER_BANK`
+- `NEXT_PUBLIC_TRANSFER_NUMBER`
+- `NEXT_PUBLIC_TRANSFER_HOLDER`
 
-| URL                                               | State                    |
-| ------------------------------------------------- | ------------------------ |
-| `/katalog?demo=memuat`                            | B1.3 Memuat              |
-| `/katalog?demo=kosong`                            | B1.4 Hasil kosong        |
-| `/katalog?demo=gagal`                             | B1.5 Gagal dimuat        |
-| `/produk/<id>?demo=konflik`                       | B2.4 Stok konflik (409)  |
-| `/wishlist?demo=gagal`                            | Wishlist gagal dimuat    |
-| `/cari-yang-cocok?jenis=Jaket&cari=1&demo=kosong` | B4.5 Hasil kosong        |
-| `/meja-perbandingan?demo=konflik`                 | 409 saat "Beli ini"      |
-| `/checkout/work-jacket-olive`                     | B6.1 Checkout            |
-| `/checkout/work-jacket-olive?demo=memproses`      | B6.2 Memproses pesanan   |
-| `/checkout/work-jacket-olive?demo=konflik`        | B6.3 Stok konflik (409)  |
-| `/checkout/work-jacket-olive?demo=koneksi`        | B6.4 Koneksi terputus    |
-| `/checkout/work-jacket-olive?demo=alamat`         | B6.5 Galat alamat        |
-| `/checkout/work-jacket-olive?demo=bayar`          | B6.6 Menunggu pembayaran |
-| `/checkout/work-jacket-olive?demo=file-ditolak`   | B6.7 File ditolak        |
-| `/checkout/work-jacket-olive?demo=verifikasi`     | B6.8 Menunggu verifikasi |
-| `/checkout/work-jacket-olive?demo=unggah-ulang`   | B6.9 Perlu unggah ulang  |
-| `/checkout/work-jacket-olive?demo=gagal`          | Checkout gagal dimuat    |
+### Rute dan cara memeriksa state
 
-Checkout memerlukan sesi Buyer. Pesanan dan bukti gambar disimpan sementara di IndexedDB
-(`pickathrift.checkout`). Nomor rekening di checkout adalah contoh untuk simulasi.
+Gunakan ID yang dikembalikan API untuk `<id-produk>` dan `<id-pesanan>`. Parameter demo
+sudah dihapus.
 
-| URL                                                                                              | State                                                    |
-| ------------------------------------------------------------------------------------------------ | -------------------------------------------------------- |
-| `/pesanan?demo=riwayat`                                                                          | B7.1 Riwayat dengan empat pesanan contoh                 |
-| `/pesanan?demo=kosong`                                                                           | B7.2 Riwayat kosong                                      |
-| `/pesanan/PCT-001?demo=diproses`                                                                 | B7.3 Diproses                                            |
-| `/pesanan/PCT-001?demo=dikirim`                                                                  | B7.4 Dikirim                                             |
-| `/pesanan/PCT-001?demo=selesai`                                                                  | B7.5 Selesai                                             |
-| `/pesanan/PCT-001?demo=dibatalkan`                                                               | B7.6 Dibatalkan                                          |
-| `/pesanan/PCT-001?demo=batal`                                                                    | B7.7 Konfirmasi batal                                    |
-| `/ulasan?demo=tulis`                                                                             | B8.1 Tulis ulasan                                        |
-| `/ulasan?demo=validasi`                                                                          | B8.2 Galat validasi                                      |
-| `/ulasan?demo=terkirim`                                                                          | B8.3 Ulasan terkirim                                     |
-| `/ulasan?demo=terkunci`                                                                          | B8.4 Belum boleh mengulas                                |
-| `/ulasan`                                                                                        | B8.5 Ulasan toko                                         |
-| `/profil?demo=default`                                                                           | B9.1 Profil dengan data contoh                           |
-| `/profil?demo=validasi`                                                                          | B9.2 Galat validasi                                      |
-| `/profil?demo=tersimpan`                                                                         | B9.3 Toast perubahan disimpan                            |
-| `/pesanan?demo=gagal`, `/pesanan/PCT-001?demo=gagal`, `/ulasan?demo=gagal`, `/profil?demo=gagal` | Galat memuat data                                        |
-| `/profil?demo=gagal-simpan`                                                                      | Galat setelah mengubah data dan menekan Simpan perubahan |
+| Rute                                                               | Cara memeriksa                                                                                                                                 |
+| ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/katalog?q=barang-yang-tidak-ada`                                 | Hasil kosong. Perlambat permintaan API untuk melihat indikator memuat.                                                                         |
+| `/produk/<id-produk>`                                              | Lihat detail dan status stok dari katalog. ID yang sudah hilang menampilkan Barang tidak ditemukan.                                            |
+| `/cari-yang-cocok`, `/meja-perbandingan`, `/wishlist`              | Gunakan filter ukuran, pilih dua barang dari katalog, atau masuk sebagai Buyer untuk menyimpan wishlist.                                       |
+| `/profil`                                                          | Isi alamat Buyer. Simpan alamat parsial untuk melihat validasi.                                                                                |
+| `/checkout/<id-produk>`                                            | Buat pesanan. Kirim bersamaan dari dua sesi Buyer untuk konflik stok. Pilih berkas selain JPG/PNG untuk validasi bukti.                        |
+| `/checkout/<id-produk>?pesanan=<id-pesanan>`                       | Lanjutkan pembayaran yang ada. Tautan tersedia dari detail pesanan.                                                                            |
+| `/pesanan`, `/pesanan/<id-pesanan>`                                | Buka riwayat, lanjutkan pembayaran, batalkan sebelum bayar, atau konfirmasi penerimaan. ID pesanan milik Buyer lain memunculkan akses ditolak. |
+| `/ulasan`, `/ulasan?milik=saya`, `/ulasan?pesanan=<id-pesanan>`    | Lihat ulasan publik atau milik sendiri. Tulis ulasan dari pesanan selesai.                                                                     |
+| `/admin/produk`, `/admin/produk/baru`, `/admin/produk/<id-produk>` | Masuk lewat `/admin/masuk` untuk mengelola produk. Barang dipesan memiliki kolom yang terkunci.                                                |
+| `/admin/pesanan?status=verifikasi`, `/admin/pesanan/<id-pesanan>`  | Unggah bukti sebagai Buyer, lalu periksa bukti, setujui, dan simpan resi sebagai Admin.                                                        |
+| `/keluar`, `/sesi-berakhir?kembali=/pesanan`                       | Keluar lewat profil atau masuk ulang setelah sesi berakhir.                                                                                    |
 
-Riwayat normal menampilkan pesanan Buyer yang dibuat di checkout. Alur normalnya: Admin
-memverifikasi di `/admin/pesanan`, mengirim dengan resi, lalu Buyer menerima. State diproses
-dan dikirim juga tersedia sebagai demo `?demo=` untuk melihat tampilan tanpa menjalankan alur. Ulasan dari pesanan selesai tersimpan
-bersama pesanan di IndexedDB. Profil menyimpan nama dan alamat per akun di localStorage
-(`pickathrift.profile.<email>`) dan checkout membacanya saat dibuka. Pesanan dan profil contoh
-untuk demo B7–B9 tidak disimpan.
+Di DevTools, blokir permintaan API untuk memeriksa galat dan tombol Coba lagi. Ubah
+kondisi jaringan ke Offline untuk memeriksa layar offline dan pemulihan saat online.
 
-### State sistem (X1)
+### Playwright
 
-| URL                                   | State                                                                                |
-| ------------------------------------- | ------------------------------------------------------------------------------------ |
-| `/halaman-yang-tidak-ada`             | X1.1 Halaman tidak ditemukan (rute apa pun yang tidak ada)                           |
-| —                                     | X1.2 Terjadi kesalahan: muncul otomatis saat ada galat tak terduga (`app/error.tsx`) |
-| `/pesanan/PCT-001?demo=bukan-milikmu` | X1.3 Bukan milikmu (juga untuk pesanan akun lain)                                    |
-| `/katalog?demo=offline`               | X1.4 Sedang offline (juga otomatis saat koneksi putus)                               |
-| `/keluar`                             | X1.5 Sudah keluar (tujuan setelah menekan Keluar)                                    |
-| `/sesi-berakhir?kembali=/pesanan`     | X1.6 Sesi berakhir                                                                   |
-| `/katalog?demo=aksi-gagal`            | X1.7 Aksi gagal terkirim: tekan ikon hati di kartu                                   |
+Jalankan dari root repo setelah memasang dependensi.
 
-### Admin (M1–M4)
+```powershell
+pnpm --filter @pickathrift/fe exec playwright install chromium
+pnpm --filter @pickathrift/fe test:e2e
+```
 
-Masuk lewat `/admin/masuk` dengan akun admin yang tersedia di backend. Satu tab memiliki satu
-sesi aktif dengan peran buyer atau admin. JWT admin berlaku 2 jam menurut backend, dan UI
-admin juga memeriksa batas tidak aktif 2 jam. Refresh memverifikasi kembali identitas ke API.
-
-| URL                                            | State                                                                       |
-| ---------------------------------------------- | --------------------------------------------------------------------------- |
-| `/admin/produk`                                | M1.1 Daftar produk, M1.2 cari dan filter, M1.5 konfirmasi nonaktifkan       |
-| `/admin/produk?demo=memuat`                    | M1.3 Memuat                                                                 |
-| `/admin/produk?demo=kosong`                    | M1.4 Belum ada produk                                                       |
-| `/admin/produk?demo=gagal`                     | Produk gagal dimuat                                                         |
-| `/admin/produk/baru`                           | M2.1 Form kosong; tekan Simpan untuk M2.3 Galat validasi                    |
-| `/admin/produk/baru?demo=menyimpan`            | M2.4 Menyimpan (isi form lalu Simpan)                                       |
-| `/admin/produk/baru?demo=gagal-simpan`         | Galat saat menyimpan                                                        |
-| `/admin/produk/work-jacket-olive`              | M2.2 Terisi; Simpan → M2.5 Tersimpan                                        |
-| `/admin/produk/denim-jacket-blue`              | M2.6 Edit barang yang dipesan (harga dan ukuran terkunci)                   |
-| `/admin/produk?demo=ditolak`                   | M4.1 Akses ditolak                                                          |
-| `/admin/produk?demo=sesi-berakhir`             | M4.2 Sesi berakhir                                                          |
-| `/admin/pesanan`                               | M3.1 Daftar pesanan (pesanan nyata dari checkout Buyer)                     |
-| `/admin/pesanan?demo=contoh`                   | M3.1 dengan enam pesanan contoh seperti di Figma                            |
-| `/admin/pesanan?demo=contoh&status=verifikasi` | Filter Perlu verifikasi                                                     |
-| `/admin/pesanan/PCT-007?demo=contoh`           | M3.2 Verifikasi pembayaran, M3.3 Tolak dan batalkan                         |
-| `/admin/pesanan/PCT-005?demo=contoh`           | M3.4 Proses dan kirim; simpan tanpa resi untuk M3.5, dengan resi untuk M3.6 |
-| `/admin/pesanan?demo=kosong&status=verifikasi` | M3.7 Tidak ada yang perlu diverifikasi                                      |
-| `/admin/pesanan?demo=gagal`                    | Pesanan gagal dimuat                                                        |
-
-Aksi admin pada pesanan nyata (setujui, minta unggah ulang, tolak, simpan resi) langsung
-mengubah pesanan Buyer di IndexedDB yang sama, jadi bisa dicek di `/pesanan`. Pesanan contoh
-hanya hidup di memori tab. Produk yang ditambah, diubah, atau dinonaktifkan admin disimpan di localStorage
-(`pickathrift.products`) dan langsung terlihat di katalog Buyer pada browser yang sama. Produk
-nonaktif hilang dari katalog. Foto dikecilkan dulu sebelum disimpan karena kuota localStorage
-sekitar 5 MB. Hapus kunci itu di DevTools untuk kembali ke data contoh.
-
-Wishlist dan Meja Perbandingan disimpan di localStorage (`pickathrift.wishlist`,
-`pickathrift.compare`) selama belum ada endpoint. `?demo=` ikut terhapus bersama fixtures. Fixtures wajib diganti panggilan `api()` sebelum pengumpulan, lihat FE5 di
-bawah.
+Playwright menjalankan build produksi FE di port 3107 dan API uji di port 5107 dengan
+MongoDB replica set sementara dan rekening uji. Setelah uji, bangun ulang FE dengan
+konfigurasi lokal sebelum memakai `pnpm --filter @pickathrift/fe start`.
 
 ## Yang dinilai rubrik (Frontend, bobot bagian 30%)
 
-| Kode | Bobot | Minta apa                                                | Konsekuensi di kode                                                                                          |
-| ---- | ----- | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| FE1  | 10%   | Routing dan komponen tertata                             | Rute tipis di `src/app`, isi layar di `src/modules`                                                          |
-| FE2  | 20%   | Sesuai rancangan **dan responsif**                       | Figma hanya desktop 1440, turunan tablet dan ponsel harus dibuat sendiri                                     |
-| FE3  | 20%   | Komponen dipakai ulang, logika terpisah dari tampilan    | Logika ke `hooks/`, komponen hanya menerima props                                                            |
-| FE4  | 10%   | Indikator memuat, notifikasi, penanda galat, efek tunjuk | Figma `32-loading`, `33-error`, `30-kosong`, `31-hasil-kosong`                                               |
-| FE5  | 30%   | Data dari API, validasi masukan, galat ditangani         | Skor terendah berbunyi "data ditulis langsung di dalam kode tanpa memakai API". Fixtures tidak boleh tersisa |
-| FE6  | 10%   | Tepat waktu                                              | —                                                                                                            |
+| Kode | Bobot | Minta apa                                                | Konsekuensi di kode                                                                                         |
+| ---- | ----- | -------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| FE1  | 10%   | Routing dan komponen tertata                             | Rute tipis di `src/app`, isi layar di `src/modules`                                                         |
+| FE2  | 20%   | Sesuai rancangan **dan responsif**                       | Figma hanya desktop 1440, turunan tablet dan ponsel harus dibuat sendiri                                    |
+| FE3  | 20%   | Komponen dipakai ulang, logika terpisah dari tampilan    | Logika ke `hooks/`, komponen hanya menerima props                                                           |
+| FE4  | 10%   | Indikator memuat, notifikasi, penanda galat, efek tunjuk | Figma `32-loading`, `33-error`, `30-kosong`, `31-hasil-kosong`                                              |
+| FE5  | 30%   | Data dari API, validasi masukan, galat ditangani         | Skor terendah berbunyi "data ditulis langsung di dalam kode tanpa memakai API". Data contoh hanya untuk tes |
+| FE6  | 10%   | Tepat waktu                                              | —                                                                                                           |
 
 FE5 bobotnya paling besar. Setiap form wajib punya validasi dan setiap panggilan wajib punya
 state gagal yang terlihat, bukan hanya `console.error`.
