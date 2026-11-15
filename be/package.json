@@ -6,6 +6,29 @@
     "dotenv": "^18.0.4",
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
-    "mongoose": "^9.10.3"
+    "mongoose": "^9.10.3",
+    "multer": "^2.5.0",
+    "sharp": "^0.35.5"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.15.0",
+    "mongodb-memory-server": "^11.3.0",
+    "prettier": "^3.10.1"
+  },
+  "name": "@pickathrift/be",
+  "private": true,
+  "type": "commonjs",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node webthrift.js",
+    "dev": "node --watch webthrift.js",
+    "test": "node --test test/*.test.js",
+    "lint": "eslint .",
+    "format:check": "prettier --check .",
+    "admin:create": "node scripts/create-admin.js",
+    "migrate:legacy": "node scripts/migrate-legacy.js"
   }
 }

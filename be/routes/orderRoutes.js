@@ -1,91 +1,110 @@
-const express = require('express');
-const router = express.Router();
-const Order = require('../models/order');
-const Product = require('../models/products');
-const { authenticateToken, requireAdmin } = require('../middleware/auth');
+const { Router } = require("express");
+const orderRouter = Router();
+const adminOrderRouter = Router();
+const Order = require("../models/order");
+const { createOrder, cancelOrder, expireOrders } = require("../services/orders");
+const { authenticateToken, requireAdmin, requireBuyer } = require("../middleware/auth");
+const { ApiError } = require("../lib/errors");
+const validate = require("../lib/validation");
+const serialize = require("../lib/serializers");
 
-// POST /api/orders (Membuat pesanan & mengunci barang)
-router.post('/', authenticateToken, async (req, res) => {
-  try {
-    const { product_id } = req.body;
-
-    // Kunci barang secara atomik (hanya jika status 'available')
-    const product = await Product.findOneAndUpdate(
-      { _id: product_id, status: 'available' },
-      { status: 'reserved' },
-      { new: true }
-    );
-
-    if (!product) {
-      return res.status(400).json({
-        success: false,
-        message: 'Barang sudah dipesan atau terjual oleh pembeli lain.'
-      });
-    }
-
-    const order = new Order({
-      buyer_id: req.user.id,
-      product_id: product._id,
-      total_price: product.price
-    });
-    await order.save();
-
-    res.status(201).json({ success: true, message: 'Pesanan berhasil dibuat, barang dikunci', data: order });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
+orderRouter.use(authenticateToken);
+orderRouter.post("/", requireBuyer, async (req, res) => {
+  const order = await createOrder(req.account, req.body);
+  res.status(201).json({ success: true, data: serialize.order(order) });
 });
 
-// GET /api/orders/my
-router.get('/my', authenticateToken, async (req, res) => {
-  try {
-    const orders = await Order.find({ buyer_id: req.user.id }).populate('product_id');
-    res.status(200).json({ success: true, data: orders });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
+orderRouter.post("/:id/cancel", requireBuyer, validate.idParam("id"), async (req, res) => {
+  validate.fields(req.body, []);
+  const order = await cancelOrder(req.params.id, req.user.id);
+  res.json({ success: true, data: serialize.order(order) });
 });
 
-// GET /api/admin/orders (Admin - Seluruh Pesanan)
-router.get('/admin/orders', authenticateToken, requireAdmin, async (req, res) => {
-  try {
-    const orders = await Order.find().populate('buyer_id', 'name email').populate('product_id');
-    res.status(200).json({ success: true, data: orders });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
+orderRouter.post("/:id/receive", requireBuyer, validate.idParam("id"), async (req, res) => {
+  validate.fields(req.body, []);
+  const order = await require("../services/payments").receiveOrder(req.params.id, req.account);
+  res.json({ success: true, data: serialize.order(order) });
+});
+orderRouter.get("/my", requireBuyer, async (req, res) => {
+  await expireOrders();
+  const orders = await Order.find({ buyer_id: req.user.id })
+    .populate("product_id")
+    .populate({ path: "review", populate: { path: "buyer_id", select: "name" } });
+  res.json({ success: true, data: orders.map(serialize.order) });
 });
 
-// GET /api/orders/:id
-router.get('/:id', authenticateToken, async (req, res) => {
-  try {
-    const order = await Order.findById(req.params.id).populate('product_id');
-    if (!order) return res.status(404).json({ success: false, message: 'Pesanan tidak ditemukan' });
-    res.status(200).json({ success: true, data: order });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+orderRouter.get("/:id", validate.idParam("id"), async (req, res) => {
+  await expireOrders();
+  const order = await Order.findById(req.params.id)
+    .populate("product_id")
+    .populate({ path: "review", populate: { path: "buyer_id", select: "name" } });
+  if (!order) throw new ApiError(404, "NOT_FOUND", "Pesanan tidak ditemukan.");
+  if (req.user.role !== "admin" && String(order.buyer_id) !== req.user.id) {
+    throw new ApiError(403, "FORBIDDEN", "Anda tidak memiliki akses ke pesanan ini.");
   }
+  res.json({ success: true, data: serialize.order(order) });
 });
 
-// PATCH /api/admin/orders/:id/status (Admin - Ubah Status & Resi)
-router.patch('/admin/orders/:id/status', authenticateToken, requireAdmin, async (req, res) => {
-  try {
-    const { status, tracking_number } = req.body;
-    const order = await Order.findByIdAndUpdate(
-      req.params.id,
-      { status, tracking_number },
-      { new: true }
-    );
-
-    // Jika pesanan selesai, update status produk jadi 'sold'
-    if (status === 'completed') {
-      await Product.findByIdAndUpdate(order.product_id, { status: 'sold' });
-    }
-
-    res.status(200).json({ success: true, message: 'Status pesanan diperbarui', data: order });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
+adminOrderRouter.use(authenticateToken, requireAdmin);
+adminOrderRouter.post("/:id/actions", validate.idParam("id"), async (req, res) => {
+  const order = await require("../services/payments").adminAction(
+    req.params.id,
+    req.body,
+    req.app.locals.config,
+  );
+  res.json({ success: true, data: serialize.order(order) });
+});
+adminOrderRouter.get("/", async (req, res) => {
+  await expireOrders();
+  validate.fields(req.query, ["status", "page", "limit"]);
+  const statuses = require("../lib/order-options").STATUSES;
+  if (req.query.status !== undefined && !statuses.includes(req.query.status))
+    validate.invalid("status");
+  const positive = (key, fallback, max) => {
+    const value = req.query[key];
+    if (value === undefined) return fallback;
+    if (
+      typeof value !== "string" ||
+      !/^[1-9]\d*$/.test(value) ||
+      !Number.isSafeInteger(Number(value)) ||
+      Number(value) > max
+    )
+      validate.invalid(key);
+    return Number(value);
+  };
+  const page = positive("page", 1, 1000000),
+    limit = positive("limit", 20, 100);
+  const filter = req.query.status ? { status: req.query.status } : {};
+  const orders = await Order.find(filter)
+    .sort({ createdAt: -1, _id: -1 })
+    .skip((page - 1) * limit)
+    .limit(limit)
+    .populate("buyer_id", "name email")
+    .populate("product_id")
+    .populate({ path: "review", populate: { path: "buyer_id", select: "name" } });
+  const groups = await Order.aggregate([{ $group: { _id: "$status", count: { $sum: 1 } } }]);
+  const counts = Object.fromEntries(statuses.map((status) => [status, 0]));
+  for (const group of groups) counts[group._id] = group.count;
+  const total = await Order.countDocuments(filter);
+  res.json({
+    success: true,
+    data: orders.map(serialize.order),
+    total,
+    counts,
+    page,
+    limit,
+    totalPages: Math.ceil(total / limit),
+  });
 });
 
-module.exports = router;
+adminOrderRouter.patch("/:id/status", validate.idParam("id"), async (req) => {
+  if (!(await Order.exists({ _id: req.params.id })))
+    throw new ApiError(404, "NOT_FOUND", "Pesanan tidak ditemukan.");
+  throw new ApiError(
+    409,
+    "TRANSITION_UNAVAILABLE",
+    "Gunakan endpoint actions untuk tindakan pembayaran/pengiriman.",
+  );
+});
+
+module.exports = { orderRouter, adminOrderRouter };
