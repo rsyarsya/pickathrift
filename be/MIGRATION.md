@@ -2,6 +2,13 @@
 
 ## Tambahan batch 4
 
+`expiresAt` harus setelah `createdAt`. Untuk Menunggu Pembayaran/pending, selisihnya
+wajib tepat enam jam; sebelum/sama dengan waktu pembuatan, atau durasi lain termasuk
+setahun, dilaporkan sebagai `ORDER_DEADLINE_REVIEW_REQUIRED`. Migrator tidak memotong
+atau memperpanjang waktu. Operator perlu memeriksa bukti lama dan menyelesaikan blocker
+sebelum apply. Order yang sudah verifikasi/Perlu Unggah Ulang tidak otomatis dibatalkan
+oleh deadline awal meskipun waktu sekarang sudah melewatinya.
+
 Server wajib MongoDB replica set/Atlas. Dry-run sekarang memeriksa seluruh order,
 termasuk yang sudah punya snapshot. Wajib tersedia `address_snapshot` lengkap,
 `item_price`, `shipping_fee`, total yang sama dengan jumlah keduanya, dan waktu

@@ -24,6 +24,9 @@ set sementara sendiri; tidak perlu menjalankan mongod manual untuk `test`.
 
 pnpm adalah alur utama workspace FE/BE. `be/package-lock.json` tetap mendukung instalasi
 BE mandiri dengan `npm ci`; jika dependensi BE berubah, sinkronkan kedua lockfile.
+Build script instalasi `mongodb-memory-server` dinonaktifkan secara eksplisit dalam
+`pnpm-workspace.yaml`. Tes tetap mengunduh binary MongoDB QA saat diperlukan pada
+runtime pertama; tidak membutuhkan `pnpm approve-builds` untuk paket tersebut.
 
 Server baru menerima request setelah MongoDB terhubung dan indeks unik email siap.
 Konfigurasi tidak lengkap atau koneksi gagal menghentikan startup dengan exit code 1.

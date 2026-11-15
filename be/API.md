@@ -2,6 +2,11 @@
 
 ## Pesanan dan stok (batch 4)
 
+Pemeriksaan data lama menolak `expiresAt <= createdAt`. Khusus status Menunggu
+Pembayaran (termasuk `pending` lama), selisihnya wajib tepat enam jam. Deadline yang
+tidak sesuai menjadi blocker migrasi, tanpa ditulis ulang otomatis. Status verifikasi,
+unggah ulang, dan sesudahnya tetap tidak terkena pembatalan berdasarkan deadline awal.
+
 POST `/api/orders` khusus Buyer menerima `product_id` dan `address` opsional (objek
 lengkap sesuai batch 3). Tanpa address, gunakan alamat profil; belum lengkap => 422.
 Server menentukan buyer, harga, ongkir 15000, total, dan expiresAt = createdAt +6 jam.
@@ -42,6 +47,8 @@ min <= max. Field lama/asing ditolak 422. Hanya produk aktif dan available.
 Semua ukuran yang diminta harus tersedia dan selisih <=2 cm. Respons `data` berupa
 array `{product, diffCm}`; tanpa pengukuran diffCm=0. Urutan total selisih terkecil,
 createdAt terbaru, lalu ID menurun. Hasil kosong tetap 200 dengan array kosong.
+Perbandingan batas dan hasil seri mengabaikan galat representasi floating point yang
+sangat kecil; selisih desimal tepat 2 cm tetap lolos, selisih nyata di atas 2 cm ditolak.
 
 Wishlist tetap memakai GET `/api/wishlist` dan POST/DELETE `/api/wishlist/:productId`,
 khusus Buyer sendiri. POST produk hilang/nonaktif 404; duplikat termasuk request

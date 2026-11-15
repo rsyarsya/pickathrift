@@ -15,7 +15,7 @@ const Wishlist = require("../models/wishlist");
 const { expireOrders } = require("../services/orders");
 const { inspectLegacyData, assertDataReady, migrateLegacyData } = require("../lib/legacy-data");
 const { STATUSES, PAYMENT_WINDOW_MS } = require("../lib/order-options");
-const { productInput, addressInput } = require("./fixtures");
+const { productInput, addressInput, orderInput } = require("./fixtures");
 
 const secret = randomBytes(48).toString("hex");
 let mongo, server, buyer, other, admin, token, otherToken, adminToken, product;
@@ -41,11 +41,13 @@ const place = (overrides = {}, who = token) =>
   });
 const cancel = (id, who = token) =>
   request(`/orders/${id}/cancel`, { method: "POST", token: who, body: {} });
-const backdate = (id) =>
-  Order.collection.updateOne(
+const backdate = (id) => {
+  const expiresAt = new Date(Date.now() - 1000);
+  return Order.collection.updateOne(
     { _id: new mongoose.Types.ObjectId(id) },
-    { $set: { expiresAt: new Date(Date.now() - 1000) } },
+    { $set: { createdAt: new Date(expiresAt.getTime() - PAYMENT_WINDOW_MS), expiresAt } },
   );
+};
 before(async () => {
   mongo = await MongoMemoryReplSet.create({ binary: { version: "8.2.6" }, replSet: { count: 1 } });
   server = await start({
@@ -382,6 +384,71 @@ test("migrasi: kepemilikan kunci salah terdeteksi tanpa mengubah order/produk", 
   const plan = await inspectLegacyData(mongoose.connection);
   assert.ok(plan.issues.some((x) => x.code === "RESERVATION_REVIEW_REQUIRED"));
   await assert.rejects(assertDataReady(mongoose.connection), { code: "DATA_MIGRATION_REQUIRED" });
+});
+test("migrasi: deadline salah pada pending lama maupun status baru menjadi blocker tanpa perubahan", async () => {
+  await place();
+  const original = await Order.collection.findOne();
+  for (const status of ["pending", "MENUNGGU_PEMBAYARAN"]) {
+    for (const duration of [
+      -1000,
+      0,
+      PAYMENT_WINDOW_MS - 1,
+      PAYMENT_WINDOW_MS + 1,
+      365 * 86400000,
+    ]) {
+      await Order.collection.replaceOne(
+        { _id: original._id },
+        { ...original, status, expiresAt: new Date(original.createdAt.getTime() + duration) },
+      );
+      const before = await Order.collection.findOne();
+      const productBefore = await Product.collection.findOne({ _id: product._id });
+      const plan = await inspectLegacyData(mongoose.connection);
+      assert.ok(
+        plan.issues.some(
+          (x) => x.code === "ORDER_DEADLINE_REVIEW_REQUIRED" && x.fields.includes("expiresAt"),
+        ),
+      );
+      await assert.rejects(assertDataReady(mongoose.connection), {
+        code: "DATA_MIGRATION_REQUIRED",
+      });
+      await assert.rejects(migrateLegacyData(mongoose.connection, true), {
+        code: "DATA_MIGRATION_REQUIRED",
+      });
+      assert.deepEqual(await Order.collection.findOne(), before);
+      assert.deepEqual(await Product.collection.findOne({ _id: product._id }), productBefore);
+    }
+  }
+  await Order.collection.replaceOne({ _id: original._id }, { ...original, status: "pending" });
+  await migrateLegacyData(mongoose.connection, true);
+  const migrated = await Order.collection.findOne();
+  assert.equal(migrated.status, "MENUNGGU_PEMBAYARAN");
+  assert.deepEqual(migrated.expiresAt, original.expiresAt);
+  await assertDataReady(mongoose.connection);
+});
+test("model order menolak deadline rusak dan menerima tepat enam jam", async () => {
+  const input = { ...orderInput(product), buyer_id: buyer._id, product_id: product._id };
+  for (const duration of [-1000, 0, PAYMENT_WINDOW_MS - 1, PAYMENT_WINDOW_MS + 1, 365 * 86400000]) {
+    const order = new Order({
+      ...input,
+      expiresAt: new Date(input.createdAt.getTime() + duration),
+    });
+    await assert.rejects(order.validate(), (error) => Boolean(error.errors?.expiresAt));
+  }
+  await new Order(input).validate();
+  assert.equal(await Order.countDocuments(), 0);
+});
+test("migrasi/expiry tidak membatalkan verifikasi atau unggah ulang setelah deadline awal", async () => {
+  const first = (await place()).data;
+  await backdate(first.id);
+  for (const status of ["MENUNGGU_VERIFIKASI", "PERLU_UNGGAH_ULANG"]) {
+    await Order.updateOne({ _id: first.id }, { status });
+    await assertDataReady(mongoose.connection);
+    const plan = await migrateLegacyData(mongoose.connection, true);
+    assert.deepEqual(plan.summary, { users: 0, products: 0, orders: 0, blockers: 0 });
+    await expireOrders(new Date("2100-01-01"));
+    assert.equal((await Order.findById(first.id)).status, status);
+    assert.equal(String((await Product.findById(product.id)).reservation_order_id), first.id);
+  }
 });
 test("startup standalone ditolak sebelum port dibuka dengan pesan replica set", async () => {
   const standalone = await MongoMemoryServer.create({ binary: { version: "8.2.6" } });

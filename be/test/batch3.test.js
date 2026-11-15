@@ -110,6 +110,78 @@ test("match: ranking selisih lalu waktu lalu ID stabil, tanpa ukuran hasil terba
   );
   assert.ok(plain.data.every((x) => x.diffCm === 0));
 });
+test("match: desimal tepat 2 cm lolos pada kedua sisi, di luar batas tetap ditolak", async () => {
+  const products = await Product.create(
+    [32.02, 28.02, 32.0201, 28.0199].map((cm) =>
+      productInput({ measurements: [{ label: "Lebar dada", cm }] }),
+    ),
+  );
+  const result = await match({
+    category: "Jaket",
+    measurements: [{ label: "Lebar dada", cm: 30.02 }],
+  });
+  assert.equal(result.status, 200);
+  assert.deepEqual(
+    result.data.map((x) => x.product.id).sort(),
+    products
+      .slice(0, 2)
+      .map((x) => x.id)
+      .sort(),
+  );
+  assert.ok(result.data.every((x) => x.diffCm === 2));
+});
+test("match: satu ukuran desimal melampaui batas menggugurkan produk", async () => {
+  const good = await Product.create(
+    productInput({
+      measurements: [
+        { label: "Lebar dada", cm: 32.02 },
+        { label: "Panjang", cm: 62.02 },
+      ],
+    }),
+  );
+  await Product.create(
+    productInput({
+      measurements: [
+        { label: "Lebar dada", cm: 32.02 },
+        { label: "Panjang", cm: 62.0201 },
+      ],
+    }),
+  );
+  const result = await match({
+    category: "Jaket",
+    measurements: [
+      { label: "Lebar dada", cm: 30.02 },
+      { label: "Panjang", cm: 60.02 },
+    ],
+  });
+  assert.deepEqual(
+    result.data.map((x) => [x.product.id, x.diffCm]),
+    [[good.id, 4]],
+  );
+});
+test("match: skor desimal seri mempertahankan urutan terbaru dan ID", async () => {
+  const old = await Product.create(
+    productInput({
+      createdAt: new Date("2026-01-01"),
+      measurements: [{ label: "Lebar dada", cm: 10.1 }],
+    }),
+  );
+  const date = new Date("2026-01-02");
+  const newer = await Product.create(
+    productInput({ createdAt: date, measurements: [{ label: "Lebar dada", cm: 12.3 }] }),
+  );
+  const newestId = await Product.create(
+    productInput({ createdAt: date, measurements: [{ label: "Lebar dada", cm: 10.1 }] }),
+  );
+  const result = await match({
+    category: "Jaket",
+    measurements: [{ label: "Lebar dada", cm: 11.2 }],
+  });
+  assert.deepEqual(
+    result.data.map((x) => x.product.id),
+    [newestId.id, newer.id, old.id],
+  );
+});
 test("match: Celana, desimal, preferensi dan batas anggaran inklusif", async () => {
   const product = await Product.create(
     productInput({

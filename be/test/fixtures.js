@@ -26,13 +26,15 @@ const addressInput = () => ({
   postalCode: "55281",
 });
 function orderInput(product, overrides = {}) {
+  const createdAt = new Date();
   return {
     product_snapshot: require("../lib/serializers").product(product),
     address_snapshot: addressInput(),
     item_price: product.price,
     shipping_fee: 15000,
     total_price: product.price + 15000,
-    expiresAt: new Date(Date.now() + 21600000),
+    createdAt,
+    expiresAt: new Date(createdAt.getTime() + 21600000),
     ...overrides,
   };
 }

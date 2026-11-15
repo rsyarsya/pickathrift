@@ -52,15 +52,27 @@ async function matchProducts(body) {
     let fits = true;
     for (const entry of criteria) {
       const actual = product.measurements.find((m) => m.label === entry.label)?.cm;
-      const diff = actual === undefined ? Infinity : Math.abs(actual - entry.cm);
-      if (diff > 2) {
+      if (actual === undefined) {
         fits = false;
         break;
       }
-      diffCm += diff;
+      const diff = Math.abs(actual - entry.cm);
+      // Abaikan galat representasi biner kedua operand, bukan memperlebar toleransi cm.
+      const roundingError = 2 * Number.EPSILON * Math.max(1, actual, entry.cm);
+      if (diff > 2 + roundingError) {
+        fits = false;
+        break;
+      }
+      diffCm += Math.abs(diff - 2) <= roundingError ? 2 : diff;
     }
     if (fits) matches.push({ product: serialize.product(product), diffCm });
   }
-  return matches.sort((a, b) => a.diffCm - b.diffCm);
+  // Pengukuran dibatasi 200 cm. Hasil yang seri dalam galat biner mempertahankan
+  // urutan createdAt/ID dari query, bukan diurutkan ulang karena noise desimal.
+  const scoreError = 2 * Number.EPSILON * 200 * criteria.length;
+  return matches.sort((a, b) => {
+    const difference = a.diffCm - b.diffCm;
+    return Math.abs(difference) <= scoreError ? 0 : difference;
+  });
 }
 module.exports = { matchProducts };

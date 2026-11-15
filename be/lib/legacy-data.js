@@ -1,7 +1,7 @@
 const { isDeepStrictEqual } = require("node:util");
 const Product = require("../models/products");
 const Order = require("../models/order");
-const { RESERVED_STATUSES } = require("./order-options");
+const { RESERVED_STATUSES, validPaymentDeadline } = require("./order-options");
 const serialize = require("./serializers");
 const { CATEGORIES } = require("./product-options");
 const { addressInput } = require("./address");
@@ -183,6 +183,10 @@ async function inspectLegacyData(connection, session) {
       if (!isDeepStrictEqual(address, raw.address_snapshot)) set.address_snapshot = address;
       if (!dateValid(raw.expiresAt) || !dateValid(raw.createdAt) || !dateValid(raw.updatedAt)) {
         issue("orders", raw._id, "ORDER_REVIEW_REQUIRED", ["expiresAt", "createdAt", "updatedAt"]);
+        continue;
+      }
+      if (!validPaymentDeadline(raw.createdAt, raw.expiresAt, set.status ?? raw.status)) {
+        issue("orders", raw._id, "ORDER_DEADLINE_REVIEW_REQUIRED", ["createdAt", "expiresAt"]);
         continue;
       }
       const candidate = new Order({ ...raw, ...set });
