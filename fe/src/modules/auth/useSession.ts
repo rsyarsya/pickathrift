@@ -1,26 +1,16 @@
-import { createStore } from "@/lib/store";
-
+import { authState, logout } from "./lib/auth-service";
 export type SessionUser = { name: string; email: string };
-
-/*
- * Sesi Buyer. SEMENTARA disimpan di localStorage dan diisi oleh simulasi auth
- * (login-form, buyer-register-content). Begitu backend ada, isinya diambil dari
- * GET /auth/me lewat api(), dan logOut() memanggil POST /auth/logout.
- */
-const store = createStore<SessionUser | null>(null, "pickathrift.session");
-
 export function useSession() {
-  const saved = store.use();
-  // Versi lama menyimpan `true`; anggap belum masuk supaya nama tidak kosong.
-  const user = saved !== null && typeof saved === "object" ? saved : null;
+  const state = authState.use();
+  const user = state.user?.role === "buyer" ? state.user : null;
   return {
     user,
     isLoggedIn: user !== null,
-    logIn: (next: SessionUser) => store.set({ name: next.name, email: next.email }),
+    logOut: logout,
     updateName(email: string, name: string) {
-      const current = store.get();
-      if (current?.email === email) store.set({ ...current, name });
+      const current = authState.get();
+      if (current.user?.email === email)
+        authState.set({ ...current, user: { ...current.user, name } });
     },
-    logOut: () => store.set(null),
   };
 }

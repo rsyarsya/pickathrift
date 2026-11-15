@@ -52,8 +52,7 @@ export function AdminOnly({ children }: { children: ReactNode }) {
     return (
       <SessionExpired
         email={admin.session?.email ?? "admin@pickathrift.test"}
-        onLoggedIn={(user) => {
-          admin.logIn(user);
+        onLoggedIn={() => {
           if (demo) router.replace(pathname);
         }}
       />

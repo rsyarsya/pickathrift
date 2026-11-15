@@ -1,15 +1,14 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { AUTH_SIMULATION_ENABLED } from "@/lib/env";
-import { useAuthSimulation } from "../hooks/use-auth-simulation";
-import { mockAuth, type MockUser } from "../lib/mock-auth";
+import { useAuthSubmit } from "../hooks/use-auth-submit";
+import { register, type AuthUser } from "../lib/auth-service";
 import { validateRegistration, type RegistrationValues } from "../lib/validate-registration";
 import { AuthFeedback } from "./auth-feedback";
 import { PasswordField } from "./password-field";
 import styles from "./auth.module.css";
 
-export function BuyerRegisterForm({ onRegistered }: { onRegistered: (user: MockUser) => void }) {
+export function BuyerRegisterForm({ onRegistered }: { onRegistered: (user: AuthUser) => void }) {
   const [values, setValues] = useState<RegistrationValues>({
     name: "",
     email: "",
@@ -22,7 +21,7 @@ export function BuyerRegisterForm({ onRegistered }: { onRegistered: (user: MockU
     password: false,
     confirmPassword: false,
   });
-  const { pending, feedback, submit, clearFeedback } = useAuthSimulation();
+  const { pending, feedback, submit, clearFeedback } = useAuthSubmit();
   const errors = validateRegistration(values);
   const errorFor = (field: keyof RegistrationValues) =>
     touched[field] ? errors[field] : undefined;
@@ -43,8 +42,8 @@ export function BuyerRegisterForm({ onRegistered }: { onRegistered: (user: MockU
       return;
     }
     void submit(
-      () => mockAuth.register(values),
-      (user) => `Akun uji berhasil dibuat. Selamat datang, ${user.name}!`,
+      () => register(values),
+      (user) => `Akun berhasil dibuat. Selamat datang, ${user.name}!`,
     ).then((user) => {
       if (user) onRegistered(user);
     });
@@ -137,11 +136,7 @@ export function BuyerRegisterForm({ onRegistered }: { onRegistered: (user: MockU
         />
       </fieldset>
 
-      <button
-        type="submit"
-        className={styles.submitButton}
-        disabled={!AUTH_SIMULATION_ENABLED || pending}
-      >
+      <button type="submit" className={styles.submitButton} disabled={pending}>
         {pending ? "Memproses…" : "Buat akun"}
       </button>
     </form>

@@ -2,15 +2,13 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import type { MockUser } from "../lib/mock-auth";
-import { useSession } from "../useSession";
+import type { AuthUser } from "../lib/auth-service";
 import { BuyerRegisterForm } from "./buyer-register-form";
 import { RegistrationSuccess } from "./registration-success";
 import styles from "./auth.module.css";
 
 export function BuyerRegisterContent() {
-  const [createdUser, setCreatedUser] = useState<MockUser | null>(null);
-  const session = useSession();
+  const [createdUser, setCreatedUser] = useState<AuthUser | null>(null);
 
   if (createdUser) return <RegistrationSuccess user={createdUser} />;
 
@@ -32,8 +30,6 @@ export function BuyerRegisterContent() {
       </div>
       <BuyerRegisterForm
         onRegistered={(user) => {
-          // Akun baru langsung masuk, sesuai layar "Akun dibuat. Selamat datang".
-          session.logIn(user);
           setCreatedUser(user);
         }}
       />

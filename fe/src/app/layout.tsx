@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { DM_Mono, Instrument_Sans } from "next/font/google";
 import { SmoothScroll } from "@/components/layout/SmoothScroll";
 import "@/styles/globals.css";
+import { AuthBoundary } from "@/modules/auth/components/auth-boundary";
 
 const instrumentSans = Instrument_Sans({
   variable: "--font-instrument-sans",
@@ -32,7 +33,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="id" className={`${instrumentSans.variable} ${dmMono.variable} antialiased`}>
       <body className="font-sans">
         <SmoothScroll />
-        {children}
+        <AuthBoundary>{children}</AuthBoundary>
       </body>
     </html>
   );

@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { useEffect, useRef } from "react";
-import type { MockUser } from "../lib/mock-auth";
+import type { AuthUser } from "../lib/auth-service";
 import styles from "./auth.module.css";
 
-export function RegistrationSuccess({ user }: { user: MockUser }) {
+export function RegistrationSuccess({ user }: { user: AuthUser }) {
   const heading = useRef<HTMLHeadingElement>(null);
   const firstName = user.name.trim().split(/\s+/)[0];
 
@@ -32,13 +32,11 @@ export function RegistrationSuccess({ user }: { user: MockUser }) {
           >
             Akun dibuat. Selamat datang, {firstName}!
           </h1>
-          <p className={styles.successCopy}>
-            Satu langkah lagi sebelum bisa checkout: isi alamat pengiriman di profil.
-          </p>
+          <p className={styles.successCopy}>Akunmu sudah tersimpan. Masuk untuk melanjutkan.</p>
         </div>
         <div className={styles.successActions}>
-          <Link href="/profil" className={styles.submitButton}>
-            Isi alamat sekarang →
+          <Link href="/masuk" className={styles.submitButton}>
+            Masuk ke akun →
           </Link>
           <Link href="/" className={styles.secondaryButton}>
             Nanti saja, mulai belanja

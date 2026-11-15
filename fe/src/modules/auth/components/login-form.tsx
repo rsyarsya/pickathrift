@@ -2,27 +2,21 @@
 
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
-import { AUTH_SIMULATION_ENABLED } from "@/lib/env";
-import { getShippingAddress } from "@/modules/profile/data/profile";
-import { useAuthSimulation } from "../hooks/use-auth-simulation";
-import { useAdminSession } from "@/modules/admin/useAdminSession";
-import { useSession } from "../useSession";
+import { useAuthSubmit } from "../hooks/use-auth-submit";
 import { buyerReturnPath } from "../lib/return-path";
-import { mockAuth, type MockRole } from "../lib/mock-auth";
+import { login, type AuthRole } from "../lib/auth-service";
 import { validateBuyerLogin, type BuyerLoginValues } from "../lib/validate-buyer-login";
 import { AuthFeedback } from "./auth-feedback";
 import { PasswordField } from "./password-field";
 import styles from "./auth.module.css";
 
-export function LoginForm({ role }: { role: MockRole }) {
+export function LoginForm({ role }: { role: AuthRole }) {
   const [values, setValues] = useState<BuyerLoginValues>({ email: "", password: "" });
   const [touched, setTouched] = useState({ email: false, password: false });
   const errors = validateBuyerLogin(values);
   const emailError = touched.email ? errors.email : undefined;
   const passwordError = touched.password ? errors.password : undefined;
-  const { pending, feedback, submit, clearFeedback } = useAuthSimulation();
-  const session = useSession();
-  const adminSession = useAdminSession();
+  const { pending, feedback, submit, clearFeedback } = useAuthSubmit();
   const router = useRouter();
   const admin = role === "admin";
   const emailId = `${role}-email`;
@@ -39,13 +33,12 @@ export function LoginForm({ role }: { role: MockRole }) {
       return;
     }
     void submit(
-      () => mockAuth.login(values, role),
+      () => login(values, role),
       (user) => `Berhasil masuk sebagai ${admin ? "Admin" : "Buyer"}. Halo, ${user.name}!`,
-    ).then(async (user) => {
+    ).then((user) => {
       if (!user) return;
       const returnTo = new URLSearchParams(window.location.search).get("kembali");
       if (admin) {
-        adminSession.logIn(user);
         // Hanya kembali ke halaman admin; selain itu ke Kelola produk.
         router.push(
           returnTo?.startsWith("/admin/") && !returnTo.startsWith("/admin/masuk")
@@ -54,8 +47,6 @@ export function LoginForm({ role }: { role: MockRole }) {
         );
         return;
       }
-      const address = await getShippingAddress(user.email);
-      session.logIn(address ? { ...user, name: address.recipient } : user);
       router.push(buyerReturnPath(returnTo));
     });
   }
@@ -110,11 +101,7 @@ export function LoginForm({ role }: { role: MockRole }) {
         />
       </fieldset>
 
-      <button
-        type="submit"
-        className={styles.submitButton}
-        disabled={!AUTH_SIMULATION_ENABLED || pending}
-      >
+      <button type="submit" className={styles.submitButton} disabled={pending}>
         {pending ? "Memproses…" : admin ? "Masuk ke dasbor" : "Masuk"}
       </button>
     </form>

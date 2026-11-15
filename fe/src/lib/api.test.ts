@@ -28,7 +28,7 @@ describe("api", () => {
     const request = new Request(...fetchMock.mock.calls[0]!);
     expect(request.headers.get("Content-Type")).toBe("application/json");
     expect(request.headers.get("X-Request-Id")).toBe("order-1");
-    expect(request.credentials).toBe("include");
+    expect(request.credentials).toBe("omit");
     expect(await request.json()).toEqual(body);
   });
 
