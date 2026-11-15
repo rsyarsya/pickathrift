@@ -5,7 +5,8 @@ Perbaikan dikerjakan bertahap. Batch 1 mencakup akses, validasi dasar, dan tes;
 batch 2 melengkapi model produk, aturan edit Admin, dan katalog dengan pagination.
 Batch 3 melengkapi pencocokan ukuran, wishlist, dan alamat terstruktur. Batch 4
 menambahkan transaksi stok, pembatalan, dan expiry enam jam. Batch 5 melengkapi upload foto/bukti lokal, verifikasi Admin, pengiriman dan penerimaan.
-Aturan ulasan lengkap masih menyusul.
+Batch 6 membatasi ulasan pada order Selesai, satu ulasan per order. API diuji mandiri;
+integrasi browser FE dinilai terpisah.
 
 ## Menjalankan lokal
 

@@ -27,13 +27,17 @@ orderRouter.post("/:id/receive", requireBuyer, validate.idParam("id"), async (re
 });
 orderRouter.get("/my", requireBuyer, async (req, res) => {
   await expireOrders();
-  const orders = await Order.find({ buyer_id: req.user.id }).populate("product_id");
+  const orders = await Order.find({ buyer_id: req.user.id })
+    .populate("product_id")
+    .populate({ path: "review", populate: { path: "buyer_id", select: "name" } });
   res.json({ success: true, data: orders.map(serialize.order) });
 });
 
 orderRouter.get("/:id", validate.idParam("id"), async (req, res) => {
   await expireOrders();
-  const order = await Order.findById(req.params.id).populate("product_id");
+  const order = await Order.findById(req.params.id)
+    .populate("product_id")
+    .populate({ path: "review", populate: { path: "buyer_id", select: "name" } });
   if (!order) throw new ApiError(404, "NOT_FOUND", "Pesanan tidak ditemukan.");
   if (req.user.role !== "admin" && String(order.buyer_id) !== req.user.id) {
     throw new ApiError(403, "FORBIDDEN", "Anda tidak memiliki akses ke pesanan ini.");
@@ -76,7 +80,8 @@ adminOrderRouter.get("/", async (req, res) => {
     .skip((page - 1) * limit)
     .limit(limit)
     .populate("buyer_id", "name email")
-    .populate("product_id");
+    .populate("product_id")
+    .populate({ path: "review", populate: { path: "buyer_id", select: "name" } });
   const groups = await Order.aggregate([{ $group: { _id: "$status", count: { $sum: 1 } } }]);
   const counts = Object.fromEntries(statuses.map((status) => [status, 0]));
   for (const group of groups) counts[group._id] = group.count;

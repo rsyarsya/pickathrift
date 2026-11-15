@@ -38,6 +38,7 @@ async function inspectLegacyData(connection, session, config = {}) {
   const users = await connection.db.collection("users").find({}, options).toArray();
   const products = await connection.db.collection("products").find({}, options).toArray();
   const orders = await connection.db.collection("orders").find({}, options).toArray();
+  const reviews = await connection.db.collection("reviews").find({}, options).toArray();
   const wishlists = await connection.db.collection("wishlists").find({}, options).toArray();
   const plan = { users: [], products: [], orders: [], issues: [] };
   const issue = (collection, id, code, fields) =>
@@ -236,6 +237,36 @@ async function inspectLegacyData(connection, session, config = {}) {
       );
     }
   }
+  const reviewKeys = new Map();
+  for (const review of reviews) {
+    const order = mappedOrders.get(String(review.order_id));
+    const fields = [];
+    if (!order || order.status !== "SELESAI") fields.push("order_id");
+    if (
+      !buyerIds.has(String(review.buyer_id)) ||
+      !order ||
+      String(order.buyer_id) !== String(review.buyer_id)
+    )
+      fields.push("buyer_id");
+    if (!Number.isInteger(review.rating) || review.rating < 1 || review.rating > 5)
+      fields.push("rating");
+    if (
+      typeof review.comment !== "string" ||
+      review.comment.trim().length < 10 ||
+      review.comment.trim().length > 500 ||
+      review.comment !== review.comment.trim()
+    )
+      fields.push("comment");
+    if (!dateValid(review.createdAt)) fields.push("createdAt");
+    if (fields.length) issue("reviews", review._id, "REVIEW_REVIEW_REQUIRED", fields);
+    const key = String(review.order_id);
+    const ids = reviewKeys.get(key) ?? [];
+    ids.push(review._id);
+    reviewKeys.set(key, ids);
+  }
+  for (const ids of reviewKeys.values())
+    if (ids.length > 1)
+      for (const id of ids) issue("reviews", id, "REVIEW_DUPLICATE", ["order_id"]);
   const reserving = [...mappedOrders.values()].filter((order) =>
     RESERVED_STATUSES.includes(order.status),
   );
@@ -290,6 +321,7 @@ async function migrateLegacyData(connection, apply = false, config = {}) {
   await connection.db
     .collection("wishlists")
     .createIndex({ user_id: 1, product_id: 1 }, { unique: true });
+  await connection.db.collection("reviews").createIndex({ order_id: 1 }, { unique: true });
   const session = await connection.startSession();
   try {
     let applied;

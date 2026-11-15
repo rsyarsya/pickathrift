@@ -76,6 +76,7 @@ function order(value) {
           shippedAt: value.shipment.shippedAt,
         }
       : null,
+    review: value.review ? publicReview(value.review) : null,
     tracking_number: value.tracking_number,
     total_price: value.total_price,
     item_price: value.item_price,
@@ -118,4 +119,13 @@ function review(value) {
   };
 }
 
-module.exports = { user, product, order, wishlist, review };
+function publicReview(value) {
+  return {
+    id: id(value),
+    author: value.buyer_id?.name ?? "Buyer",
+    rating: value.rating,
+    comment: value.comment,
+    createdAt: value.createdAt,
+  };
+}
+module.exports = { user, product, order, wishlist, review, publicReview };

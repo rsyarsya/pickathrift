@@ -1,4 +1,23 @@
-# Kontrak API BE — batch 1–5
+# Kontrak API BE — batch 1–6
+
+## Ulasan (batch 6)
+
+POST `/api/orders/:id/review` khusus Buyer pemilik pesanan Selesai. Body tetap
+`{rating, comment}`: rating bilangan bulat 1–5, comment teks setelah trim sepanjang
+10–500 karakter. Field asing/tipe salah 422; bukan pemilik/Admin 403, tanpa token
+401, resource hilang 404, belum Selesai 409 ORDER_NOT_COMPLETED. Ulasan kedua
+termasuk request bersamaan 409 REVIEW_EXISTS; unique index per order menjaminnya.
+Respons 201 memakai DTO ulasan lama.
+
+GET `/api/reviews` publik mengembalikan data array terbaru lalu ID, hanya
+`{id,author,rating,comment,createdAt}` tanpa order_id, ID Buyer, email, alamat atau
+data pembayaran. Nama penulis mengikuti nama profil. Order pada detail/daftar
+menambah `review` berupa ringkasan ulasan atau null agar eligibility dapat diketahui
+FE; tidak mengembalikan dokumen database mentah.
+
+Startup/migrasi memeriksa review lama: duplikat per order, rating/isi tidak valid,
+pemilik/referensi rusak, atau order belum Selesai menjadi blocker. Tidak menghapus
+atau mengarang ulasan otomatis.
 
 ## Pembayaran, berkas dan pengiriman (batch 5)
 
@@ -230,20 +249,20 @@ PATCH profil tidak menerima email, password, role, ID, ataupun operator MongoDB.
 
 ## Akses endpoint domain yang sudah ada
 
-| Method              | Route                        | Akses / catatan                                                                                          |
-| ------------------- | ---------------------------- | -------------------------------------------------------------------------------------------------------- |
-| GET                 | `/products`, `/products/:id` | Publik; kontrak batch 2 di atas.                                                                         |
-| POST                | `/products/match`            | Publik; body pencocokan batch 3.                                                                         |
-| POST, PATCH, DELETE | `/products`, `/products/:id` | Admin; POST hanya route koleksi.                                                                         |
-| GET                 | `/wishlist`                  | Buyer, hanya milik sendiri.                                                                              |
-| POST, DELETE        | `/wishlist/:productId`       | Buyer, hanya milik sendiri.                                                                              |
-| POST                | `/orders`                    | Buyer; `product_id`, alamat opsional, transaksi batch 4.                                                 |
-| GET                 | `/orders/my`                 | Buyer, hanya milik sendiri.                                                                              |
-| GET                 | `/orders/:id`                | Buyer pemilik atau Admin.                                                                                |
-| GET                 | `/admin/orders`              | Admin.                                                                                                   |
-| PATCH               | `/admin/orders/:id/status`   | Admin; perubahan bebas ditutup dengan 409 hingga batch 5.                                                |
-| POST                | `/orders/:id/review`         | Buyer pemilik; `rating` bilangan bulat 1–5 dan `comment` tidak kosong. Aturan selesai/duplikat menyusul. |
-| GET                 | `/reviews`                   | Publik; nama penulis tanpa email/ID akun.                                                                |
+| Method              | Route                        | Akses / catatan                                                                                       |
+| ------------------- | ---------------------------- | ----------------------------------------------------------------------------------------------------- |
+| GET                 | `/products`, `/products/:id` | Publik; kontrak batch 2 di atas.                                                                      |
+| POST                | `/products/match`            | Publik; body pencocokan batch 3.                                                                      |
+| POST, PATCH, DELETE | `/products`, `/products/:id` | Admin; POST hanya route koleksi.                                                                      |
+| GET                 | `/wishlist`                  | Buyer, hanya milik sendiri.                                                                           |
+| POST, DELETE        | `/wishlist/:productId`       | Buyer, hanya milik sendiri.                                                                           |
+| POST                | `/orders`                    | Buyer; `product_id`, alamat opsional, transaksi batch 4.                                              |
+| GET                 | `/orders/my`                 | Buyer, hanya milik sendiri.                                                                           |
+| GET                 | `/orders/:id`                | Buyer pemilik atau Admin.                                                                             |
+| GET                 | `/admin/orders`              | Admin.                                                                                                |
+| PATCH               | `/admin/orders/:id/status`   | Admin; perubahan bebas ditutup dengan 409 hingga batch 5.                                             |
+| POST                | `/orders/:id/review`         | Buyer pemilik; `rating` bilangan bulat 1–5 dan `comment` 10–500 karakter, Selesai dan satu per order. |
+| GET                 | `/reviews`                   | Publik; nama penulis tanpa email/ID akun.                                                             |
 
 Alias tidak sengaja seperti `/api/:id` dan `/api/orders/admin/orders` dihapus.
 ID valid yang tidak ditemukan menghasilkan `404`, termasuk edit/hapus produk dan hapus wishlist.

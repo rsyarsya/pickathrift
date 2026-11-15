@@ -99,3 +99,10 @@ berkas lokal yang dapat diakses. Diproses dan sesudahnya membutuhkan verifiedAt;
 memerlukan shipment, Selesai juga receivedAt. Jika tidak lengkap, dry-run mengembalikan
 PAYMENT_REVIEW_REQUIRED, tanpa membuat bukti atau resi fiktif. Gunakan UPLOAD_DIR yang
 sama saat menjalankan server, perintah Admin, dan migrasi. Database tim tidak diubah.
+
+## Tambahan batch 6
+
+Review lama diperiksa sebelum pemasangan unique index order_id: satu per order, pemilik
+sesuai Buyer order Selesai, rating integer 1–5, isi trim 10–500 karakter dan createdAt
+valid. REVIEW_DUPLICATE/REVIEW_REVIEW_REQUIRED perlu keputusan operator; tidak ada
+penghapusan, penggabungan atau perbaikan ulasan otomatis.

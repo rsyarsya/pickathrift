@@ -89,4 +89,10 @@ orderSchema.pre("validate", function () {
   if (this.product_snapshot?.price !== this.item_price)
     this.invalidate("item_price", "Harga snapshot tidak sesuai.");
 });
+orderSchema.virtual("review", {
+  ref: "Review",
+  localField: "_id",
+  foreignField: "order_id",
+  justOne: true,
+});
 module.exports = mongoose.model("Order", orderSchema);

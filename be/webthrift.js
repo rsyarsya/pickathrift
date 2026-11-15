@@ -4,6 +4,7 @@ const { getConfig } = require("./config");
 const { createApp } = require("./app");
 const User = require("./models/user");
 const Order = require("./models/order");
+const Review = require("./models/review");
 const Wishlist = require("./models/wishlist");
 const { assertDataReady } = require("./lib/legacy-data");
 
@@ -20,6 +21,7 @@ async function start(config = getConfig()) {
     await User.createIndexes();
     await Wishlist.createIndexes();
     await Order.createIndexes();
+    await Review.createIndexes();
     const server = createApp(config).listen(config.port);
     await once(server, "listening");
     return server;

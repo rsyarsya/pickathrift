@@ -13,7 +13,6 @@ const { getConfig } = require("../config");
 const User = require("../models/user");
 const Order = require("../models/order");
 const Product = require("../models/products");
-const Review = require("../models/review");
 const Wishlist = require("../models/wishlist");
 const { productInput, addressInput, orderInput } = require("./fixtures");
 
@@ -298,14 +297,12 @@ test("ulasan harus milik Buyer dan GET ulasan publik tidak lagi tertutup router"
       .status,
     403,
   );
-  // Seed langsung: aturan status Selesai/duplikat belum masuk batch ini.
-  await Review.create({ order_id: order.id, buyer_id: buyer.id, ...body });
+
   const result = await request("/reviews");
   assert.equal(result.status, 200);
-  assert.equal(result.json.data[0].rating, 5);
+  assert.deepEqual(result.json.data, []);
   noPrivateFields(result.json);
   assert.ok(!JSON.stringify(result.json).includes(buyer.email));
-  assert.equal(result.json.data[0].buyer_id, undefined);
 });
 
 test("ID rusak 422 dan ID yang tidak ada 404 pada endpoint domain", async () => {
@@ -445,7 +442,7 @@ test("route produk tetap berjalan untuk Admin dan menolak modifikasi oleh Buyer"
   assert.equal(removed.json.data.active, false);
 });
 
-test("Buyer masih bisa membuat pesanan, mengulas pesanan sendiri, dan menghapus wishlist sendiri", async () => {
+test("Buyer bisa pesan dan menghapus wishlist, tetapi belum bisa mengulas order belum selesai", async () => {
   const item = await Product.create(
     productInput({ name: "Produk Pesanan QA", price: 50000, category: "Kaos" }),
   );
@@ -463,7 +460,7 @@ test("Buyer masih bisa membuat pesanan, mengulas pesanan sendiri, dan menghapus 
     method: "POST",
     body: { rating: 5, comment: "Produk sesuai deskripsi." },
   });
-  assert.equal(reviewed.status, 201);
+  assert.equal(reviewed.status, 409);
   noPrivateFields(reviewed.json);
   assert.equal(
     (await request(`/wishlist/${product.id}`, { token: buyerToken, method: "DELETE" })).status,
