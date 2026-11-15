@@ -17,7 +17,9 @@ async function main() {
     serverSelectionTimeoutMS: 5000,
   });
   const apply = args.includes("--apply");
-  const result = await migrateLegacyData(mongoose.connection, apply);
+  const result = await migrateLegacyData(mongoose.connection, apply, {
+    uploadDir: process.env.UPLOAD_DIR,
+  });
   console.log(
     JSON.stringify(
       { mode: apply ? "applied" : "dry-run", summary: result.summary, issues: result.issues },

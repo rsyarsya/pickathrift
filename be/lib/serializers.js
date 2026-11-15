@@ -56,6 +56,26 @@ function order(value) {
       : productRef(value.product_id),
     product_snapshot_source: value.product_snapshot_source,
     status: value.status,
+    proof: value.proof
+      ? {
+          id: value.proof.id,
+          name: value.proof.name,
+          mime: value.proof.mime,
+          size: value.proof.size,
+          uploadedAt: value.proof.uploadedAt,
+          url: "/api/orders/" + id(value) + "/payment-proof",
+        }
+      : null,
+    adminNote: value.adminNote ?? "",
+    verifiedAt: value.verifiedAt ?? null,
+    receivedAt: value.receivedAt ?? null,
+    shipment: value.shipment
+      ? {
+          service: value.shipment.service,
+          number: value.shipment.number,
+          shippedAt: value.shipment.shippedAt,
+        }
+      : null,
     tracking_number: value.tracking_number,
     total_price: value.total_price,
     item_price: value.item_price,

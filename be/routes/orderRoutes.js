@@ -20,6 +20,11 @@ orderRouter.post("/:id/cancel", requireBuyer, validate.idParam("id"), async (req
   res.json({ success: true, data: serialize.order(order) });
 });
 
+orderRouter.post("/:id/receive", requireBuyer, validate.idParam("id"), async (req, res) => {
+  validate.fields(req.body, []);
+  const order = await require("../services/payments").receiveOrder(req.params.id, req.account);
+  res.json({ success: true, data: serialize.order(order) });
+});
 orderRouter.get("/my", requireBuyer, async (req, res) => {
   await expireOrders();
   const orders = await Order.find({ buyer_id: req.user.id }).populate("product_id");
@@ -37,10 +42,54 @@ orderRouter.get("/:id", validate.idParam("id"), async (req, res) => {
 });
 
 adminOrderRouter.use(authenticateToken, requireAdmin);
+adminOrderRouter.post("/:id/actions", validate.idParam("id"), async (req, res) => {
+  const order = await require("../services/payments").adminAction(
+    req.params.id,
+    req.body,
+    req.app.locals.config,
+  );
+  res.json({ success: true, data: serialize.order(order) });
+});
 adminOrderRouter.get("/", async (req, res) => {
   await expireOrders();
-  const orders = await Order.find().populate("buyer_id", "name email").populate("product_id");
-  res.json({ success: true, data: orders.map(serialize.order) });
+  validate.fields(req.query, ["status", "page", "limit"]);
+  const statuses = require("../lib/order-options").STATUSES;
+  if (req.query.status !== undefined && !statuses.includes(req.query.status))
+    validate.invalid("status");
+  const positive = (key, fallback, max) => {
+    const value = req.query[key];
+    if (value === undefined) return fallback;
+    if (
+      typeof value !== "string" ||
+      !/^[1-9]\d*$/.test(value) ||
+      !Number.isSafeInteger(Number(value)) ||
+      Number(value) > max
+    )
+      validate.invalid(key);
+    return Number(value);
+  };
+  const page = positive("page", 1, 1000000),
+    limit = positive("limit", 20, 100);
+  const filter = req.query.status ? { status: req.query.status } : {};
+  const orders = await Order.find(filter)
+    .sort({ createdAt: -1, _id: -1 })
+    .skip((page - 1) * limit)
+    .limit(limit)
+    .populate("buyer_id", "name email")
+    .populate("product_id");
+  const groups = await Order.aggregate([{ $group: { _id: "$status", count: { $sum: 1 } } }]);
+  const counts = Object.fromEntries(statuses.map((status) => [status, 0]));
+  for (const group of groups) counts[group._id] = group.count;
+  const total = await Order.countDocuments(filter);
+  res.json({
+    success: true,
+    data: orders.map(serialize.order),
+    total,
+    counts,
+    page,
+    limit,
+    totalPages: Math.ceil(total / limit),
+  });
 });
 
 adminOrderRouter.patch("/:id/status", validate.idParam("id"), async (req) => {
@@ -49,7 +98,7 @@ adminOrderRouter.patch("/:id/status", validate.idParam("id"), async (req) => {
   throw new ApiError(
     409,
     "TRANSITION_UNAVAILABLE",
-    "Gunakan tindakan pembayaran/pengiriman setelah batch berikutnya tersedia.",
+    "Gunakan endpoint actions untuk tindakan pembayaran/pengiriman.",
   );
 });
 

@@ -1,4 +1,56 @@
-# Kontrak API BE — batch 1–4
+# Kontrak API BE — batch 1–5
+
+## Pembayaran, berkas dan pengiriman (batch 5)
+
+## Acuan dan aturan yang dikunci
+
+Acuan utama: FE pada commit sumber yang sama, terutama
+fe/src/modules/orders/order.ts, fe/src/modules/admin/orderActions.ts, dan
+docs/aturan-pesanan.md. Google Docs melengkapi, bukan mengganti aturan FE terbaru.
+
+- Bukti: satu JPG/PNG, tidak kosong, maksimal 2 MiB. Periksa decoding gambar, bukan
+  percaya ekstensi/MIME. Nama asli hanya untuk tampilan; nama file server acak.
+- Menunggu Pembayaran -> unggah sebelum deadline -> Menunggu Verifikasi.
+- Menunggu Verifikasi -> Admin approve -> Diproses; reupload -> Perlu Unggah Ulang;
+  reject -> Dibatalkan. Reupload/reject wajib catatan tidak kosong, maksimal 500 karakter.
+- Perlu Unggah Ulang -> Buyer unggah -> Menunggu Verifikasi. Mengikuti FE, Admin juga
+  boleh approve/reject bukti yang masih ada dari Perlu Unggah Ulang; tidak boleh
+  meminta ulang lagi dari status tersebut. Batas enam jam awal tidak diperpanjang dan
+  tidak membatalkan status verifikasi/unggah ulang.
+- Approve mengubah produk reserved menjadi sold dan mengosongkan reservation_order_id.
+  Reject melepaskan stok hanya bila kunci masih milik order tersebut, alasan cancel admin.
+  Kedua perubahan order/produk berada dalam satu transaksi; konflik kunci 409 tanpa
+  mengubah pemilik lain. Semua transisi lain ditolak 409.
+- Diproses -> Admin kirim dengan kurir dan resi -> Dikirim -> Buyer pemilik terima ->
+  Selesai. Kurir mengikuti FE: JNE REG, J&T EZ, SiCepat REG, POS Kilat. Resi 8–30
+  karakter huruf/angka/spasi/tanda hubung, wajib memiliki huruf atau angka. Tidak
+  menyalin celah FE yang menerima resi berisi tanda hubung saja.
+- Tidak membuat alur refund, payment gateway, cron, atau unggah ulang setelah Diproses.
+
+## Endpoint batch 5
+
+Base /api. Sukses/galat JSON tetap memakai envelope saat ini; endpoint gambar mengirim
+binary dengan MIME gambar. Timestamp server dalam ISO string; akses Bearer JWT.
+
+| Method | Route                     | Input / hasil dan akses                                                                                                                                                                                              |
+| ------ | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| POST   | /orders/:id/payment-proof | Buyer pemilik; multipart satu field file. Dipakai untuk upload awal/ulang. Hasil DTO order.                                                                                                                          |
+| GET    | /orders/:id/payment-proof | Buyer pemilik/Admin; gambar bukti terbaru. Tanpa token 401, akun lain 403, belum ada bukti 404. Tidak ada URL publik/token pada query.                                                                               |
+| POST   | /admin/orders/:id/actions | Admin; JSON type approve/reupload/reject dengan proofId yang sedang diperiksa; reupload/reject juga note. Untuk ship: type ship, service, number. Hasil DTO order.                                                   |
+| POST   | /orders/:id/receive       | Buyer pemilik, JSON {}. Hanya Dikirim -> Selesai; submit ulang 409 tanpa mengubah receivedAt.                                                                                                                        |
+| GET    | /admin/orders             | Tambah filter status, page/limit (default 1/20, max 100), urutan terbaru+ID. Pertahankan data array; tambah metadata root total, counts per status, page, limit, totalPages. Counts tidak terpengaruh filter status. |
+| POST   | /admin/product-images     | Admin; multipart field images, 1–4 JPG/PNG. Default maksimal 2 MiB per gambar. Mengembalikan array path publik; urutan pertama foto utama.                                                                           |
+
+GET /orders/:id yang sudah ada tetap dipakai untuk detail Buyer/Admin. Endpoint PATCH
+/admin/orders/:id/status lama tetap 409; tidak dibuka kembali untuk perubahan bebas.
+400 bukan pengganti respons validasi proyek: field/file salah 422, transisi konflik
+409, akun salah 403, ID buruk 422, resource hilang 404. JSON berukuran terlalu besar
+tetap 413; file melebihi batas upload mengikuti kontrak FE 422.
+
+DTO order menambah proof {id,name,mime,size,uploadedAt,url}, adminNote, verifiedAt,
+shipment {service,number,shippedAt}, receivedAt. Internal path tidak diekspos. Model
+cancellation_reason ditambah admin. Pembacaan bukti melalui fetch berautentikasi saat
+integrasi FE kelak; tidak menyisipkan JWT ke URL gambar.
 
 ## Pesanan dan stok (batch 4)
 

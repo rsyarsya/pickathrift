@@ -91,3 +91,11 @@ Foto/teks salinan order lama selanjutnya tidak ikut perubahan produk. Migrasi ti
 request pemicu dapat membatalkan order yang sudah lewat expiresAt melalui transaksi batch 4.
 Pemeriksaan startup ditujukan untuk skala data proyek ini dan memindai data sekali saat
 startup. Jalankan ulang dry-run bila ada data yang dimasukkan langsung lewat database.
+
+## Tambahan batch 5
+
+Status verifikasi/unggah ulang/Diproses/Dikirim/Selesai membutuhkan metadata bukti dan
+berkas lokal yang dapat diakses. Diproses dan sesudahnya membutuhkan verifiedAt; Dikirim
+memerlukan shipment, Selesai juga receivedAt. Jika tidak lengkap, dry-run mengembalikan
+PAYMENT_REVIEW_REQUIRED, tanpa membuat bukti atau resi fiktif. Gunakan UPLOAD_DIR yang
+sama saat menjalankan server, perintah Admin, dan migrasi. Database tim tidak diubah.

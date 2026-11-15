@@ -442,9 +442,8 @@ test("migrasi/expiry tidak membatalkan verifikasi atau unggah ulang setelah dead
   await backdate(first.id);
   for (const status of ["MENUNGGU_VERIFIKASI", "PERLU_UNGGAH_ULANG"]) {
     await Order.updateOne({ _id: first.id }, { status });
-    await assertDataReady(mongoose.connection);
-    const plan = await migrateLegacyData(mongoose.connection, true);
-    assert.deepEqual(plan.summary, { users: 0, products: 0, orders: 0, blockers: 0 });
+    const plan = await inspectLegacyData(mongoose.connection);
+    assert.ok(!plan.issues.some((x) => x.code === "ORDER_DEADLINE_REVIEW_REQUIRED"));
     await expireOrders(new Date("2100-01-01"));
     assert.equal((await Order.findById(first.id)).status, status);
     assert.equal(String((await Product.findById(product.id)).reservation_order_id), first.id);

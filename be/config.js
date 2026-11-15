@@ -8,6 +8,7 @@ function getConfig(env = process.env) {
     mongoUri: env.MONGODB_URI,
     jwtSecret: env.JWT_SECRET,
     port,
+    uploadDir: env.UPLOAD_DIR,
     nodeEnv: env.NODE_ENV ?? "development",
   };
 }

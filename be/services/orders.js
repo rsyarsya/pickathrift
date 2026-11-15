@@ -93,4 +93,4 @@ async function cancelOrder(id, buyerId, now = new Date()) {
     return order;
   });
 }
-module.exports = { createOrder, cancelOrder, expireOrders };
+module.exports = { createOrder, cancelOrder, expireOrders, release };

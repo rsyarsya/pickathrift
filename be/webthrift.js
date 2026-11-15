@@ -16,7 +16,7 @@ async function start(config = getConfig()) {
       error.code = "REPLICA_SET_REQUIRED";
       throw error;
     }
-    await assertDataReady(mongoose.connection);
+    await assertDataReady(mongoose.connection, config);
     await User.createIndexes();
     await Wishlist.createIndexes();
     await Order.createIndexes();

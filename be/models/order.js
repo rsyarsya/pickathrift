@@ -35,7 +35,7 @@ const orderSchema = new mongoose.Schema(
     expiresAt: { type: Date, required: true, immutable: true },
     createdAt: { type: Date, required: true, immutable: true, default: Date.now },
     cancelledAt: { type: Date, default: null },
-    cancellation_reason: { type: String, enum: ["buyer", "expired", null], default: null },
+    cancellation_reason: { type: String, enum: ["buyer", "expired", "admin", null], default: null },
     product_snapshot_source: {
       type: String,
       enum: ["checkout", "legacy-current-product"],
@@ -47,6 +47,30 @@ const orderSchema = new mongoose.Schema(
       enum: STATUSES,
       default: "MENUNGGU_PEMBAYARAN",
     },
+    proof: {
+      type: new mongoose.Schema(
+        {
+          id: { type: String, required: true },
+          filename: { type: String, required: true, match: /^[a-f0-9-]+\.(jpg|png)$/ },
+          name: String,
+          mime: { type: String, enum: ["image/jpeg", "image/png"], required: true },
+          size: { type: Number, required: true, min: 1, max: 2097152 },
+          uploadedAt: { type: Date, required: true },
+        },
+        { _id: false },
+      ),
+      default: null,
+    },
+    adminNote: { type: String, default: "", maxlength: 500 },
+    verifiedAt: { type: Date, default: null },
+    shipment: {
+      type: new mongoose.Schema(
+        { service: String, number: String, shippedAt: Date },
+        { _id: false },
+      ),
+      default: null,
+    },
+    receivedAt: { type: Date, default: null },
     tracking_number: { type: String, default: "" },
     total_price: { type: Number, required: true, immutable: true, validate: Number.isSafeInteger },
   },

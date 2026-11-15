@@ -457,8 +457,7 @@ test("Buyer masih bisa membuat pesanan, mengulas pesanan sendiri, dan menghapus 
   assert.equal((await request("/orders", { token: otherToken, method: "POST", body })).status, 409);
   assert.equal(await Order.countDocuments({ product_id: item.id }), 1);
   // Fixture status selesai; transisi pembayaran/pengiriman berada pada batch berikutnya.
-  await Order.findByIdAndUpdate(placed.json.data.id, { status: "SELESAI" });
-  await Product.updateOne({ _id: item.id }, { status: "sold", reservation_order_id: null });
+  // Aturan status ulasan ditangani batch 6.
   const reviewed = await request(`/orders/${placed.json.data.id}/review`, {
     token: buyerToken,
     method: "POST",

@@ -32,7 +32,7 @@ const productFields = [
 const dateValid = (value) => value instanceof Date && Number.isFinite(value.getTime());
 
 // Semua pembacaan melalui collection agar normalisasi/default Mongoose tidak menutupi data lama.
-async function inspectLegacyData(connection, session) {
+async function inspectLegacyData(connection, session, config = {}) {
   const options = session ? { session } : {};
   // Operasi dalam satu session transaksi tidak dijalankan paralel.
   const users = await connection.db.collection("users").find({}, options).toArray();
@@ -191,6 +191,37 @@ async function inspectLegacyData(connection, session) {
       }
       const candidate = new Order({ ...raw, ...set });
       await candidate.validate();
+      const needsProof = [
+        "MENUNGGU_VERIFIKASI",
+        "PERLU_UNGGAH_ULANG",
+        "DIPROSES",
+        "DIKIRIM",
+        "SELESAI",
+      ].includes(candidate.status);
+      const paid = ["DIPROSES", "DIKIRIM", "SELESAI"].includes(candidate.status);
+      const shipped = ["DIKIRIM", "SELESAI"].includes(candidate.status);
+      const fields = [];
+      if (needsProof && !candidate.proof) fields.push("proof");
+      if (candidate.proof) {
+        try {
+          await require("node:fs/promises").access(
+            require("../services/files").filePath(config, "proofs", candidate.proof.filename),
+          );
+        } catch {
+          fields.push("proof.filename");
+        }
+      }
+      if (paid && !dateValid(raw.verifiedAt)) fields.push("verifiedAt");
+      if (
+        shipped &&
+        (!raw.shipment?.service || !raw.shipment?.number || !dateValid(raw.shipment?.shippedAt))
+      )
+        fields.push("shipment");
+      if (candidate.status === "SELESAI" && !dateValid(raw.receivedAt)) fields.push("receivedAt");
+      if (fields.length) {
+        issue("orders", raw._id, "PAYMENT_REVIEW_REQUIRED", fields);
+        continue;
+      }
       if (raw.cancelledAt === undefined) set.cancelledAt = null;
       if (raw.cancellation_reason === undefined) set.cancellation_reason = null;
       mappedOrders.set(String(raw._id), { ...raw, ...set });
@@ -243,16 +274,16 @@ async function inspectLegacyData(connection, session) {
   return plan;
 }
 
-async function assertDataReady(connection) {
-  const plan = await inspectLegacyData(connection);
+async function assertDataReady(connection, config = {}) {
+  const plan = await inspectLegacyData(connection, undefined, config);
   if (plan.issues.length || plan.users.length || plan.products.length || plan.orders.length) {
     throw new DataMigrationRequired();
   }
 }
 
-async function migrateLegacyData(connection, apply = false) {
-  if (!apply) return inspectLegacyData(connection);
-  const preview = await inspectLegacyData(connection);
+async function migrateLegacyData(connection, apply = false, config = {}) {
+  if (!apply) return inspectLegacyData(connection, undefined, config);
+  const preview = await inspectLegacyData(connection, undefined, config);
   if (preview.issues.length) throw new DataMigrationRequired();
   // DDL di luar transaksi; perubahan data di bawah tetap seluruhnya atomik.
   await connection.db.collection("users").createIndex({ email: 1 }, { unique: true });
@@ -263,7 +294,7 @@ async function migrateLegacyData(connection, apply = false) {
   try {
     let applied;
     await session.withTransaction(async () => {
-      const plan = await inspectLegacyData(connection, session);
+      const plan = await inspectLegacyData(connection, session, config);
       if (plan.issues.length) throw new DataMigrationRequired();
       for (const collection of ["users", "products", "orders"]) {
         for (const entry of plan[collection]) {

@@ -15,7 +15,7 @@ async function createAdmin(env = process.env) {
   const password = await bcrypt.hash(input.password, 10);
   try {
     await mongoose.connect(env.MONGODB_URI, { serverSelectionTimeoutMS: 5000, autoIndex: false });
-    await assertDataReady(mongoose.connection);
+    await assertDataReady(mongoose.connection, { uploadDir: env.UPLOAD_DIR });
     await User.createIndexes();
     await User.create({ ...input, password, role: "admin" });
   } finally {

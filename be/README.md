@@ -4,8 +4,8 @@ Express 5, MongoDB, JavaScript CommonJS; Node.js 22 atau lebih baru.
 Perbaikan dikerjakan bertahap. Batch 1 mencakup akses, validasi dasar, dan tes;
 batch 2 melengkapi model produk, aturan edit Admin, dan katalog dengan pagination.
 Batch 3 melengkapi pencocokan ukuran, wishlist, dan alamat terstruktur. Batch 4
-menambahkan transaksi stok, pembatalan, dan expiry enam jam. Pembayaran/pengiriman
-dan aturan ulasan lengkap masih menyusul.
+menambahkan transaksi stok, pembatalan, dan expiry enam jam. Batch 5 melengkapi upload foto/bukti lokal, verifikasi Admin, pengiriman dan penerimaan.
+Aturan ulasan lengkap masih menyusul.
 
 ## Menjalankan lokal
 
@@ -50,3 +50,11 @@ Sandi tidak ditampilkan di log atau diberikan sebagai argumen perintah.
 
 Kontrak route, respons, perubahan dari BE lama, dan batas batch tersedia di [API.md](API.md).
 Tidak ada build/transpilasi atau pemeriksaan TypeScript karena BE menggunakan JavaScript.
+
+## Berkas lokal (batch 5)
+
+Upload tersimpan di `be/uploads`, diabaikan Git. Atur `UPLOAD_DIR` lokal untuk direktori
+lain yang dapat ditulis server. Foto produk di subdirektori products bersifat publik;
+bukti di proofs hanya melalui endpoint berautentikasi. Backup database dan direktori
+ini bersama. Bukti lama yang diganti tetap privat dan dipertahankan; pembersihan retensi
+dapat dilakukan kemudian setelah memastikan tidak dipakai. Tidak ada migrasi otomatis.
