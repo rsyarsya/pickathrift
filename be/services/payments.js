@@ -4,6 +4,7 @@ const Product = require("../models/products");
 const { ApiError } = require("../lib/errors");
 const validate = require("../lib/validation");
 const { release, expireOrders } = require("./orders");
+const { proofAvailable } = require("./files");
 const conflict = () =>
   new ApiError(
     409,
@@ -59,9 +60,10 @@ async function adminAction(id, body, config = {}) {
   validate.fields(
     body,
     type === "ship"
-      ? ["type", "service", "number"]
-      : ["type", "proofId", ...(type === "approve" ? [] : ["note"])],
+      ? ["type", "service", "number", "version"]
+      : ["type", "proofId", "version", ...(type === "approve" ? [] : ["note"])],
   );
+  const version = validate.number(body.version, "version", { integer: true });
   const proofId = type === "ship" ? null : validate.objectId(body.proofId, "proofId");
   const note = ["reupload", "reject"].includes(type)
     ? validate.text(body.note, "note", { max: 500 })
@@ -79,6 +81,12 @@ async function adminAction(id, body, config = {}) {
   return mongoose.connection.transaction(async (session) => {
     const order = await Order.findById(id).session(session);
     if (!order) throw new ApiError(404, "NOT_FOUND", "Pesanan tidak ditemukan.");
+    if (order.__v !== version)
+      throw new ApiError(
+        409,
+        "STALE_ORDER",
+        "Pesanan sudah berubah. Muat ulang sebelum mengambil keputusan.",
+      );
     const now = new Date();
     if (type === "ship") {
       if (order.status !== "DIPROSES") throw conflict();
@@ -92,13 +100,11 @@ async function adminAction(id, body, config = {}) {
           : ["MENUNGGU_VERIFIKASI", "PERLU_UNGGAH_ULANG"];
       if (!allowed.includes(order.status) || !order.proof || order.proof.id !== proofId)
         throw conflict();
-      try {
-        await require("node:fs/promises").access(
-          require("./files").filePath(config, "proofs", order.proof.filename),
-        );
-      } catch {
+      const available = await proofAvailable(config, order.proof.filename);
+      if (type === "approve" && !available) {
         throw new ApiError(409, "PROOF_UNAVAILABLE", "Berkas bukti tidak dapat dibaca.");
       }
+      order.proof.unavailable = !available;
       await stock(order, session, type === "approve");
       if (type === "reject") {
         order.adminNote = note;

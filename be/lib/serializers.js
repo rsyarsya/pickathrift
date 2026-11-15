@@ -55,6 +55,7 @@ function order(value) {
       ? product(value.product_snapshot)
       : productRef(value.product_id),
     product_snapshot_source: value.product_snapshot_source,
+    version: value.__v,
     status: value.status,
     proof: value.proof
       ? {
@@ -63,6 +64,7 @@ function order(value) {
           mime: value.proof.mime,
           size: value.proof.size,
           uploadedAt: value.proof.uploadedAt,
+          unavailable: Boolean(value.proof.unavailable),
           url: "/api/orders/" + id(value) + "/payment-proof",
         }
       : null,

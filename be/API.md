@@ -1,5 +1,22 @@
 # Kontrak API BE — batch 1–6
 
+## Perbaikan QA pembayaran
+
+DTO order menyertakan `version` (integer). Semua POST `/api/admin/orders/:id/actions`
+wajib mengirim `version` dari order yang sedang dilihat, selain field tindakan yang
+sudah ada. Versi yang tidak lagi sama menghasilkan `409 STALE_ORDER`; versi hilang/
+tipe salah menghasilkan 422. Setelah refresh, Admin tetap boleh approve/reject dari
+Perlu Unggah Ulang. Perubahan kontrak ini mencegah dua layar Admin menimpa keputusan
+yang dibuat pada versi sama, meski proofId belum berubah.
+
+Approve tetap mensyaratkan file bukti dapat dibaca. Reupload/reject boleh dilakukan
+oleh Admin jika file hilang, tetap dengan proofId, version, catatan dan kunci stok
+yang benar. Metadata bukti dipertahankan dengan `proof.unavailable: true`. Guard
+startup menerima penanda ini hanya pada Perlu Unggah Ulang dengan catatan Admin atau
+Dibatalkan oleh Admin dengan catatan; kehilangan file yang belum ditangani tetap
+menjadi blocker. Upload pengganti menghasilkan proofId baru dan menghapus penanda.
+Galat download bukti menggunakan application/json; gambar sukses tetap MIME gambar.
+
 ## Ulasan (batch 6)
 
 POST `/api/orders/:id/review` khusus Buyer pemilik pesanan Selesai. Body tetap
@@ -55,7 +72,7 @@ binary dengan MIME gambar. Timestamp server dalam ISO string; akses Bearer JWT.
 | ------ | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | POST   | /orders/:id/payment-proof | Buyer pemilik; multipart satu field file. Dipakai untuk upload awal/ulang. Hasil DTO order.                                                                                                                          |
 | GET    | /orders/:id/payment-proof | Buyer pemilik/Admin; gambar bukti terbaru. Tanpa token 401, akun lain 403, belum ada bukti 404. Tidak ada URL publik/token pada query.                                                                               |
-| POST   | /admin/orders/:id/actions | Admin; JSON type approve/reupload/reject dengan proofId yang sedang diperiksa; reupload/reject juga note. Untuk ship: type ship, service, number. Hasil DTO order.                                                   |
+| POST   | /admin/orders/:id/actions | Admin; JSON version + type approve/reupload/reject dengan proofId yang sedang diperiksa; reupload/reject juga note. Untuk ship: version, type ship, service, number. Hasil DTO order.                                |
 | POST   | /orders/:id/receive       | Buyer pemilik, JSON {}. Hanya Dikirim -> Selesai; submit ulang 409 tanpa mengubah receivedAt.                                                                                                                        |
 | GET    | /admin/orders             | Tambah filter status, page/limit (default 1/20, max 100), urutan terbaru+ID. Pertahankan data array; tambah metadata root total, counts per status, page, limit, totalPages. Counts tidak terpengaruh filter status. |
 | POST   | /admin/product-images     | Admin; multipart field images, 1–4 JPG/PNG. Default maksimal 2 MiB per gambar. Mengembalikan array path publik; urutan pertama foto utama.                                                                           |

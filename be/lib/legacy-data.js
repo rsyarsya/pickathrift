@@ -149,6 +149,11 @@ async function inspectLegacyData(connection, session, config = {}) {
     if (!buyerIds.has(String(raw.buyer_id)))
       issue("orders", raw._id, "ORDER_BUYER_REVIEW_REQUIRED", ["buyer_id"]);
     if (statusMap[raw.status]) set.status = statusMap[raw.status];
+    if (raw.__v === undefined) set.__v = 0;
+    else if (!Number.isSafeInteger(raw.__v) || raw.__v < 0) {
+      issue("orders", raw._id, "ORDER_VERSION_REVIEW_REQUIRED", ["__v"]);
+      continue;
+    }
     if (
       ![raw.item_price, raw.shipping_fee, raw.total_price].every(Number.isSafeInteger) ||
       raw.item_price < 1000 ||
@@ -204,13 +209,20 @@ async function inspectLegacyData(connection, session, config = {}) {
       const fields = [];
       if (needsProof && !candidate.proof) fields.push("proof");
       if (candidate.proof) {
-        try {
-          await require("node:fs/promises").access(
-            require("../services/files").filePath(config, "proofs", candidate.proof.filename),
-          );
-        } catch {
+        const acknowledged =
+          (candidate.status === "PERLU_UNGGAH_ULANG" ||
+            (candidate.status === "DIBATALKAN" && candidate.cancellation_reason === "admin")) &&
+          typeof raw.adminNote === "string" &&
+          Boolean(raw.adminNote.trim());
+        const unavailable = candidate.proof.unavailable;
+        if (raw.proof.unavailable !== undefined && typeof raw.proof.unavailable !== "boolean")
+          fields.push("proof.unavailable");
+        if (unavailable && !acknowledged) fields.push("proof.unavailable");
+        if (
+          !(await require("../services/files").proofAvailable(config, candidate.proof.filename)) &&
+          !(unavailable && acknowledged)
+        )
           fields.push("proof.filename");
-        }
       }
       if (paid && !dateValid(raw.verifiedAt)) fields.push("verifiedAt");
       if (

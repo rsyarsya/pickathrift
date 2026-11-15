@@ -41,4 +41,18 @@ async function saveImage(config, kind, file) {
 async function removeImage(config, kind, filename) {
   if (filename) await fs.unlink(filePath(config, kind, filename)).catch(() => {});
 }
-module.exports = { root, filePath, saveImage, removeImage };
+async function proofAvailable(config, filename) {
+  try {
+    const target = filePath(config, "proofs", filename);
+    const handle = await fs.open(target, "r");
+    try {
+      const stat = await handle.stat();
+      return stat.isFile() && stat.size > 0;
+    } finally {
+      await handle.close();
+    }
+  } catch {
+    return false;
+  }
+}
+module.exports = { root, filePath, saveImage, removeImage, proofAvailable };

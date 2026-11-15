@@ -46,7 +46,7 @@ async function complete() {
       await api(
         "/admin/orders/" + o.id + "/actions",
         "POST",
-        { type: "approve", proofId: up.data.proof.id },
+        { type: "approve", proofId: up.data.proof.id, version: up.data.version },
         adminToken,
       )
     ).status,
@@ -57,7 +57,12 @@ async function complete() {
       await api(
         "/admin/orders/" + o.id + "/actions",
         "POST",
-        { type: "ship", service: "JNE REG", number: "JNE12345678" },
+        {
+          type: "ship",
+          service: "JNE REG",
+          number: "JNE12345678",
+          version: (await api("/orders/" + o.id)).data.version,
+        },
         adminToken,
       )
     ).status,

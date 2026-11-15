@@ -56,6 +56,7 @@ const orderSchema = new mongoose.Schema(
           mime: { type: String, enum: ["image/jpeg", "image/png"], required: true },
           size: { type: Number, required: true, min: 1, max: 2097152 },
           uploadedAt: { type: Date, required: true },
+          unavailable: { type: Boolean, default: false },
         },
         { _id: false },
       ),
@@ -74,7 +75,7 @@ const orderSchema = new mongoose.Schema(
     tracking_number: { type: String, default: "" },
     total_price: { type: Number, required: true, immutable: true, validate: Number.isSafeInteger },
   },
-  { timestamps: true },
+  { timestamps: true, optimisticConcurrency: true },
 );
 
 orderSchema.index({ status: 1, expiresAt: 1 });

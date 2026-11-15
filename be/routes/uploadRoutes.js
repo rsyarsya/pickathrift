@@ -63,15 +63,19 @@ router.get(
   "/orders/:id/payment-proof",
   authenticateToken,
   validate.idParam("id"),
-  async (req, res) => {
+  async (req, res, next) => {
     const order = await payments.ownedOrder(req.params.id, req.account);
     if (!order.proof) throw new ApiError(404, "NOT_FOUND", "Bukti belum tersedia.");
     res.set({ "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff" });
     res
       .type(order.proof.mime)
       .sendFile(files.filePath(req.app.locals.config, "proofs", order.proof.filename), (error) => {
-        if (error && !res.headersSent)
-          res.status(error.code === "ENOENT" ? 404 : 500).json({
+        if (!error) return;
+        if (res.headersSent) return next(error);
+        res
+          .status(error.code === "ENOENT" ? 404 : 500)
+          .type("application/json")
+          .json({
             success: false,
             code: "FILE_UNAVAILABLE",
             message: "Bukti tidak dapat dibaca.",

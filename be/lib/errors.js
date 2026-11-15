@@ -17,6 +17,8 @@ function errorHandler(error, req, res, next) {
       email ? "EMAIL_EXISTS" : "CONFLICT",
       email ? "Email sudah terdaftar." : "Data sudah tersedia.",
     );
+  } else if (error.name === "VersionError") {
+    failure = new ApiError(409, "STALE_ORDER", "Pesanan sudah berubah. Muat ulang dan coba lagi.");
   } else if (error.name === "ValidationError") {
     const errors = Object.fromEntries(
       Object.keys(error.errors).map((key) => [key, "Nilai tidak valid."]),

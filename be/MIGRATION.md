@@ -106,3 +106,13 @@ Review lama diperiksa sebelum pemasangan unique index order_id: satu per order, 
 sesuai Buyer order Selesai, rating integer 1–5, isi trim 10–500 karakter dan createdAt
 valid. REVIEW_DUPLICATE/REVIEW_REVIEW_REQUIRED perlu keputusan operator; tidak ada
 penghapusan, penggabungan atau perbaikan ulasan otomatis.
+
+## Perbaikan QA bukti hilang dan versi order
+
+Order lama tanpa __v diinisialisasi ke 0 oleh migrasi eksplisit; nilai versi bukan
+integer aman/tidak negatif menjadi ORDER_VERSION_REVIEW_REQUIRED. Metadata dan
+filename bukti tidak dihapus ketika Admin menangani file hilang. Penanda
+proof.unavailable=true hanya sah pada Perlu Unggah Ulang dengan catatan Admin atau
+Dibatalkan oleh Admin dengan catatan. Kondisi ini boleh melewati guard berkas hilang
+agar server dapat restart selama pemulihan. File hilang yang belum ditangani tetap
+blocker; migrator tidak membuat penanda atau catatan tersebut otomatis.
