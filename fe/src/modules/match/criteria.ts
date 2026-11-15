@@ -133,46 +133,21 @@ export function criteriaToParams(criteria: Criteria): URLSearchParams {
   return params;
 }
 
-export type Match = { product: Product; diffCm?: number };
+export type Match = { product: Product; diffCm: number };
 
-const MEASURE_LABEL = Object.fromEntries(ALL_FIELDS.map((f) => [f.key, f.label])) as Record<
-  BodyKey,
-  string
->;
-
-/*
- * Pencocokan di sisi klien selama data masih fixtures. Barang terjual tidak ikut.
- * Setiap ukuran yang diisi harus selisih ≤ TOLERANCE_CM; hasil diurutkan dari total
- * selisih terkecil. Nanti diganti POST /products/match di backend.
- */
-export function matchProducts(products: Product[], criteria: Criteria): Match[] {
-  const entries = Object.entries(criteria.body) as [BodyKey, number][];
-
-  const matches: Match[] = [];
-  for (const product of products) {
-    if (product.status === "sold") continue;
-    if (criteria.category && product.category !== criteria.category) continue;
-    if (criteria.style && product.style !== criteria.style) continue;
-    if (criteria.size && product.size !== criteria.size) continue;
-    if (criteria.minPrice !== undefined && product.price < criteria.minPrice) continue;
-    if (criteria.maxPrice !== undefined && product.price > criteria.maxPrice) continue;
-
-    if (entries.length === 0) {
-      matches.push({ product });
-      continue;
-    }
-    let total = 0;
-    let fits = true;
-    for (const [key, cm] of entries) {
-      const actual = product.measurements.find((m) => m.label === MEASURE_LABEL[key])?.cm;
-      const diff = actual === undefined ? Infinity : Math.abs(actual - cm);
-      if (diff > TOLERANCE_CM) fits = false;
-      total += diff;
-    }
-    if (fits) matches.push({ product, diffCm: total });
-  }
-
-  return matches.sort((a, b) => (a.diffCm ?? 0) - (b.diffCm ?? 0));
+/** Body API hanya berisi filter yang didukung dan pengukuran kategori terpilih. */
+export function criteriaToRequest(criteria: Criteria) {
+  return {
+    category: criteria.category,
+    style: criteria.style,
+    size: criteria.size,
+    minPrice: criteria.minPrice,
+    maxPrice: criteria.maxPrice,
+    measurements: bodyFields(criteria.category).flatMap(({ key, label }) => {
+      const cm = criteria.body[key];
+      return cm === undefined ? [] : [{ label, cm }];
+    }),
+  };
 }
 
 /** Teks chip kriteria di layar hasil (B4.4). */
