@@ -8,7 +8,7 @@ const { start } = require("../webthrift");
 const User = require("../models/user");
 const Product = require("../models/products");
 const Order = require("../models/order");
-const { productInput } = require("./fixtures");
+const { productInput, addressInput } = require("./fixtures");
 
 const secret = randomBytes(48).toString("hex");
 const missing = new mongoose.Types.ObjectId().toString();
@@ -76,6 +76,7 @@ before(async () => {
     },
     {
       name: "Buyer Produk QA",
+      address: addressInput(),
       email: "products-buyer@example.test",
       password: "fixture-not-used-for-login",
     },
@@ -603,9 +604,16 @@ test("riwayat order baru menyimpan salinan produk yang tidak berubah oleh edit/n
   const readOrder = async () =>
     (await request(`/orders/${placed.json.data.id}`, { token: buyerToken })).json.data;
   assert.deepEqual((await readOrder()).product_id, snapshot);
-  // Simulasikan stok dilepas setelah pembatalan; alur pembatalan masuk batch 4.
-  await Product.updateOne({ _id: product.id }, { status: "available" });
-  await Order.updateOne({ _id: placed.json.data.id }, { status: "cancelled" });
+  assert.equal(
+    (
+      await request(`/orders/${placed.json.data.id}/cancel`, {
+        method: "POST",
+        token: buyerToken,
+        body: {},
+      })
+    ).status,
+    200,
+  );
   assert.equal((await deactivate(product.id)).status, 200);
   assert.equal((await request(`/products/${product.id}`)).status, 404);
   assert.deepEqual((await readOrder()).product_id, snapshot);
@@ -624,7 +632,7 @@ test("edit harga yang berbarengan dengan pemesanan tidak mengubah harga barang y
     assert.ok([200, 409].includes(edit.status));
     const stored = await Product.findById(product.id);
     assert.equal(stored.status, "reserved");
-    assert.equal(stored.price, placed.json.data.total_price);
+    assert.equal(stored.price, placed.json.data.item_price);
     assert.equal(stored.price, placed.json.data.product_id.price);
   }
 });

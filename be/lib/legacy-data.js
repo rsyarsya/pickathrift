@@ -1,5 +1,7 @@
 const { isDeepStrictEqual } = require("node:util");
 const Product = require("../models/products");
+const Order = require("../models/order");
+const { RESERVED_STATUSES } = require("./order-options");
 const serialize = require("./serializers");
 const { CATEGORIES } = require("./product-options");
 const { addressInput } = require("./address");
@@ -24,6 +26,7 @@ const productFields = [
   "measurements",
   "status",
   "active",
+  "reservation_order_id",
   "__v",
 ];
 const dateValid = (value) => value instanceof Date && Number.isFinite(value.getTime());
@@ -133,25 +136,99 @@ async function inspectLegacyData(connection, session) {
       issue("products", raw._id, "PRODUCT_REVIEW_REQUIRED", Object.keys(error.errors));
     }
   }
-  for (const order of orders) {
-    if (order.product_snapshot) continue;
-    const product = canonicalProducts.get(String(order.product_id));
-    if (!product) {
-      issue("orders", order._id, "PRODUCT_REVIEW_REQUIRED", ["product_id"]);
+  const mappedOrders = new Map();
+  const statusMap = {
+    pending: "MENUNGGU_PEMBAYARAN",
+    shipped: "DIKIRIM",
+    completed: "SELESAI",
+    cancelled: "DIBATALKAN",
+  };
+  for (const raw of orders) {
+    const set = {};
+    if (!buyerIds.has(String(raw.buyer_id)))
+      issue("orders", raw._id, "ORDER_BUYER_REVIEW_REQUIRED", ["buyer_id"]);
+    if (statusMap[raw.status]) set.status = statusMap[raw.status];
+    if (
+      ![raw.item_price, raw.shipping_fee, raw.total_price].every(Number.isSafeInteger) ||
+      raw.item_price < 1000 ||
+      raw.shipping_fee < 0
+    ) {
+      issue("orders", raw._id, "ORDER_PRICE_REVIEW_REQUIRED", [
+        "item_price",
+        "shipping_fee",
+        "total_price",
+      ]);
       continue;
     }
-    if (!Number.isSafeInteger(order.total_price) || order.total_price < 1000) {
-      issue("orders", order._id, "ORDER_PRICE_REVIEW_REQUIRED", ["total_price"]);
-      continue;
+    if (!raw.product_snapshot) {
+      const product = canonicalProducts.get(String(raw.product_id));
+      if (!product) {
+        issue("orders", raw._id, "PRODUCT_REVIEW_REQUIRED", ["product_id"]);
+        continue;
+      }
+      if (!Number.isSafeInteger(raw.item_price) || raw.item_price < 1000) {
+        issue("orders", raw._id, "ORDER_PRICE_REVIEW_REQUIRED", [
+          "item_price",
+          "shipping_fee",
+          "total_price",
+        ]);
+        continue;
+      }
+      set.product_snapshot = { ...product, price: raw.item_price };
+      set.product_snapshot_source = "legacy-current-product";
     }
-    // BE lama hanya menyimpan harga barang pada total_price, belum termasuk ongkir.
-    plan.orders.push({
-      id: order._id,
-      set: {
-        product_snapshot: { ...product, price: order.total_price },
-        product_snapshot_source: "legacy-current-product",
-      },
-    });
+    try {
+      // Jangan memakai alamat profil terkini atau menebak ongkir/waktu order lama.
+      const address = addressInput(raw.address_snapshot);
+      if (!isDeepStrictEqual(address, raw.address_snapshot)) set.address_snapshot = address;
+      if (!dateValid(raw.expiresAt) || !dateValid(raw.createdAt) || !dateValid(raw.updatedAt)) {
+        issue("orders", raw._id, "ORDER_REVIEW_REQUIRED", ["expiresAt", "createdAt", "updatedAt"]);
+        continue;
+      }
+      const candidate = new Order({ ...raw, ...set });
+      await candidate.validate();
+      if (raw.cancelledAt === undefined) set.cancelledAt = null;
+      if (raw.cancellation_reason === undefined) set.cancellation_reason = null;
+      mappedOrders.set(String(raw._id), { ...raw, ...set });
+      if (Object.keys(set).length) plan.orders.push({ id: raw._id, set });
+    } catch (error) {
+      if (error.status !== 422 && error.name !== "ValidationError") throw error;
+      issue(
+        "orders",
+        raw._id,
+        "ORDER_REVIEW_REQUIRED",
+        error.fields ?? Object.keys(error.errors ?? { address_snapshot: true }),
+      );
+    }
+  }
+  const reserving = [...mappedOrders.values()].filter((order) =>
+    RESERVED_STATUSES.includes(order.status),
+  );
+  for (const product of products) {
+    const owner = mappedOrders.get(String(product.reservation_order_id));
+    const claims = reserving.filter((order) => String(order.product_id) === String(product._id));
+    if (product.status === "reserved") {
+      if (
+        !product.active ||
+        !owner ||
+        !RESERVED_STATUSES.includes(owner.status) ||
+        String(owner.product_id) !== String(product._id) ||
+        claims.length !== 1
+      )
+        issue("products", product._id, "RESERVATION_REVIEW_REQUIRED", [
+          "reservation_order_id",
+          "status",
+        ]);
+    } else if (product.reservation_order_id != null || claims.length) {
+      issue("products", product._id, "RESERVATION_REVIEW_REQUIRED", [
+        "reservation_order_id",
+        "status",
+      ]);
+    }
+  }
+  for (const order of reserving) {
+    if (!productIds.has(String(order.product_id)))
+      issue("orders", order._id, "RESERVATION_REVIEW_REQUIRED", ["product_id"]);
   }
   plan.summary = {
     users: plan.users.length,

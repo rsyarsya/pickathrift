@@ -1,4 +1,36 @@
-# Kontrak API BE — batch 1–3
+# Kontrak API BE — batch 1–4
+
+## Pesanan dan stok (batch 4)
+
+POST `/api/orders` khusus Buyer menerima `product_id` dan `address` opsional (objek
+lengkap sesuai batch 3). Tanpa address, gunakan alamat profil; belum lengkap => 422.
+Server menentukan buyer, harga, ongkir 15000, total, dan expiresAt = createdAt +6 jam.
+Body dengan harga/status/Buyer/waktu atau field lain ditolak 422. Hasil 201 berupa
+DTO order: field lama tetap, ditambah `item_price`, `shipping_fee`, `address_snapshot`,
+`expiresAt`, `cancelledAt`, dan `cancellation_reason` (buyer/expired atau null).
+`total_price` sekarang termasuk ongkir (perubahan kontrak). Salinan alamat dan produk
+tidak mengikuti perubahan data profil/katalog. ID pemegang stok tidak diekspos publik.
+
+Status wire sesuai FE: MENUNGGU_PEMBAYARAN, MENUNGGU_VERIFIKASI, PERLU_UNGGAH_ULANG,
+DIPROSES, DIKIRIM, SELESAI, DIBATALKAN. Batch ini hanya membuat Menunggu Pembayaran
+dan membatalkannya. Endpoint PATCH `/api/admin/orders/:id/status` lama tetap mengenali
+akses/ID/resource, tetapi perubahan bebas ditolak 409 TRANSITION_UNAVAILABLE.
+
+POST `/api/orders/:id/cancel` dengan body `{}` khusus Buyer pemilik. Hanya Menunggu
+Pembayaran boleh batal; status lain 409, akun lain 403, Admin 403, tidak ditemukan 404.
+Order yang sudah Dibatalkan mengembalikan 200 dengan kondisi tersimpan tanpa efek ulang.
+Sesudah tepat expiresAt, pembatalan tercatat sebagai expired, bukan buyer.
+
+Pembuatan order, reservasi, pembatalan dan pelepasan stok memakai transaksi replica set.
+Produk hanya dilepas jika masih reserved oleh ID order tersebut. Dua request pemesanan
+barang sama => satu 201, satu 409 STOCK_CONFLICT. Tidak ada jaminan replay respons 201:
+submit ulang selama barang terkunci ditolak 409, bukan membuat order tambahan.
+Kedaluwarsa diselesaikan saat membaca produk/order/wishlist, pencocokan, edit produk,
+atau membuat/membatalkan order. Hanya Menunggu Pembayaran terkena batas awal enam jam.
+Tidak memakai cron; data mentah dapat tetap reserved sampai request pemicu berikutnya.
+MongoDB standalone ditolak saat startup dengan REPLICA_SET_REQUIRED sebelum listen.
+Data lama wajib dry-run migrasi; informasi alamat/ongkir yang tidak diketahui menjadi
+blocker dan tidak diisi dari profil Buyer sekarang. Lihat MIGRATION.md.
 
 ## Pencocokan, wishlist, dan alamat (batch 3)
 
@@ -31,8 +63,8 @@ Migrator melaporkan wishlist duplikat, pemilik bukan Buyer/hilang, serta produk
 yang sudah hilang sebagai blocker sebelum unique index dipasang.
 
 Baseline: `5c506d1`. Batch ini menangani akses, validasi dasar, dan respons galat.
-Batch 2 melengkapi produk dan katalog berdasarkan FE di `185ee54`. Batch 3 melengkapi alamat terstruktur, wishlist dan pencocokan ukuran. Transaksi stok,
-pembayaran, serta aturan ulasan lengkap masih menyusul.
+Batch 2 melengkapi produk dan katalog berdasarkan FE di `185ee54`. Batch 3 melengkapi alamat terstruktur, wishlist dan pencocokan ukuran. Batch 4 melengkapi transaksi stok, pembatalan dan expiry.
+Pembayaran, pengiriman, serta aturan ulasan lengkap masih menyusul.
 BE secara keseluruhan belum siap produksi.
 
 ## Produk dan katalog (batch 2)
@@ -98,7 +130,7 @@ tersebut, sehingga edit/penonaktifan produk tidak mengubah informasi riwayatnya.
 Pesanan lama tanpa salinan perlu migrasi sebelum startup. Respons menambahkan
 `product_snapshot_source`: `checkout` untuk pesanan baru atau `legacy-current-product`
 untuk salinan berdasarkan data saat migrasi; lihat [MIGRATION.md](MIGRATION.md).
-Pemesanan produk nonaktif ditolak. Transaksi dan pemulihan stok tetap masuk batch 4.
+Pemesanan produk nonaktif ditolak. Transaksi dan pemulihan stok mengikuti kontrak batch 4 di atas.
 Tidak ada migrasi database tim otomatis. Startup menolak data yang belum kompatibel
 dan mengarahkan ke dry-run `migrate:legacy`; tidak ada fallback yang menebak ukuran,
 foto, atau kondisi. Apply hanya dijalankan secara eksplisit, bukan saat startup.
@@ -146,11 +178,11 @@ PATCH profil tidak menerima email, password, role, ID, ataupun operator MongoDB.
 | POST, PATCH, DELETE | `/products`, `/products/:id` | Admin; POST hanya route koleksi.                                                                         |
 | GET                 | `/wishlist`                  | Buyer, hanya milik sendiri.                                                                              |
 | POST, DELETE        | `/wishlist/:productId`       | Buyer, hanya milik sendiri.                                                                              |
-| POST                | `/orders`                    | Buyer; body `product_id`. Aturan transaksi belum diperbaiki.                                             |
+| POST                | `/orders`                    | Buyer; `product_id`, alamat opsional, transaksi batch 4.                                                 |
 | GET                 | `/orders/my`                 | Buyer, hanya milik sendiri.                                                                              |
 | GET                 | `/orders/:id`                | Buyer pemilik atau Admin.                                                                                |
 | GET                 | `/admin/orders`              | Admin.                                                                                                   |
-| PATCH               | `/admin/orders/:id/status`   | Admin; status enum lama dan `tracking_number`. Transisi lengkap menyusul.                                |
+| PATCH               | `/admin/orders/:id/status`   | Admin; perubahan bebas ditutup dengan 409 hingga batch 5.                                                |
 | POST                | `/orders/:id/review`         | Buyer pemilik; `rating` bilangan bulat 1–5 dan `comment` tidak kosong. Aturan selesai/duplikat menyusul. |
 | GET                 | `/reviews`                   | Publik; nama penulis tanpa email/ID akun.                                                                |
 

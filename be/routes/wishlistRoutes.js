@@ -1,3 +1,4 @@
+const { expireOrders } = require("../services/orders");
 const router = require("express").Router();
 const Wishlist = require("../models/wishlist");
 const Product = require("../models/products");
@@ -8,6 +9,7 @@ const serialize = require("../lib/serializers");
 
 router.use(authenticateToken, requireBuyer);
 router.get("/", async (req, res) => {
+  await expireOrders();
   const items = await Wishlist.find({ user_id: req.user.id }).populate("product_id");
   res.json({ success: true, data: items.map(serialize.wishlist) });
 });

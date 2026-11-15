@@ -1,5 +1,24 @@
 # Memakai data dari BE lama
 
+## Tambahan batch 4
+
+Server wajib MongoDB replica set/Atlas. Dry-run sekarang memeriksa seluruh order,
+termasuk yang sudah punya snapshot. Wajib tersedia `address_snapshot` lengkap,
+`item_price`, `shipping_fee`, total yang sama dengan jumlah keduanya, dan waktu
+`expiresAt`, `createdAt`, `updatedAt` valid. Data yang tidak diketahui adalah blocker;
+JANGAN menyalin alamat profil sekarang atau menambah ongkir ke total historis dengan
+tebakan. Operator perlu memverifikasi bukti asli atau memakai database uji baru.
+Migrasi tidak mereset database dan tidak menulis database tim secara otomatis.
+
+Status lama pending/shipped/completed/cancelled dapat dipetakan ke
+MENUNGGU_PEMBAYARAN/DIKIRIM/SELESAI/DIBATALKAN jika semua field wajib lengkap. `paid`
+ambigu dan menjadi blocker; operator menentukan status berdasarkan bukti.
+Produk reserved harus aktif, memiliki reservation_order_id, dan menunjuk tepat satu
+order status Menunggu Pembayaran/Verifikasi/Perlu Unggah Ulang untuk produk tersebut.
+Kunci hilang, pemilik berbeda, atau beberapa order aktif tidak diperbaiki dengan tebakan.
+Produk available/sold tidak boleh menyimpan kunci reservasi. Metadata pembatalan lama
+yang tidak tersedia tetap null; tidak ditebak sebagai pembatalan Buyer.
+
 ## Tambahan batch 3
 
 Alamat string lama dipindahkan utuh ke `legacy_address` internal dan `address` menjadi
@@ -55,12 +74,13 @@ hard-delete, mengubah hash sandi/peran/ID, ataupun menghapus field lama.
 - Warna kosong dan daftar pengukuran kosong diperbolehkan FE; default tersebut boleh
   ditambahkan. Timestamp produk harus valid dan dipertahankan. ID serta referensi tetap sama.
 - Order lama tanpa `product_snapshot` mendapat salinan **data produk yang tersedia saat
-  migrasi**, dengan harga dari `total_price` order lama. BE lama menyimpan harga barang
-  tanpa ongkir pada field itu. Ini tidak mengklaim merekonstruksi deskripsi/foto asli saat
+  migrasi**, dengan harga dari `item_price` yang sudah diverifikasi operator. BE lama menyimpan
+  harga barang tanpa ongkir pada `total_price`; operator wajib memisahkan nilai historis
+  berdasarkan bukti sebelum migrasi batch 4. Ini tidak mengklaim merekonstruksi deskripsi/foto asli saat
   checkout. `product_snapshot_source: legacy-current-product` membedakannya dari salinan
   `checkout` pada pesanan baru. Order dengan referensi hilang/harga tidak valid menjadi blocker.
 
-Foto/teks salinan order lama selanjutnya tidak ikut perubahan produk. Migrasi tidak
-memperbaiki alur pembayaran, pembatalan, ataupun penguncian stok: itu batch berikutnya.
+Foto/teks salinan order lama selanjutnya tidak ikut perubahan produk. Migrasi tidak menjalankan pembayaran atau membatalkan order. Setelah startup lolos,
+request pemicu dapat membatalkan order yang sudah lewat expiresAt melalui transaksi batch 4.
 Pemeriksaan startup ditujukan untuk skala data proyek ini dan memindai data sekali saat
 startup. Jalankan ulang dry-run bila ada data yang dimasukkan langsung lewat database.

@@ -15,8 +15,7 @@ const Order = require("../models/order");
 const Product = require("../models/products");
 const Review = require("../models/review");
 const Wishlist = require("../models/wishlist");
-const { productInput } = require("./fixtures");
-const serialize = require("../lib/serializers");
+const { productInput, addressInput, orderInput } = require("./fixtures");
 
 const secret = randomBytes(48).toString("hex");
 const credentials = { email: "buyer@example.test", password: "Buyer123!" };
@@ -69,8 +68,8 @@ before(async () => {
   base = `http://127.0.0.1:${server.address().port}`;
   const hash = await bcrypt.hash(credentials.password, 10);
   [buyer, other, admin] = await User.create([
-    { ...credentials, password: hash, name: "Buyer QA" },
-    { email: "other@example.test", password: hash, name: "Buyer Lain" },
+    { ...credentials, password: hash, name: "Buyer QA", address: addressInput() },
+    { email: "other@example.test", password: hash, name: "Buyer Lain", address: addressInput() },
     { email: "admin@example.test", password: hash, name: "Admin QA", role: "admin" },
   ]);
   buyerToken = await login(credentials.email, credentials.password, "buyer");
@@ -80,8 +79,7 @@ before(async () => {
   order = await Order.create({
     buyer_id: buyer.id,
     product_id: product.id,
-    product_snapshot: serialize.product(product),
-    total_price: product.price,
+    ...orderInput(product, { status: "DIBATALKAN" }),
   });
 });
 
@@ -343,7 +341,6 @@ test("input domain yang tidak valid menghasilkan 422 tanpa mutasi", async () => 
     ["PATCH", `/products/${product.id}`, adminToken, { $set: { price: 1 } }],
     ["POST", "/products/match", undefined, { style: { $ne: null } }],
     ["POST", "/products/match", undefined, { max_budget: "abc" }],
-    ["PATCH", `/admin/orders/${order.id}/status`, adminToken, { status: "banana" }],
     ["POST", `/orders/${order.id}/review`, buyerToken, { rating: 1.5, comment: "X" }],
     ["POST", `/orders/${order.id}/review`, buyerToken, { rating: 5, comment: {} }],
   ];
@@ -351,7 +348,7 @@ test("input domain yang tidak valid menghasilkan 422 tanpa mutasi", async () => 
     assert.equal((await request(route, { method, token, body })).status, 422, `${method} ${route}`);
   }
   assert.equal((await Product.findById(product.id)).status, "available");
-  assert.equal((await Order.findById(order.id)).status, "pending");
+  assert.equal((await Order.findById(order.id)).status, "DIBATALKAN");
 });
 
 test("query numerik/objek tidak valid ditolak dan pencarian regex menjadi teks literal", async () => {
@@ -460,7 +457,8 @@ test("Buyer masih bisa membuat pesanan, mengulas pesanan sendiri, dan menghapus 
   assert.equal((await request("/orders", { token: otherToken, method: "POST", body })).status, 409);
   assert.equal(await Order.countDocuments({ product_id: item.id }), 1);
   // Fixture status selesai; transisi pembayaran/pengiriman berada pada batch berikutnya.
-  await Order.findByIdAndUpdate(placed.json.data.id, { status: "completed" });
+  await Order.findByIdAndUpdate(placed.json.data.id, { status: "SELESAI" });
+  await Product.updateOne({ _id: item.id }, { status: "sold", reservation_order_id: null });
   const reviewed = await request(`/orders/${placed.json.data.id}/review`, {
     token: buyerToken,
     method: "POST",

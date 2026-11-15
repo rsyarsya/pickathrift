@@ -58,6 +58,19 @@ function order(value) {
     status: value.status,
     tracking_number: value.tracking_number,
     total_price: value.total_price,
+    item_price: value.item_price,
+    shipping_fee: value.shipping_fee,
+    address_snapshot: value.address_snapshot
+      ? Object.fromEntries(
+          ["recipient", "phone", "street", "city", "postalCode"].map((key) => [
+            key,
+            value.address_snapshot[key],
+          ]),
+        )
+      : null,
+    expiresAt: value.expiresAt,
+    cancelledAt: value.cancelledAt,
+    cancellation_reason: value.cancellation_reason,
     createdAt: value.createdAt,
     updatedAt: value.updatedAt,
   };

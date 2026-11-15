@@ -12,7 +12,7 @@ const { inspectLegacyData, assertDataReady, migrateLegacyData } = require("../li
 const { start } = require("../webthrift");
 const User = require("../models/user");
 const Product = require("../models/products");
-const { productInput } = require("./fixtures");
+const { productInput, addressInput } = require("./fixtures");
 
 let mongo, hash, uri, server;
 const secret = randomBytes(48).toString("hex");
@@ -72,8 +72,12 @@ async function seed(overrides = {}) {
     _id: new mongoose.Types.ObjectId(),
     buyer_id: user._id,
     product_id: product._id,
-    total_price: 50000,
-    status: "pending",
+    total_price: 65000,
+    item_price: 50000,
+    shipping_fee: 15000,
+    address_snapshot: addressInput(),
+    expiresAt: new Date("2026-10-01T06:00:00Z"),
+    status: "cancelled",
     tracking_number: "",
     createdAt: new Date("2026-10-01"),
     updatedAt: new Date("2026-10-01"),
@@ -131,7 +135,7 @@ test("migrasi mempertahankan identitas, kredensial, timestamp, dan harga order; 
   assert.deepEqual(stored.products[0].updatedAt, legacy.product.updatedAt);
   assert.equal(stored.products[0].title, legacy.product.title); // Field lama tidak dihapus.
   assert.equal(stored.products[0].active, true);
-  assert.equal(stored.orders[0].product_snapshot.price, legacy.order.total_price);
+  assert.equal(stored.orders[0].product_snapshot.price, legacy.order.item_price);
   assert.equal(stored.orders[0].product_snapshot_source, "legacy-current-product");
   assert.deepEqual(stored.orders[0].product_id, legacy.product._id);
   const next = await migrateLegacyData(mongoose.connection, true);
@@ -180,7 +184,7 @@ test("migrasi mempertahankan identitas, kredensial, timestamp, dan harga order; 
   const order = (await request(`/orders/${legacy.order._id}`, { token: login.json.data.token }))
     .json.data;
   assert.equal(order.product_id.name, legacy.product.title);
-  assert.equal(order.product_id.price, legacy.order.total_price);
+  assert.equal(order.product_id.price, legacy.order.item_price);
   assert.equal(order.product_snapshot_source, "legacy-current-product");
   // Field clothing_type lama tidak boleh mengalahkan kategori baru setelah migrasi.
   await Product.updateOne({ _id: legacy.product._id }, { category: "Kaos" });

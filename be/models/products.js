@@ -35,6 +35,7 @@ const productSchema = new mongoose.Schema(
     price: { type: Number, required: true, min: 1000, validate: Number.isSafeInteger },
     status: { type: String, enum: STATUSES, default: "available" },
     active: { type: Boolean, default: true },
+    reservation_order_id: { type: mongoose.Schema.Types.ObjectId, ref: "Order", default: null },
     images: {
       type: [String],
       required: true,

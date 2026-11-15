@@ -1,3 +1,4 @@
+const { expireOrders } = require("./orders");
 const Product = require("../models/products");
 const { ApiError } = require("../lib/errors");
 const { catalogQuery } = require("../lib/catalog-query");
@@ -5,6 +6,7 @@ const { CATEGORIES } = require("../lib/product-options");
 const serialize = require("../lib/serializers");
 
 async function listProducts(query, admin = false) {
+  await expireOrders();
   const { filter, order, page, limit, skip } = catalogQuery(query, admin);
   const [items, total, groups] = await Promise.all([
     Product.find(filter).sort(order).skip(skip).limit(limit),
@@ -30,6 +32,7 @@ async function listProducts(query, admin = false) {
 }
 
 async function getProduct(id, admin = false) {
+  await expireOrders();
   const product = await Product.findOne({ _id: id, ...(admin ? {} : { active: true }) });
   if (!product) throw new ApiError(404, "NOT_FOUND", "Barang tidak ditemukan.");
   return product;

@@ -18,4 +18,22 @@ function productInput(overrides = {}) {
   };
 }
 
-module.exports = { productInput };
+const addressInput = () => ({
+  recipient: "Buyer QA",
+  phone: "081234567890",
+  street: "Jl. Uji 1",
+  city: "Yogyakarta",
+  postalCode: "55281",
+});
+function orderInput(product, overrides = {}) {
+  return {
+    product_snapshot: require("../lib/serializers").product(product),
+    address_snapshot: addressInput(),
+    item_price: product.price,
+    shipping_fee: 15000,
+    total_price: product.price + 15000,
+    expiresAt: new Date(Date.now() + 21600000),
+    ...overrides,
+  };
+}
+module.exports = { productInput, addressInput, orderInput };
