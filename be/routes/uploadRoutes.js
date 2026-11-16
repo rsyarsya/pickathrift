@@ -34,6 +34,8 @@ router.post(
     await payments.ownedOrder(req.params.id, req.account);
     await expireOrders();
     const order = await payments.ownedOrder(req.params.id, req.account);
+    if (order.payment)
+      throw new ApiError(409, "PAYMENT_METHOD_CONFLICT", "Gunakan pembayaran Midtrans.");
     if (!["MENUNGGU_PEMBAYARAN", "PERLU_UNGGAH_ULANG"].includes(order.status))
       throw new ApiError(409, "INVALID_TRANSITION", "Pesanan tidak menerima unggahan.");
     req.expectedProofId = String(order.proof?.id ?? "");

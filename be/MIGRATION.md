@@ -1,5 +1,19 @@
 # Memakai data dari BE lama
 
+## Tambahan Midtrans sandbox — batch 1
+
+Order tanpa field `payment` atau dengan `payment: null` tetap dianggap manual.
+Tidak ada backfill otomatis dan tidak ada order lama yang diubah menjadi transaksi
+Midtrans. Metadata gateway hanya dibuat untuk checkout baru saat fitur diaktifkan.
+Startup memeriksa metadata serta duplikasi `payment.merchantOrderId` sebelum memasang
+unique sparse index. Metadata tidak lengkap atau status order yang belum didukung
+batch ini menjadi blocker dan tidak diperbaiki dengan tebakan.
+
+Biarkan `MIDTRANS_ENABLED=false` pada database bersama sampai webhook dan integrasi
+FE selesai. Database uji terisolasi boleh mengaktifkannya. Batch 1 mempertahankan
+reservasi sesi yang sudah dimulai sampai rekonsiliasi batch 2 tersedia. Jangan
+menghapus metadata atau melepas reservasi tersebut secara manual untuk mencoba ulang.
+
 ## Tambahan batch 4
 
 `expiresAt` harus setelah `createdAt`. Untuk Menunggu Pembayaran/pending, selisihnya

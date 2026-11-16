@@ -1,5 +1,59 @@
 # Kontrak API BE — batch 1–6
 
+## Midtrans sandbox — batch 1 (fondasi, belum diaktifkan untuk FE)
+
+Batch ini menambahkan pembuatan sesi Snap. Webhook, sinkronisasi pembayaran, dan FE
+menyusul pada batch 2–3. `MIDTRANS_ENABLED` default `false`: jangan aktifkan pada
+database bersama sebelum tiga batch selesai. Dalam keadaan nonaktif, checkout lama
+tetap manual. Jika diaktifkan pada lingkungan uji terisolasi, semua order baru
+menggunakan Midtrans; request tidak dapat memilih metode manual.
+
+Konfigurasi BE lokal: `MIDTRANS_ENABLED=true`, `MIDTRANS_SERVER_KEY` sandbox, serta
+`FRONTEND_URL` (origin FE, misalnya `http://localhost:3000`). Semua konfigurasi dan
+contoh `.env` tetap lokal. URL API Midtrans dikunci ke sandbox; tidak ada mode produksi.
+Frontend tidak menerima Server Key atau memerlukan Client Key untuk mode redirect.
+
+| Method | Route                 | Akses         | Body / hasil                                                                                                                                                  |
+| ------ | --------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| POST   | `/orders/:id/payment` | Buyer pemilik | Body `{}`. `201` sesi baru, `200` sesi tersimpan; `data: {provider: "midtrans", status: "ready", merchantOrderId, redirectUrl, expiresAt, sessionExpiresAt}`. |
+
+DTO order menambahkan `payment: {provider, status, merchantOrderId, channel, paidAt}`.
+Order tanpa metadata gateway dibaca sebagai `{provider: "manual", status: null,
+merchantOrderId: null, channel: null, paidAt: null}` tanpa menulis ulang data lama.
+Token dan URL Snap tidak disertakan pada daftar/detail order; URL hanya lewat endpoint
+pembayaran milik Buyer. Status pembuatan sesi: `not_started`, `creating`, `ready`,
+atau `unknown`; status ini terpisah dari status order/pengiriman.
+
+BE menyimpan satu merchantOrderId sebelum request provider, mengunci pembuatan sesi
+secara atomik, lalu memanggil Midtrans di luar transaksi MongoDB. Request serentak
+yang belum selesai mendapat `409 PAYMENT_IN_PROGRESS`; request berikutnya menggunakan
+sesi yang sama. Tidak ada retry otomatis untuk respons timeout/galat/malformed atau
+proses yang terhenti: state menjadi `unknown`, respons `503 PAYMENT_STATUS_UNKNOWN`,
+dan ID tidak diganti. Pemulihan melalui rekonsiliasi batch 2, bukan membuat ID baru.
+Galat provider dan kredensial tidak diteruskan ke respons klien.
+
+Payload mengaktifkan `bca_va`, `bni_va`, `bri_va`, `permata_va`, `echannel`, dan
+`other_qris`. Kanal yang benar-benar tampil tetap perlu diverifikasi di akun sandbox.
+Harga, penerima, ongkir, total, dan batas waktu berasal dari snapshot order.
+`expiry.start_time` mengacu pada pembuatan order dengan durasi 360 menit. Page expiry
+memakai sisa menit penuh dengan cadangan timeout request 10 detik agar tidak melewati
+deadline; halaman dapat berakhir sedikit lebih awal. Sesi tidak dibuat ketika sisa
+waktu kurang dari 70 detik (`409 PAYMENT_WINDOW_TOO_SHORT`); deadline enam jam tidak
+diperpanjang. Sesi yang melewati `sessionExpiresAt` menghasilkan
+`409 PAYMENT_SESSION_EXPIRED`, bukan sesi baru.
+
+Sampai rekonsiliasi tersedia, reservasi dengan sesi `creating/ready/unknown` tidak
+dilepas otomatis dan pembatalannya ditolak `409 PAYMENT_CHECK_REQUIRED`. Order gateway
+yang belum pernah memulai sesi masih bisa dibatalkan/kedaluwarsa. Unggah bukti dan
+persetujuan manual ditolak pada semua order gateway. Ini pembatasan sementara batch 1,
+bukan alur final. Gateway nonaktif memberi `503 PAYMENT_UNAVAILABLE`; metode manual,
+order bukan Menunggu Pembayaran, atau kunci stok berubah memberi `409`. Aturan
+401/403/404/422 tetap berlaku. Semua respons endpoint sesi memakai `Cache-Control: no-store`.
+
+Referensi: [Snap](https://docs.midtrans.com/docs/snap-snap-integration-guide),
+[kanal pembayaran](https://docs.midtrans.com/reference/request-body-json-parameter),
+[expiry dan page expiry](https://docs.midtrans.com/reference/json-objects).
+
 ## Perbaikan QA pembayaran
 
 DTO order menyertakan `version` (integer). Semua POST `/api/admin/orders/:id/actions`

@@ -138,6 +138,7 @@ async function inspectLegacyData(connection, session, config = {}) {
     }
   }
   const mappedOrders = new Map();
+  const merchantOrderIds = new Set();
   const statusMap = {
     pending: "MENUNGGU_PEMBAYARAN",
     shipped: "DIKIRIM",
@@ -146,6 +147,16 @@ async function inspectLegacyData(connection, session, config = {}) {
   };
   for (const raw of orders) {
     const set = {};
+    const paymentFields = require("./payment-data").paymentErrors(raw);
+    if (raw.payment?.merchantOrderId) {
+      if (merchantOrderIds.has(raw.payment.merchantOrderId))
+        paymentFields.push("payment.merchantOrderId");
+      merchantOrderIds.add(raw.payment.merchantOrderId);
+    }
+    if (paymentFields.length) {
+      issue("orders", raw._id, "GATEWAY_REVIEW_REQUIRED", [...new Set(paymentFields)]);
+      continue;
+    }
     if (!buyerIds.has(String(raw.buyer_id)))
       issue("orders", raw._id, "ORDER_BUYER_REVIEW_REQUIRED", ["buyer_id"]);
     if (statusMap[raw.status]) set.status = statusMap[raw.status];

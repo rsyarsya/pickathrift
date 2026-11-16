@@ -10,8 +10,19 @@ const serialize = require("../lib/serializers");
 
 orderRouter.use(authenticateToken);
 orderRouter.post("/", requireBuyer, async (req, res) => {
-  const order = await createOrder(req.account, req.body);
+  const order = await createOrder(req.account, req.body, req.app.locals.config);
   res.status(201).json({ success: true, data: serialize.order(order) });
+});
+
+orderRouter.post("/:id/payment", requireBuyer, validate.idParam("id"), async (req, res) => {
+  res.set("Cache-Control", "no-store");
+  validate.fields(req.body, []);
+  const result = await require("../services/midtrans").paymentSession(
+    req.params.id,
+    req.account,
+    req.app.locals.config,
+  );
+  res.status(result.created ? 201 : 200).json({ success: true, data: result.data });
 });
 
 orderRouter.post("/:id/cancel", requireBuyer, validate.idParam("id"), async (req, res) => {

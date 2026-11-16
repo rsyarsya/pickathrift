@@ -31,12 +31,14 @@ async function expireOrders(now = new Date()) {
         status: "MENUNGGU_PEMBAYARAN",
         expiresAt: { $lte: now },
       }).session(session);
-      if (order) await release(order, session, now, "expired");
+      // Sesi gateway yang sudah dimulai perlu rekonsiliasi provider sebelum stok dilepas.
+      if (order && (!order.payment || order.payment.status === "not_started"))
+        await release(order, session, now, "expired");
     });
   }
 }
 
-async function createOrder(account, body) {
+async function createOrder(account, body, config = {}) {
   validate.fields(body, ["product_id", "address"]);
   const productId = validate.objectId(body.product_id, "product_id");
   const address = addressInput(
@@ -72,6 +74,9 @@ async function createOrder(account, body) {
           expiresAt: new Date(now.getTime() + PAYMENT_WINDOW_MS),
           createdAt: now,
           updatedAt: now,
+          payment: config.midtrans?.enabled
+            ? { provider: "midtrans", merchantOrderId: `picka-${orderId}`, status: "not_started" }
+            : null,
         },
       ],
       { session },
@@ -89,6 +94,12 @@ async function cancelOrder(id, buyerId, now = new Date()) {
     if (order.status === "DIBATALKAN") return order;
     if (order.status !== "MENUNGGU_PEMBAYARAN")
       throw new ApiError(409, "INVALID_TRANSITION", "Pesanan ini tidak bisa dibatalkan.");
+    if (order.payment && order.payment.status !== "not_started")
+      throw new ApiError(
+        409,
+        "PAYMENT_CHECK_REQUIRED",
+        "Status pembayaran perlu diperiksa sebelum pembatalan.",
+      );
     await release(order, session, now, order.expiresAt <= now ? "expired" : "buyer");
     return order;
   });
