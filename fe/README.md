@@ -91,6 +91,10 @@ Nama rute mengikuti nama frame, dalam bahasa Indonesia: `/katalog`, `/produk/[id
 
 ## Data
 
+Referensi pesanan Buyer dan Admin memakai formatter bersama: ObjectId ditampilkan sebagai `#` dan 12 karakter terakhir dalam huruf kapital. ID lengkap tetap dipakai untuk API dan URL. Referensi pendek ini bukan nomor unik yang dijamin database.
+
+Form newsletter mempertahankan tampilan footer, tetapi layanan belum tersedia. Email valid menghasilkan pesan “Newsletter belum tersedia. Email belum didaftarkan.”, tanpa penyimpanan, permintaan API, atau sukses simulasi.
+
 Panggilan backend dilakukan lewat fungsi di `src/modules/*/data/` dan klien bersama
 `src/lib/api.ts`. Klien menambahkan token Bearer, menangani respons API, dan meneruskan
 `ApiError` agar layar bisa membedakan masalah jaringan, akses ditolak, dan konflik stok.

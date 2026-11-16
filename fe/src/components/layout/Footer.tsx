@@ -45,9 +45,9 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /** Daftar kabar barang baru. Alur state (galat, mengirim, berhasil) dari Newsletter karya Ola. */
 function Newsletter() {
-  const [state, setState] = useState<"idle" | "error" | "loading" | "success">("idle");
+  const [state, setState] = useState<"idle" | "error" | "loading">("idle");
   const [message, setMessage] = useState("");
-  const busy = state === "loading" || state === "success";
+  const busy = state === "loading";
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -61,8 +61,6 @@ function Newsletter() {
     setMessage("");
     try {
       await subscribeNewsletter(email);
-      setState("success");
-      setMessage("Siap! Kami kabari lewat email kalau ada barang baru.");
     } catch (error) {
       setState("error");
       setMessage(error instanceof ApiError ? error.message : "Terjadi kesalahan. Coba lagi.");
@@ -96,7 +94,7 @@ function Newsletter() {
           disabled={busy}
           className="rounded-full bg-fg px-18 py-10 text-sm font-medium text-canvas disabled:opacity-70"
         >
-          {state === "loading" ? "Mengirim…" : state === "success" ? "✓ Terdaftar" : "Daftar"}
+          {state === "loading" ? "Mengirim…" : "Daftar"}
         </button>
       </div>
       <p

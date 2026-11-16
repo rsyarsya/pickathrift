@@ -13,24 +13,34 @@ sesudah audit perlu diperiksa kembali.
 - Katalog, produk unik berstok satu, wishlist, profil/alamat, pesanan, pembayaran
   manual, ulasan, dan pengelolaan Admin sudah memakai API.
 - Perebutan stok, pembatalan, kedaluwarsa, serta pembatasan akses Buyer/Admin sudah diuji.
-- Audit terakhir: **154 tes FE, 254 tes BE, dan 3 tes Playwright lulus**.
+- Audit awal `main`: **154 tes FE, 254 tes BE, dan 3 tes Playwright lulus**. Perbaikan FE berikutnya menambah cakupan menjadi **158 tes FE dan 6 tes Playwright lulus**; kode BE tidak berubah.
 - Typecheck, lint FE/BE, dan build produksi lulus.
-- Lint root masih gagal pada 7 galat `scripts/voiceover.mjs`.
+- Lint root lulus pada checkout bersih yang diaudit. `scripts/voiceover.mjs` tidak termasuk commit tersebut; jika berkas lokal itu disertakan kemudian, ulangi pemeriksaannya.
 
 Rincian integrasi tersedia di [integrasi-api-fe.md](integrasi-api-fe.md).
 
 ## Ringkasan prioritas
 
-| Prioritas | Pekerjaan | Dampak utama |
-| --- | --- | --- |
-| P1 | Isi konfigurasi rekening toko | Kesiapan demo alur pembayaran; G1 |
-| P1 | Selesaikan newsletter yang masih simulasi | Ketepatan perilaku aplikasi; FE5 |
-| P1 | Perbarui README root dan pembagian kerja | Kejelasan setup, ruang lingkup, dan kontribusi; G2/G4 |
-| P2 | Perluas pengujian UI dan perangkat | Responsivitas, interaksi, dan penanganan galat; FE2/FE4/FE5 |
-| P2 | Bersihkan lint root | Konsistensi pemeriksaan repo dan kesiapan pengumpulan |
-| P2, opsional | Deployment dan bukti integrasi pihak ketiga | Kemudahan demo dan peluang nilai tambah G6 |
-| P3 | Polish panduan ukuran, tray, dan gambar | Kenyamanan penggunaan dan kualitas antarmuka |
-| Sebelum pengumpulan | Siapkan presentasi, video, dan bukti kerja | G2/G3/G4/G5 serta ketepatan pengumpulan |
+Perbaikan FE pada branch `fix/fe-qa-regressions` juga menyelesaikan dua temuan baru:
+dialog alasan memakai ID/nama grup radio unik per instance, dan referensi pesanan
+Buyer/Admin memakai 12 karakter terakhir ObjectId dalam huruf kapital. URL/API tetap
+memakai ID lengkap. Referensi pendek tidak dijamin unik oleh database.
+
+Enam screenshot login/katalog pada lebar 390, 768, dan 1440 identik dengan baseline;
+struktur JSX dan class komponen yang diubah tetap sama. Lihat
+[ringkasan QA perbaikan FE](qa-perbaikan-fe-20261116.md). Rekening, pembagian kerja
+aktual, serta sisa pengujian zoom native Firefox masih perlu diselesaikan.
+
+| Prioritas                 | Pekerjaan                                     | Dampak utama                                                                |
+| ------------------------- | --------------------------------------------- | --------------------------------------------------------------------------- |
+| P1                        | Isi konfigurasi rekening toko                 | Kesiapan demo alur pembayaran; G1                                           |
+| Selesai pada perbaikan FE | Newsletter menampilkan layanan belum tersedia | Tidak ada klaim pendaftaran atau pengiriman email yang tidak dilakukan; FE5 |
+| P1                        | Perbarui README root dan pembagian kerja      | Kejelasan setup, ruang lingkup, dan kontribusi; G2/G4                       |
+| P2                        | Perluas pengujian UI dan perangkat            | Responsivitas, interaksi, dan penanganan galat; FE2/FE4/FE5                 |
+| P2                        | Bersihkan lint root                           | Konsistensi pemeriksaan repo dan kesiapan pengumpulan                       |
+| P2, opsional              | Deployment dan bukti integrasi pihak ketiga   | Kemudahan demo dan peluang nilai tambah G6                                  |
+| P3                        | Polish panduan ukuran, tray, dan gambar       | Kenyamanan penggunaan dan kualitas antarmuka                                |
+| Sebelum pengumpulan       | Siapkan presentasi, video, dan bukti kerja    | G2/G3/G4/G5 serta ketepatan pengumpulan                                     |
 
 ## P1 — Selesaikan sebelum demo alur utama
 
@@ -53,18 +63,16 @@ yang jelas ditandai sebagai data simulasi.
 Referensi: [konfigurasi checkout](../fe/src/modules/checkout/data/checkout.ts) dan
 [panduan FE](../fe/README.md).
 
-### P1.2 — Newsletter masih menampilkan keberhasilan semu
+### P1.2 — Newsletter: keberhasilan semu dihentikan
 
-`subscribeNewsletter()` hanya menunggu timer lalu mengembalikan sukses. Footer
-menampilkan “Terdaftar” dan menjanjikan pemberitahuan, tetapi email belum disimpan
-atau dikirim melalui layanan nyata.
+Keputusan: form dan desain footer dipertahankan. Layanan newsletter belum disediakan.
+Email valid menghasilkan pesan “Newsletter belum tersedia. Email belum didaftarkan.”
+melalui state galat yang sudah ada. Tidak ada timer sukses, penyimpanan email, atau
+permintaan API newsletter. Implementasi layanan nyata menjadi pekerjaan terpisah.
 
-- [ ] Putuskan apakah form newsletter akan dihapus/disembunyikan atau diimplementasikan.
-- [ ] Jika dihapus/disembunyikan, hapus juga janji pengiriman email yang tidak didukung.
-- [ ] Jika diimplementasikan, sediakan API dan penyimpanan pendaftaran, validasi,
-  penanganan duplikat, serta state memuat/gagal/berhasil berdasarkan respons server.
-- [ ] Jika menjanjikan pemberitahuan email, verifikasi pengiriman email sungguhan.
-- [ ] Uji hasil yang terlihat oleh pengguna, termasuk saat jaringan gagal.
+- [x] Hentikan hasil sukses simulasi dan pesan “Terdaftar”.
+- [x] Pertahankan validasi email dan tampilkan status layanan yang sebenarnya.
+- [x] Verifikasi bahwa tidak ada API atau timer pendaftaran yang dijalankan.
 
 **Selesai ketika:** setiap klaim berhasil pada UI sesuai tindakan yang benar-benar
 dilakukan sistem. Newsletter bukan kebutuhan wajib US6.
@@ -74,13 +82,13 @@ Referensi: [service newsletter](../fe/src/modules/home/data/newsletter.ts) dan
 
 ### P1.3 — README root dan pembagian kerja
 
-README root masih menyebut modul belanja memakai fixtures, backend belum dipasang,
-dan timer reservasi belum diimplementasikan. Pembagian kerja tiga anggota juga belum
-tercatat lengkap, sementara tanggung jawab Admin sudah dialihkan.
+Status API, backend, batas reservasi, serta tautan setup pada README root sudah
+diperbarui. Pembagian kerja anggota masih perlu dikonfirmasi kelompok dan tidak
+ditentukan hanya dari jumlah commit.
 
-- [ ] Perbarui status implementasi FE/BE, sumber data API, dan timer reservasi.
-- [ ] Selaraskan petunjuk root dengan README FE/BE, kebutuhan MongoDB replica set,
-  konfigurasi rekening, serta perintah menjalankan dan menguji aplikasi.
+- [x] Perbarui status implementasi FE/BE, sumber data API, dan timer reservasi.
+- [x] Selaraskan petunjuk root dengan README FE/BE, kebutuhan MongoDB replica set,
+      konfigurasi rekening, serta perintah menjalankan dan menguji aplikasi.
 - [ ] Catat pembagian kerja aktual seluruh anggota, termasuk perubahan tanggung jawab Admin.
 - [ ] Hubungkan bagian pekerjaan dengan modul, dokumen, atau riwayat pengerjaan yang relevan.
 - [ ] Pastikan setiap anggota bisa menjelaskan bagian yang menjadi tanggung jawabnya.
@@ -106,10 +114,10 @@ berfungsi baik pada mobile, browser lain, dan zoom tinggi.
 - [ ] Uji wishlist dan perbandingan melalui UI, termasuk barang nonaktif dan galat API.
 - [ ] Uji tambah/edit produk serta unggah foto melalui UI Admin.
 - [ ] Uji dua sesi Admin dengan versi pesanan berbeda; 409 harus meminta muat ulang,
-  lalu keputusan baru memerlukan pemeriksaan ulang.
+      lalu keputusan baru memerlukan pemeriksaan ulang.
 - [ ] Uji permintaan unggah ulang dan penolakan pembayaran melalui UI.
 - [ ] Catat hasil, browser/viewport, dan masalah yang ditemukan; tambah tes otomatis
-  untuk alur penting yang belum tercakup.
+      untuk alur penting yang belum tercakup.
 
 **Selesai ketika:** tidak ada kontrol penting yang terpotong atau tidak terjangkau;
 alur utama dan pemulihan galat berfungsi pada perangkat yang diuji.
@@ -119,8 +127,8 @@ Referensi: [konfigurasi Playwright](../fe/playwright.config.ts) dan
 
 ### P2.2 — Lint root
 
-- [ ] Perbaiki konfigurasi lint atau kode `scripts/voiceover.mjs` sesuai lingkungan Node.js.
-- [ ] Jalankan `pnpm lint` dari root dan pastikan seluruh pemeriksaan lulus.
+- [x] Periksa checkout bersih: `scripts/voiceover.mjs` tidak termasuk commit yang diaudit.
+- [x] Jalankan `pnpm lint` dari root dan pastikan seluruh pemeriksaan lulus.
 - [ ] Pastikan skrip/media kerja yang akan masuk Git memang bagian dari hasil proyek.
 
 **Selesai ketika:** lint root lulus dan berkas yang disertakan dalam pengumpulan telah ditinjau.
@@ -152,11 +160,11 @@ dan pengelolaan berkas upload. Ini penguatan operasional, bukan fitur wajib tamb
 ## P3 — Polish antarmuka dan performa
 
 - [ ] Buat panduan mengukur Celana: pinggang, panjang, dan lebar paha; sesuaikan panduan
-  yang ditampilkan dengan kategori pada Cari yang Cocok.
+      yang ditampilkan dengan kategori pada Cari yang Cocok.
 - [ ] Periksa dan perbaiki tray Bandingkan yang menutupi footer; pastikan kontrol tetap mudah diakses.
 - [ ] Optimalkan foto sumber besar dan cek kualitas setelah diperkecil/dikompresi.
 - [ ] Ukur ulang LCP pada kondisi cache dingin dan simulasi jaringan mobile.
-  Hasil lokal dengan cache hangat belum mewakili koneksi pengguna sebenarnya.
+      Hasil lokal dengan cache hangat belum mewakili koneksi pengguna sebenarnya.
 - [ ] Tinjau kembali kesesuaian desain dan catatan DS-008 bersama penanggung jawab desain.
 
 **Selesai ketika:** panduan sesuai kategori, footer tidak tertutup, gambar tetap layak,
@@ -166,14 +174,14 @@ dan hasil pengukuran menyebutkan kondisi pengujian secara jelas.
 
 - [ ] Siapkan video kelompok dengan durasi maksimal 10 menit sesuai ketentuan workbook.
 - [ ] Susun demo: katalog → daftar/login → wishlist → checkout → bukti bayar → Admin
-  verifikasi/kirim → Buyer terima → ulasan.
+      verifikasi/kirim → Buyer terima → ulasan.
 - [ ] Sertakan demonstrasi dua Buyer berebut barang yang sama: satu berhasil, satu konflik.
 - [ ] Siapkan penjelasan transaksi stok, otorisasi peran/kepemilikan, hashing sandi,
-  validasi, dan penanganan galat.
+      validasi, dan penanganan galat.
 - [ ] Pastikan setiap anggota memahami dan dapat menjelaskan bagian pekerjaannya.
 - [ ] Tinjau riwayat pengerjaan dan bukti kontribusi yang sebenarnya.
 - [ ] Konfirmasi tenggat serta format pengumpulan dari pengampu; workbook rubrik
-  saja belum memberikan seluruh detail administrasi pengumpulan.
+      saja belum memberikan seluruh detail administrasi pengumpulan.
 
 ## Urutan eksekusi yang disarankan
 

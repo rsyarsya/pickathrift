@@ -2,6 +2,7 @@ import { Icon } from "@/components/ui/Icon";
 import { cn } from "@/lib/cn";
 import type { Order, OrderStatus } from "@/modules/orders/order";
 import { orderStatuses } from "@/modules/orders/components/OrderStatusLabel";
+import { orderReference } from "@/modules/orders/links";
 
 /** Label status dari sudut pandang admin: "Menunggu verifikasi" Buyer = "Perlu verifikasi". */
 export function AdminOrderStatus({
@@ -39,9 +40,9 @@ const dateTime = new Intl.DateTimeFormat("id-ID", {
 export const shortDate = (time: number) => dayMonth.format(time);
 export const shortDateTime = (time: number) => dateTime.format(time);
 
-/** Nomor pesanan pendek untuk tampilan: "PCT-007" tetap, UUID dipotong. */
+/** Referensi tampilan yang sama dengan Buyer; URL tetap memakai ID lengkap. */
 export function orderCode(order: Pick<Order, "id">) {
-  return `#${order.id.length > 12 ? order.id.slice(0, 12).toUpperCase() : order.id}`;
+  return orderReference(order);
 }
 
 export function adminOrderHref(order: Order) {

@@ -1,7 +1,8 @@
 import type { Order } from "./order";
 
 export function orderReference(order: Pick<Order, "id">) {
-  return `#${order.id.slice(0, 12)}`;
+  const reference = /^[a-f\d]{24}$/i.test(order.id) ? order.id.slice(-12).toUpperCase() : order.id;
+  return `#${reference}`;
 }
 
 export function orderHref(order: Order) {

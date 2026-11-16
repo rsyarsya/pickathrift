@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 
@@ -28,6 +28,11 @@ export function ReasonDialog({
   onConfirm,
   onClose,
 }: ReasonDialogProps) {
+  const instanceId = useId();
+  const titleId = `${instanceId}-title`;
+  const otherId = `${instanceId}-other`;
+  const errorId = `${instanceId}-error`;
+  const radioName = `${instanceId}-reason`;
   const ref = useRef<HTMLDialogElement>(null);
   const [choice, setChoice] = useState(reasons[0]!);
   const [other, setOther] = useState("");
@@ -56,13 +61,13 @@ export function ReasonDialog({
   return (
     <dialog
       ref={ref}
-      aria-labelledby="reason-title"
+      aria-labelledby={titleId}
       onClose={onClose}
       onClick={(e) => e.target === e.currentTarget && !busy && e.currentTarget.close()}
       className="m-auto w-[calc(100%-32px)] max-w-460 rounded-xl bg-canvas p-0 text-fg shadow-overlay"
     >
       <div className="flex flex-col gap-14 p-24">
-        <h2 id="reason-title" className="text-[22px] font-medium tracking-[-0.02em]">
+        <h2 id={titleId} className="text-[22px] font-medium tracking-[-0.02em]">
           {title}
         </h2>
         <p className="text-sm leading-relaxed text-muted">{description}</p>
@@ -78,7 +83,7 @@ export function ReasonDialog({
             >
               <input
                 type="radio"
-                name="alasan"
+                name={radioName}
                 value={reason}
                 checked={choice === reason}
                 onChange={() => {
@@ -92,11 +97,11 @@ export function ReasonDialog({
           ))}
           {isOther && (
             <>
-              <label htmlFor="reason-other" className="sr-only">
+              <label htmlFor={otherId} className="sr-only">
                 Alasan lain
               </label>
               <textarea
-                id="reason-other"
+                id={otherId}
                 rows={3}
                 value={other}
                 onChange={(e) => {
@@ -105,14 +110,14 @@ export function ReasonDialog({
                 }}
                 placeholder="Tulis alasan untuk Buyer"
                 aria-invalid={!!error}
-                aria-describedby={error ? "reason-error" : undefined}
+                aria-describedby={error ? errorId : undefined}
                 className={cn(
                   "w-full rounded-md border bg-surface px-14 py-10 text-sm outline-none focus:border-fg",
                   error ? "border-[1.5px] border-danger" : "border-line",
                 )}
               />
               {error && (
-                <p id="reason-error" className="text-caption text-danger">
+                <p id={errorId} className="text-caption text-danger">
                   {error}
                 </p>
               )}

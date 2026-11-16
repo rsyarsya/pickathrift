@@ -2,7 +2,7 @@
 
 PickaThrift adalah web store untuk satu usaha thrift yang memusatkan katalog, ketersediaan produk unik, dan pengelolaan pesanan. Aplikasi dirancang untuk mencegah dua pembeli berhasil membeli barang yang sama, sekaligus membantu Buyer mencari, menyimpan, membandingkan, memesan, dan mengulas produk.
 
-Repositori ini menggunakan satu monorepo untuk frontend Next.js dan API Express/MongoDB. Registrasi, login Buyer/Admin, dan verifikasi sesi frontend sudah terhubung ke API. Modul belanja frontend lainnya masih menggunakan fixtures. Lihat [panduan autentikasi](docs/auth-integration.md) untuk konfigurasi lokal dan hasil pengujian.
+Repositori ini menggunakan satu monorepo untuk frontend Next.js dan API Express/MongoDB. Katalog, pencocokan ukuran, wishlist, profil, checkout, pembayaran manual, pesanan, ulasan, dan Admin menggunakan API. Meja Perbandingan menyimpan pilihan ID di browser dan membaca detail produk dari API. Newsletter belum tersedia; form menampilkan status tersebut tanpa mengklaim pendaftaran berhasil. Lihat [panduan FE](fe/README.md) dan [panduan BE](be/README.md) untuk setup.
 
 ## Tim
 
@@ -33,7 +33,7 @@ Pembagian peran tiga anggota lainnya belum tercatat secara terverifikasi dalam r
 - Cari yang Cocok berdasarkan preferensi dan ukuran pakaian opsional.
 - Meja Perbandingan untuk maksimal dua produk sejenis.
 
-Fitur payment gateway sandbox, timer reservasi, keranjang, Blindbox, dan fitur tambahan lainnya masih menjadi ruang lingkup Should/Could dan belum diimplementasikan.
+Reservasi memakai batas pembayaran 6 jam dari backend dan hitung mundur pada frontend. Payment gateway sandbox, keranjang, Blindbox, dan fitur tambahan lainnya belum diimplementasikan.
 
 ## Pengguna sistem
 
@@ -76,7 +76,7 @@ Repositori ini satu pnpm workspace. Jalankan `pnpm install` sekali di root, lalu
 - Frontend: React atau Next.js.
 
 Keputusan tim: frontend memakai Next.js App Router dengan TypeScript, Tailwind CSS 4, dan Vitest.
-Package manager pnpm dengan satu workspace di root. Backend belum dipasang.
+Package manager pnpm dengan satu workspace di root. Jalankan FE dan BE pada terminal terpisah sesuai README masing-masing. Backend memerlukan MongoDB replica set/Atlas; konfigurasi MongoDB, JWT, rekening transfer, dan URL API disimpan lokal. Rekening sungguhan atau rekening demo berlabel jelas harus ditentukan pemilik proyek sebelum demo/deploy.
 
 ## Dokumentasi
 
