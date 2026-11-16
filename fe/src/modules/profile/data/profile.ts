@@ -65,6 +65,9 @@ export async function saveProfile(input: ProfileValues, requireAddress = false) 
   });
   const current = authState.get();
   if (current.user?.id === profile.id)
-    authState.set({ ...current, user: { ...current.user, name: profile.name } });
+    authState.set({
+      ...current,
+      user: { ...current.user, name: profile.name, address: profile.address },
+    });
   return profile;
 }

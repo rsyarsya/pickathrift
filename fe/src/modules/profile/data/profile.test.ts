@@ -107,7 +107,7 @@ describe("profil dan alamat API", () => {
     });
     expect(authState.get()).toMatchObject({
       lastActiveAt: 123,
-      user: { name: saved.name, id: profile.id },
+      user: { name: saved.name, id: profile.id, address: saved.address },
     });
     expect(authState.get().user?.name).not.toBe(profile.address!.recipient);
   });

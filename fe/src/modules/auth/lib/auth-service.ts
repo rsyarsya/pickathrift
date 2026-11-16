@@ -2,7 +2,14 @@ import { api, ApiError } from "@/lib/api";
 import { getToken, setToken, onTokenCleared } from "@/lib/auth-token";
 import { createStore } from "@/lib/store";
 export type AuthRole = "buyer" | "admin";
-export type AuthUser = { id: string; name: string; email: string; role: AuthRole };
+export type AuthUser = {
+  id: string;
+  name: string;
+  email: string;
+  role: AuthRole;
+  /** Dari backend; null berarti alamat pengiriman belum diisi. */
+  address?: object | null;
+};
 type Envelope<T> = { success: true; data: T };
 export const authState = createStore<{ user: AuthUser | null; lastActiveAt: number }>({
   user: null,
