@@ -24,14 +24,21 @@ export async function register(values: {
   });
   return result.data;
 }
-export async function login(values: { email: string; password: string }, role: AuthRole) {
-  const result = await api<Envelope<{ token: string; user: AuthUser }>>("/api/auth/login", {
+async function startSession(path: string, body: unknown) {
+  const result = await api<Envelope<{ token: string; user: AuthUser }>>(path, {
     method: "POST",
-    body: JSON.stringify({ ...values, role }),
+    body: JSON.stringify(body),
   });
   setToken(result.data.token);
   authState.set({ user: result.data.user, lastActiveAt: Date.now() });
   return result.data.user;
+}
+export function login(values: { email: string; password: string }, role: AuthRole) {
+  return startSession("/api/auth/login", { ...values, role });
+}
+/** Masuk atau daftar Buyer memakai ID token dari tombol Google. */
+export function loginWithGoogle(credential: string) {
+  return startSession("/api/auth/google", { credential });
 }
 export async function restoreSession() {
   const token = getToken();
