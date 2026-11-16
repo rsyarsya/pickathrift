@@ -25,7 +25,7 @@ app.get('/', (req, res) => {
   res.send('Server pickathrift Berjalan!');
 });
 
-// Mount Routes Sesuai Spesifikasi Milestone 1
+// Mount Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/products', productRoutes);
