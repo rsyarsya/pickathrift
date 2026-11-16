@@ -60,7 +60,7 @@ export function CheckoutForm({
   const action = (
     <div className="grid gap-12">
       <Button type="submit" className="w-full" disabled={pending}>
-        {pending ? "Memproses pesanan…" : error ? "Coba lagi" : "Pesan dan kunci barang"}
+        {pending ? "Menyiapkan pembayaran…" : error ? "Coba lagi" : "Lanjut ke pembayaran"}
       </Button>
       <p role={error ? "alert" : "status"} className={cn(overline, error && "text-danger")}>
         {error ||
@@ -135,21 +135,16 @@ export function CheckoutForm({
 
           <fieldset>
             <legend className={cn(overline, "mb-12")}>Metode pembayaran</legend>
-            <label className="flex items-center gap-12 rounded-md border-2 border-fg bg-surface px-16 py-12">
-              <input
-                type="radio"
-                name="payment"
-                defaultChecked
-                className="size-18 shrink-0 accent-fg"
-                aria-describedby="transfer-hint"
-              />
+            <div className="rounded-md border border-line-strong bg-surface px-16 py-12">
               <span className="min-w-0">
-                <span className="block text-body font-medium">Transfer bank manual</span>
-                <span id="transfer-hint" className="block text-caption text-muted">
-                  Unggah bukti setelah transfer. Admin memverifikasi.
+                <span className="block text-body font-medium">
+                  Virtual Account / QRIS · Midtrans
+                </span>
+                <span className="block text-caption text-muted">
+                  Pilih bank atau QRIS setelah melanjutkan ke halaman pembayaran.
                 </span>
               </span>
-            </label>
+            </div>
           </fieldset>
         </div>
         <div>

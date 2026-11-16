@@ -61,6 +61,12 @@ async function createOrder(account, body, config = {}) {
   const address = addressInput(
     body.address === undefined ? (account.address?.toObject() ?? account.address) : body.address,
   );
+  if (config.midtrans?.enabled === false)
+    throw new ApiError(
+      503,
+      "PAYMENT_UNAVAILABLE",
+      "Pembayaran belum tersedia. Coba lagi setelah layanan pembayaran siap.",
+    );
   await expireOrders(new Date(), config);
   return mongoose.connection.transaction(async (session) => {
     const now = new Date();

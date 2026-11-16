@@ -28,6 +28,7 @@ import { usePaymentCountdown } from "../usePaymentCountdown";
 import { CancelOrderDialog } from "./CancelOrderDialog";
 import { PaymentProof } from "./PaymentProof";
 import { OrderStatusLabel, orderStatuses } from "./OrderStatusLabel";
+import { GatewayPayment } from "./GatewayPayment";
 
 function ShippingAddress({ order }: { order: Order }) {
   const { recipient, phone, street, city, postalCode } = order.address;
@@ -76,6 +77,7 @@ function cancellationReason(order: Order) {
     return order.adminNote
       ? `Dibatalkan admin: ${order.adminNote}`
       : "Pesanan dibatalkan oleh admin.";
+  if (order.cancellation === "payment") return "Pembayaran tidak berhasil dan pesanan dibatalkan.";
   return "Pesanan sudah kamu batalkan.";
 }
 
@@ -88,11 +90,12 @@ function OrderDetail({ initial, onReload }: { initial: Order; onReload: () => vo
   const { status } = order;
   const { title, step } = orderStatuses[status];
   const waiting = status === "MENUNGGU_PEMBAYARAN";
+  const gateway = order.payment?.provider === "midtrans";
   const account = getTransferAccount();
   const historyHref = "/pesanan";
   const deadlineReached = seconds === 0 && waiting;
   useEffect(() => {
-    if (!deadlineReached) return;
+    if (!deadlineReached || gateway) return;
     let active = true;
     getOrder(order.id, order.buyerEmail).then(
       (next) => {
@@ -108,7 +111,7 @@ function OrderDetail({ initial, onReload }: { initial: Order; onReload: () => vo
     return () => {
       active = false;
     };
-  }, [deadlineReached, order.id, order.buyerEmail]);
+  }, [deadlineReached, order.id, order.buyerEmail, gateway]);
 
   async function update(type: "cancel" | "receive") {
     if (pending) return;
@@ -160,12 +163,15 @@ function OrderDetail({ initial, onReload }: { initial: Order; onReload: () => vo
         aside={<OrderStatusLabel status={status} />}
       />
       <OrderStatusLabel status={status} className="md:hidden" />
-      {step !== undefined && <PaymentProgress current={step} complete={status === "SELESAI"} />}
+      {step !== undefined && (
+        <PaymentProgress current={step} complete={status === "SELESAI"} gateway={gateway} />
+      )}
       <div className={checkoutColumns}>
         <div className="grid min-w-0 gap-14">
+          {gateway && <GatewayPayment order={order} onChange={setCurrent} />}
           {status === "DIPROSES" && (
             <p className="rounded-md bg-lilac/40 p-16 text-body">
-              Pembayaran sudah diverifikasi. Admin sedang mengemas barangmu, resi muncul di sini
+              Pembayaran sudah dikonfirmasi. Admin sedang mengemas barangmu, resi muncul di sini
               setelah dikirim.
             </p>
           )}
@@ -207,14 +213,17 @@ function OrderDetail({ initial, onReload }: { initial: Order; onReload: () => vo
           {status === "DIBATALKAN" && (
             <>
               <p className="rounded-md bg-danger-bg p-16 text-body">
-                {cancellationReason(order)} Barang sudah kembali tersedia di katalog.
+                {cancellationReason(order)}{" "}
+                {gateway
+                  ? "Cek katalog untuk ketersediaan barang terbaru."
+                  : "Barang sudah kembali tersedia di katalog."}
               </p>
               <ButtonLink href="/katalog" variant="outline" className="md:justify-self-start">
                 Lihat barang lain
               </ButtonLink>
             </>
           )}
-          {deadlineReached && (
+          {!gateway && deadlineReached && (
             <StatusMessage
               tone="warning"
               title="Periksa status pesanan"
@@ -225,7 +234,7 @@ function OrderDetail({ initial, onReload }: { initial: Order; onReload: () => vo
               actions={<Button onClick={onReload}>Muat ulang pesanan</Button>}
             />
           )}
-          {waiting && !deadlineReached && (
+          {!gateway && waiting && !deadlineReached && (
             <>
               <div className="rounded-md bg-butter p-16 text-body">
                 {account ? (
@@ -282,7 +291,7 @@ function OrderDetail({ initial, onReload }: { initial: Order; onReload: () => vo
         </div>
         <OrderSummary product={order.product} order={order} title="Ringkasan">
           <ShippingAddress order={order} />
-          <PaymentProof order={order} />
+          {!gateway && <PaymentProof order={order} />}
         </OrderSummary>
       </div>
     </div>

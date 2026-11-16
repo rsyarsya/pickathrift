@@ -40,15 +40,44 @@ export type Order = {
   adminNote?: string;
   /** Waktu admin menyetujui pembayaran. */
   verifiedAt?: number;
-  cancellation?: "expired" | "buyer" | "admin";
+  cancellation?: "expired" | "buyer" | "admin" | "payment";
+  payment?: {
+    provider: "manual" | "midtrans";
+    status:
+      | "not_started"
+      | "creating"
+      | "ready"
+      | "unknown"
+      | "pending"
+      | "settled"
+      | "cancelled"
+      | "expired"
+      | "failed"
+      | "review_required"
+      | null;
+    merchantOrderId: string | null;
+    channel: string | null;
+    paidAt?: number;
+    providerStatus?: string | null;
+    providerExpiresAt?: number;
+    checkedAt?: number;
+    reviewReason?: string | null;
+  };
   shipment?: { service: string; number: string; shippedAt: number };
   receivedAt?: number;
   review?: { rating: number; body: string; author: string; createdAt: number };
 };
 
-export function paymentSeconds(order: Pick<Order, "status" | "expiresAt">, now: number) {
+export function paymentDeadline(order: Pick<Order, "expiresAt" | "payment">) {
+  return Math.min(order.expiresAt, order.payment?.providerExpiresAt ?? order.expiresAt);
+}
+
+export function paymentSeconds(
+  order: Pick<Order, "status" | "expiresAt" | "payment">,
+  now: number,
+) {
   if (order.status !== "MENUNGGU_PEMBAYARAN") return null;
-  return Math.max(0, Math.ceil((order.expiresAt - now) / 1000));
+  return Math.max(0, Math.ceil((paymentDeadline(order) - now) / 1000));
 }
 
 export function formatCountdown(seconds: number) {

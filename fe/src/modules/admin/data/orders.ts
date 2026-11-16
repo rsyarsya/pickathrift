@@ -1,7 +1,7 @@
 import { api, apiData, ApiError } from "@/lib/api";
 import { createStore } from "@/lib/store";
 import { fromApiOrder, type OrderDto } from "@/modules/orders/data/orderDto";
-import type { AdminOrderAction } from "@/modules/admin/orderActions";
+import { canAdmin, type AdminOrderAction } from "@/modules/admin/orderActions";
 import { type Order, type OrderStatus } from "@/modules/orders/order";
 
 export type AdminOrderQuery = { status?: OrderStatus; page?: number; limit?: number };
@@ -48,6 +48,12 @@ export async function getAdminOrder(id: string): Promise<Order> {
 }
 
 export async function updateAdminOrder(order: Order, action: AdminOrderAction): Promise<Order> {
+  if (order.payment?.provider === "midtrans" && !canAdmin(order, action.type))
+    throw new ApiError(
+      409,
+      "Pembayaran Midtrans tidak menerima tindakan ini. Periksa status pesanan.",
+      "PAYMENT_METHOD_CONFLICT",
+    );
   if (!Number.isInteger(order.version) || order.version === undefined || order.version < 0)
     throw new ApiError(409, "Muat ulang pesanan sebelum mengambil keputusan.", "STALE_ORDER");
   if (action.type !== "ship" && !order.proof?.id)

@@ -234,8 +234,12 @@ test("akses, input, metode lama dan fitur nonaktif ditolak sebelum request provi
   config.midtrans.enabled = false;
   assert.equal((await pay(order.id)).code, "PAYMENT_UNAVAILABLE");
   await cancel(order.id);
+  assert.equal((await place()).code, "PAYMENT_UNAVAILABLE");
+  const gateway = config.midtrans;
+  delete config.midtrans; // Fixture deployment lama, sebelum gateway; tidak melalui getConfig produksi.
   const manual = (await place()).data;
   assert.equal(manual.payment.provider, "manual");
+  config.midtrans = gateway;
   config.midtrans.enabled = true;
   assert.equal((await pay(manual.id)).code, "PAYMENT_METHOD_CONFLICT");
   assert.equal(calls.length, 0);
@@ -421,7 +425,8 @@ test("jalur bukti dan keputusan manual ditolak untuk gateway", async () => {
 });
 
 test("guard startup: order manual tidak ditulis ulang, metadata rusak menjadi blocker dan ID unik", async () => {
-  config.midtrans.enabled = false;
+  const gateway = config.midtrans;
+  delete config.midtrans;
   const manual = (await place()).data;
   await Order.collection.updateOne(
     { _id: new mongoose.Types.ObjectId(manual.id) },
@@ -432,7 +437,7 @@ test("guard startup: order manual tidak ditulis ulang, metadata rusak menjadi bl
   assert.equal(preview.issues.length, 0);
   assert.equal((await request(`/orders/${manual.id}`)).data.payment.provider, "manual");
   await cancel(manual.id);
-  config.midtrans.enabled = true;
+  config.midtrans = gateway;
   const next = (await place()).data;
   await Order.collection.updateOne(
     { _id: new mongoose.Types.ObjectId(next.id) },

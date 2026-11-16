@@ -42,16 +42,19 @@ const EMPTY: Partial<Record<Filter, { title: string; description: string; next?:
   },
   DIPROSES: {
     title: "Tidak ada yang perlu dikirim",
-    description: "Pesanan yang pembayarannya sudah disetujui akan muncul di sini.",
+    description: "Pesanan yang pembayarannya sudah dikonfirmasi akan muncul di sini.",
   },
 };
 
 /** Tombol aksi utama per status: Verifikasi, Kirim, atau Lihat. */
 function OrderAction({ order, wide }: { order: Order; wide?: boolean }) {
   const href = adminOrderHref(order);
-  const primary = order.status === "MENUNGGU_VERIFIKASI" || order.status === "DIPROSES";
-  const label =
-    order.status === "MENUNGGU_VERIFIKASI"
+  const primary =
+    !order.payment?.reviewReason &&
+    (order.status === "MENUNGGU_VERIFIKASI" || order.status === "DIPROSES");
+  const label = order.payment?.reviewReason
+    ? "Periksa"
+    : order.status === "MENUNGGU_VERIFIKASI"
       ? "Verifikasi"
       : order.status === "DIPROSES"
         ? "Kirim"
@@ -239,6 +242,9 @@ export function OrderListScreen() {
                         </td>
                         <td className="px-12 py-10">
                           <AdminOrderStatus status={order.status} />
+                          {order.payment?.reviewReason && (
+                            <p className="text-caption text-danger">Perlu pemeriksaan pembayaran</p>
+                          )}
                         </td>
                         <td className="px-12 py-10">
                           <OrderAction order={order} />
@@ -280,6 +286,9 @@ export function OrderListScreen() {
                     </div>
                     <div className="flex items-center justify-between gap-12">
                       <AdminOrderStatus status={order.status} />
+                      {order.payment?.reviewReason && (
+                        <p className="text-caption text-danger">Perlu pemeriksaan pembayaran</p>
+                      )}
                       <OrderAction order={order} wide />
                     </div>
                   </li>

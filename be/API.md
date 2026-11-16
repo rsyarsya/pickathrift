@@ -1,5 +1,20 @@
 # Kontrak API BE — batch 1–6
 
+## Midtrans sandbox — batch 3 (FE dan checkout baru)
+
+Runtime dari `getConfig()` hanya membuat checkout gateway: bila `MIDTRANS_ENABLED=false`,
+POST `/orders` menghasilkan `503 PAYMENT_UNAVAILABLE` sebelum menulis order/reservasi.
+Tidak ada pilihan transfer manual untuk order baru. Fixture tes deployment lama memakai
+config tanpa properti Midtrans untuk memverifikasi kompatibilitas order manual.
+
+FE membuka Snap redirect setelah order dan sesi tersimpan. Gagal membuka pembayaran
+tidak membuat order kedua: Buyer dapat melanjutkan dari checkout/riwayat. Halaman kembali
+ke detail order memanggil endpoint sync; callback URL bukan sumber status. Polling setiap
+10 detik saat halaman terlihat dibatasi 12 kali dan berhenti pada status terminal/flag
+review. Tenggat memakai yang paling awal dari `expiresAt` dan `providerExpiresAt`.
+Admin hanya mengirim gateway yang `settled` tanpa flag review; verifikasi bukti hanya
+untuk order manual lama. Uji sandbox nyata tetap memerlukan akun/kanal dan webhook publik.
+
 ## Midtrans sandbox — batch 2 (webhook dan rekonsiliasi)
 
 Bagian ini menggantikan pembatasan sementara batch 1. Gateway tetap default nonaktif

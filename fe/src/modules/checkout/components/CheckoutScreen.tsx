@@ -11,11 +11,13 @@ import { BuyerOnly } from "@/modules/auth/components/BuyerOnly";
 import type { SessionUser } from "@/modules/auth/useSession";
 import { useProductActions } from "@/modules/catalog/useProductActions";
 import type { Order } from "@/modules/orders/order";
+import { getOrder } from "@/modules/orders/data/orders";
 import { StockConflictDialog } from "@/modules/product/components/StockConflictDialog";
 import type { ShippingAddress } from "@/modules/profile/address";
 import { createOrder, loadCheckout } from "../data/checkout";
 import { CheckoutForm } from "./CheckoutForm";
 import { PaymentScreen } from "./PaymentScreen";
+import { createPaymentSession } from "@/modules/orders/data/payment";
 
 const container =
   "mx-auto grid max-w-1440 gap-16 px-16 pt-16 pb-64 md:px-32 md:pt-24 lg:px-48 lg:pt-28 lg:pb-96";
@@ -46,12 +48,32 @@ function CheckoutContent({
     if (pending) return;
     setPending(true);
     setError(null);
+    let created: Order | null = null;
     try {
-      setOrder(await createOrder(product.id, user.email, address));
+      created = await createOrder(product.id, user.email, address);
+      setOrder(created);
+      if (created.payment?.provider === "midtrans") {
+        const session = await createPaymentSession(created);
+        window.location.assign(session.redirectUrl);
+      }
     } catch (error) {
-      if (error instanceof ApiError && error.status === 409) setConflict(true);
+      if (!created && error instanceof ApiError && error.code === "STOCK_CONFLICT")
+        setConflict(true);
       else
-        setError(error instanceof ApiError ? error.message : "Gagal membuat pesanan. Coba lagi.");
+        setError(
+          created
+            ? `Pesanan tersimpan. ${error instanceof ApiError ? error.message : "Pembayaran belum bisa dibuka. Periksa status di bawah."}`
+            : error instanceof ApiError
+              ? error.message
+              : "Gagal membuat pesanan. Coba lagi.",
+        );
+      if (created) {
+        try {
+          setOrder(await getOrder(created.id, user.email));
+        } catch {
+          /* Order tersimpan; status dapat diperiksa ulang dari panel. */
+        }
+      }
     } finally {
       setPending(false);
     }
@@ -59,12 +81,21 @@ function CheckoutContent({
 
   return (
     <div className={container}>
+      {order && error && (
+        <p role="alert" className="text-body text-danger">
+          {error}
+        </p>
+      )}
       {order ? (
         <PaymentScreen
           key={`${order.id}:${order.status}`}
           order={order}
           account={data.account}
-          onChange={setOrder}
+          onChange={(next) => {
+            setOrder(next);
+            setError(null);
+          }}
+          disabled={pending}
           onRestart={() => setOrder(null)}
         />
       ) : (

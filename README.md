@@ -2,7 +2,7 @@
 
 PickaThrift adalah web store untuk satu usaha thrift yang memusatkan katalog, ketersediaan produk unik, dan pengelolaan pesanan. Aplikasi dirancang untuk mencegah dua pembeli berhasil membeli barang yang sama, sekaligus membantu Buyer mencari, menyimpan, membandingkan, memesan, dan mengulas produk.
 
-Repositori ini menggunakan satu monorepo untuk frontend Next.js dan API Express/MongoDB. Katalog, pencocokan ukuran, wishlist, profil, checkout, pembayaran manual, pesanan, ulasan, dan Admin menggunakan API. Meja Perbandingan menyimpan pilihan ID di browser dan membaca detail produk dari API. Newsletter belum tersedia; form menampilkan status tersebut tanpa mengklaim pendaftaran berhasil. Lihat [panduan FE](fe/README.md) dan [panduan BE](be/README.md) untuk setup.
+Repositori ini menggunakan satu monorepo untuk frontend Next.js dan API Express/MongoDB. Katalog, pencocokan ukuran, wishlist, profil, checkout, pembayaran, pesanan, ulasan, dan Admin menggunakan API. Meja Perbandingan menyimpan pilihan ID di browser dan membaca detail produk dari API. Newsletter belum tersedia. Lihat [panduan FE](fe/README.md) dan [panduan BE](be/README.md) untuk setup.
 
 ## Tim
 
@@ -25,7 +25,7 @@ Pembagian peran tiga anggota lainnya belum tercatat secara terverifikasi dalam r
 - Detail produk, termasuk atribut dan ukuran pakaian dalam sentimeter.
 - Registrasi/login serta otorisasi Buyer dan Admin.
 - Wishlist Buyer.
-- Pembelian langsung dengan transfer manual dan bukti pembayaran.
+- Pembelian langsung melalui Midtrans Snap sandbox: Virtual Account bank dan QRIS. Pesanan manual lama tetap dapat diselesaikan.
 - Reservasi atomik untuk produk unik berstok satu.
 - Riwayat serta status pesanan Buyer.
 - Rating dan ulasan setelah pesanan selesai.
@@ -33,7 +33,7 @@ Pembagian peran tiga anggota lainnya belum tercatat secara terverifikasi dalam r
 - Cari yang Cocok berdasarkan preferensi dan ukuran pakaian opsional.
 - Meja Perbandingan untuk maksimal dua produk sejenis.
 
-Reservasi memakai batas pembayaran 6 jam dari backend dan hitung mundur pada frontend. Payment gateway sandbox, keranjang, Blindbox, dan fitur tambahan lainnya belum diimplementasikan.
+Reservasi memakai batas pembayaran 6 jam dari backend dan hitung mundur pada frontend. Gateway memerlukan akun sandbox, Server Key lokal, dan webhook HTTPS publik. Integrasi diuji otomatis dengan respons provider tiruan; uji VA/QRIS nyata masih menunggu akun sandbox. Keranjang dan Blindbox belum diimplementasikan.
 
 ## Pengguna sistem
 

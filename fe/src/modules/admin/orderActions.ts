@@ -30,7 +30,12 @@ const allowed: Record<AdminOrderAction["type"], OrderStatus[]> = {
   ship: ["DIPROSES"],
 };
 
-export function canAdmin(order: Pick<Order, "status">, type: AdminOrderAction["type"]) {
+export function canAdmin(order: Pick<Order, "status" | "payment">, type: AdminOrderAction["type"]) {
+  if (
+    order.payment?.provider === "midtrans" &&
+    (type !== "ship" || order.payment.status !== "settled" || order.payment.reviewReason)
+  )
+    return false;
   return allowed[type].includes(order.status);
 }
 

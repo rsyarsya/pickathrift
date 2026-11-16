@@ -2,15 +2,19 @@ import { Icon } from "@/components/ui/Icon";
 import { cn } from "@/lib/cn";
 import { overline } from "./OrderSummary";
 
-const steps = ["Dipesan", "Bayar", "Verifikasi", "Diproses", "Dikirim", "Selesai"];
+const manualSteps = ["Dipesan", "Bayar", "Verifikasi", "Diproses", "Dikirim", "Selesai"];
 
 export function PaymentProgress({
   current,
   complete = false,
+  gateway = false,
 }: {
   current: number;
   complete?: boolean;
+  gateway?: boolean;
 }) {
+  const steps = gateway ? manualSteps.filter((step) => step !== "Verifikasi") : manualSteps;
+  if (gateway && current >= 3) current--;
   return (
     <div>
       <p className={cn(overline, "mb-12 text-fg md:hidden")}>

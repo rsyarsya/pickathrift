@@ -104,9 +104,15 @@ API menyimpan profil, alamat, wishlist, pesanan, ulasan, dan produk. Meja Perban
 menyimpan ID barang di `localStorage` (`pickathrift.compare`) dan memuat detailnya dari API.
 Data contoh untuk tes hanya dipakai oleh Vitest dan Playwright.
 
-Backend belum menyediakan konfigurasi rekening transfer. Isi variabel publik berikut
-di `fe/.env.local` sebelum menjalankan atau membangun frontend. Jika belum lengkap, halaman
-pembayaran menampilkan pesan agar Buyer menghubungi admin.
+Pesanan baru memakai Midtrans Snap redirect. Cukup arahkan `NEXT_PUBLIC_API_URL` ke BE;
+FE tidak memerlukan Client Key atau Server Key Midtrans. Konfigurasi akun sandbox dan
+webhook ada di [panduan BE](../be/README.md). Checkout membuka pilihan VA/QRIS di Snap.
+Halaman pesanan memeriksa status ke BE saat kembali dari pembayaran dan setiap 10 detik
+ketika aktif, maksimal 12 kali. Tombol pemeriksaan manual tetap tersedia. Parameter
+callback seperti `transaction_status` tidak dianggap bukti pembayaran berhasil.
+
+Variabel berikut hanya digunakan untuk pesanan transfer manual lama. Jika belum
+lengkap, halaman pembayaran manual meminta Buyer menghubungi Admin.
 
 - `NEXT_PUBLIC_TRANSFER_BANK`
 - `NEXT_PUBLIC_TRANSFER_NUMBER`
