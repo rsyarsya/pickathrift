@@ -264,6 +264,36 @@
   cursor: wait;
 }
 
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--auth-muted);
+  font-family: var(--font-auth-mono), monospace;
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.divider::before,
+.divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--auth-field-border);
+}
+
+/* Wadah tombol Google; isinya iframe dari Google. */
+.googleButton {
+  display: flex;
+  min-height: 44px;
+  justify-content: center;
+}
+
+.googleButton[aria-disabled="true"] {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
 .feedback {
   display: flex;
   width: 100%;

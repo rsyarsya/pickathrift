@@ -1,5 +1,12 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
-import { authState, login, logout, register, restoreSession } from "./auth-service";
+import {
+  authState,
+  login,
+  loginWithGoogle,
+  logout,
+  register,
+  restoreSession,
+} from "./auth-service";
 import { getToken, setToken } from "@/lib/auth-token";
 const user = { id: "test-id", name: "Buyer Test", email: "buyer@example.test", role: "buyer" };
 function response(data: unknown, status = 200) {
@@ -124,5 +131,36 @@ describe("real authentication", () => {
     await pending;
     expect(getToken()).toBe("new");
     expect(authState.get().user).toEqual(user);
+  });
+});
+
+describe("Google sign-in", () => {
+  it("sends the Google credential and starts a buyer session", async () => {
+    const fetcher = vi
+      .fn()
+      .mockResolvedValue(response({ success: true, data: { token: "google-token", user } }));
+    vi.stubGlobal("fetch", fetcher);
+    expect(await loginWithGoogle("google-id-token")).toEqual(user);
+    expect(fetcher.mock.calls[0]![0]).toMatch(/\/api\/auth\/google$/);
+    expect(JSON.parse(fetcher.mock.calls[0]![1].body)).toEqual({ credential: "google-id-token" });
+    expect(fetcher.mock.calls[0]![1].headers.get("Authorization")).toBeNull();
+    expect(getToken()).toBe("google-token");
+    expect(authState.get().user).toEqual(user);
+  });
+  it("keeps the user signed out when Google is rejected", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(
+          response(
+            { success: false, code: "GOOGLE_TOKEN_INVALID", message: "Gagal masuk dengan Google." },
+            401,
+          ),
+        ),
+    );
+    await expect(loginWithGoogle("bad")).rejects.toMatchObject({ status: 401 });
+    expect(getToken()).toBeNull();
+    expect(authState.get().user).toBeNull();
   });
 });

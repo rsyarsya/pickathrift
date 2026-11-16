@@ -4,9 +4,10 @@ import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { useAuthSubmit } from "../hooks/use-auth-submit";
 import { buyerReturnPath } from "../lib/return-path";
-import { login, type AuthRole } from "../lib/auth-service";
+import { login, loginWithGoogle, type AuthRole, type AuthUser } from "../lib/auth-service";
 import { validateBuyerLogin, type BuyerLoginValues } from "../lib/validate-buyer-login";
 import { AuthFeedback } from "./auth-feedback";
+import { GoogleSignIn } from "./google-sign-in";
 import { PasswordField } from "./password-field";
 import styles from "./auth.module.css";
 
@@ -35,20 +36,30 @@ export function LoginForm({ role }: { role: AuthRole }) {
     void submit(
       () => login(values, role),
       (user) => `Berhasil masuk sebagai ${admin ? "Admin" : "Buyer"}. Halo, ${user.name}!`,
-    ).then((user) => {
-      if (!user) return;
-      const returnTo = new URLSearchParams(window.location.search).get("kembali");
-      if (admin) {
-        // Hanya kembali ke halaman admin; selain itu ke Kelola produk.
-        router.push(
-          returnTo?.startsWith("/admin/") && !returnTo.startsWith("/admin/masuk")
-            ? returnTo
-            : "/admin/produk",
-        );
-        return;
-      }
-      router.push(buyerReturnPath(returnTo));
-    });
+    ).then(redirect);
+  }
+
+  function handleGoogle(credential: string) {
+    clearFeedback();
+    void submit(
+      () => loginWithGoogle(credential),
+      (user) => `Berhasil masuk sebagai Buyer. Halo, ${user.name}!`,
+    ).then(redirect);
+  }
+
+  function redirect(user: AuthUser | undefined) {
+    if (!user) return;
+    const returnTo = new URLSearchParams(window.location.search).get("kembali");
+    if (admin) {
+      // Hanya kembali ke halaman admin; selain itu ke Kelola produk.
+      router.push(
+        returnTo?.startsWith("/admin/") && !returnTo.startsWith("/admin/masuk")
+          ? returnTo
+          : "/admin/produk",
+      );
+      return;
+    }
+    router.push(buyerReturnPath(returnTo));
   }
 
   return (
@@ -104,6 +115,8 @@ export function LoginForm({ role }: { role: AuthRole }) {
       <button type="submit" className={styles.submitButton} disabled={pending}>
         {pending ? "Memproses…" : admin ? "Masuk ke dasbor" : "Masuk"}
       </button>
+
+      {!admin && <GoogleSignIn mode="signin" disabled={pending} onCredential={handleGoogle} />}
     </form>
   );
 }

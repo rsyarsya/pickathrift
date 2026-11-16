@@ -252,6 +252,7 @@ foto, atau kondisi. Apply hanya dijalankan secara eksplisit, bukan saat startup.
 | ------ | ---------------- | ---------- | -------------------------------------------------------------------------------------------------------------------------- |
 | POST   | `/auth/register` | Publik     | `name`, `email`, `password`; opsional `confirmPassword`, `phone`, `address`. Hasil `201`, `data` pengguna Buyer.           |
 | POST   | `/auth/login`    | Publik     | `email`, `password`, opsional `role: buyer/admin` untuk memeriksa halaman masuk yang dipilih. Hasil `data: {token, user}`. |
+| POST   | `/auth/google`   | Publik     | `credential` (ID token Google). Masuk atau daftar Buyer. Hasil `data: {token, user}`, sama seperti login.                  |
 | GET    | `/users/me`      | Akun aktif | `data` profil akun dari token.                                                                                             |
 | PATCH  | `/users/me`      | Akun aktif | Hanya `name`, `phone`, `address`; minimal satu field. `address` mengikuti objek lengkap pada bagian batch 3.               |
 
@@ -263,6 +264,13 @@ dikirim, harus cocok. Field `role` saat registrasi diabaikan: hasil selalu Buyer
 Registrasi duplikat, termasuk request bersamaan, menghasilkan `409 EMAIL_EXISTS`.
 `phone` akun maksimal 30 karakter. Aturan alamat mengikuti bagian batch 3.
 PATCH profil tidak menerima email, password, role, ID, ataupun operator MongoDB.
+
+`/auth/google` aktif kalau `GOOGLE_CLIENT_ID` terisi; tanpa itu jawabannya `503 GOOGLE_DISABLED`.
+Token diverifikasi ke Google (audience = `GOOGLE_CLIENT_ID`) dan email harus terverifikasi;
+selain itu `401 GOOGLE_TOKEN_INVALID`. Email baru dibuat sebagai Buyer tanpa kata sandi. Email
+Buyer yang sudah terdaftar ditautkan ke akun Google dan kata sandinya tetap berlaku. Email
+Admin ditolak `403 ROLE_MISMATCH`. Akun Google tanpa kata sandi yang mencoba `/auth/login`
+mendapat `401 INVALID_CREDENTIALS` yang sama seperti sandi salah.
 
 ## Akses endpoint domain yang sudah ada
 
