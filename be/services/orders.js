@@ -20,11 +20,28 @@ async function release(order, session, now, reason) {
   );
 }
 
-async function expireOrders(now = new Date()) {
-  const due = await Order.find({ status: "MENUNGGU_PEMBAYARAN", expiresAt: { $lte: now } })
-    .select("_id")
+async function expireOrders(now = new Date(), config = {}) {
+  const due = await Order.find({
+    status: "MENUNGGU_PEMBAYARAN",
+    $or: [{ expiresAt: { $lte: now } }, { "payment.providerExpiresAt": { $lte: now } }],
+  })
+    .select("_id payment")
     .lean();
   for (const entry of due) {
+    if (entry.payment && entry.payment.status !== "not_started") {
+      if (config.midtrans?.enabled) {
+        try {
+          await require("./payment-sync").reconcile(String(entry._id), config, {
+            mode: "expire",
+            now,
+          });
+        } catch (error) {
+          // Provider gagal tidak membuat katalog gagal atau melepas stok yang belum pasti.
+          if (!(error instanceof ApiError)) throw error;
+        }
+      }
+      continue;
+    }
     await mongoose.connection.transaction(async (session) => {
       const order = await Order.findOne({
         _id: entry._id,
@@ -44,7 +61,7 @@ async function createOrder(account, body, config = {}) {
   const address = addressInput(
     body.address === undefined ? (account.address?.toObject() ?? account.address) : body.address,
   );
-  await expireOrders();
+  await expireOrders(new Date(), config);
   return mongoose.connection.transaction(async (session) => {
     const now = new Date();
     const orderId = new mongoose.Types.ObjectId();
@@ -85,7 +102,23 @@ async function createOrder(account, body, config = {}) {
   });
 }
 
-async function cancelOrder(id, buyerId, now = new Date()) {
+async function cancelOrder(id, buyerId, now = new Date(), config = {}) {
+  const current = await Order.findById(id);
+  if (current?.payment && config.midtrans?.enabled) {
+    if (String(current.buyer_id) !== buyerId)
+      throw new ApiError(403, "FORBIDDEN", "Pesanan bukan milik Anda.");
+    if (current.status === "DIBATALKAN") return current;
+    if (current.status !== "MENUNGGU_PEMBAYARAN")
+      throw new ApiError(409, "INVALID_TRANSITION", "Pesanan ini tidak bisa dibatalkan.");
+    const checked = await require("./payment-sync").reconcile(id, config, { mode: "cancel", now });
+    if (checked.status !== "DIBATALKAN")
+      throw new ApiError(
+        409,
+        "INVALID_TRANSITION",
+        "Pembayaran berhasil atau memerlukan pemeriksaan Admin. Muat ulang pesanan.",
+      );
+    return checked;
+  }
   return mongoose.connection.transaction(async (session) => {
     const order = await Order.findById(id).session(session);
     if (!order) throw new ApiError(404, "NOT_FOUND", "Pesanan tidak ditemukan.");
@@ -94,7 +127,7 @@ async function cancelOrder(id, buyerId, now = new Date()) {
     if (order.status === "DIBATALKAN") return order;
     if (order.status !== "MENUNGGU_PEMBAYARAN")
       throw new ApiError(409, "INVALID_TRANSITION", "Pesanan ini tidak bisa dibatalkan.");
-    if (order.payment && order.payment.status !== "not_started")
+    if (order.payment && (order.payment.status !== "not_started" || order.payment.syncUntil > now))
       throw new ApiError(
         409,
         "PAYMENT_CHECK_REQUIRED",

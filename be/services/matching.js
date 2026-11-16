@@ -4,8 +4,8 @@ const validate = require("../lib/validation");
 const { CATEGORIES, STYLES, sizesFor, measurementsFor } = require("../lib/product-options");
 const serialize = require("../lib/serializers");
 
-async function matchProducts(body) {
-  await expireOrders();
+async function matchProducts(body, config = {}) {
+  await expireOrders(new Date(), config);
   validate.fields(body, ["category", "style", "size", "minPrice", "maxPrice", "measurements"]);
   const category = validate.text(body.category, "category");
   if (!CATEGORIES.includes(category)) validate.invalid("category");

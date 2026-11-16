@@ -218,7 +218,7 @@ async function inspectLegacyData(connection, session, config = {}) {
       const paid = ["DIPROSES", "DIKIRIM", "SELESAI"].includes(candidate.status);
       const shipped = ["DIKIRIM", "SELESAI"].includes(candidate.status);
       const fields = [];
-      if (needsProof && !candidate.proof) fields.push("proof");
+      if (needsProof && !candidate.payment && !candidate.proof) fields.push("proof");
       if (candidate.proof) {
         const acknowledged =
           (candidate.status === "PERLU_UNGGAH_ULANG" ||

@@ -1,5 +1,24 @@
 # Memakai data dari BE lama
 
+## Tambahan Midtrans sandbox — batch 2
+
+Status gateway dan metadata pemeriksaan kini divalidasi tanpa mensyaratkan bukti
+manual untuk order gateway lunas. Order manual lama tetap memakai aturan bukti lama.
+Tidak ada apply migrasi database tim otomatis. State pembuatan batch 1 tetap dapat
+dibaca: `unknown/creating` dapat direkonsiliasi dengan ID merchant yang sama.
+
+Order gateway yang telah lunas wajib mempunyai identitas transaksi, kanal, waktu
+bayar, serta `verifiedAt`; pengiriman/penerimaan tetap memerlukan metadata yang lama.
+Pembatalan setelah sesi dimulai memerlukan `sessionClosedAt`. Flag `reviewReason`
+menandai ketidaksesuaian provider atau pembayaran terlambat; tidak mengoreksi stok
+atau mengubah jumlah uang dengan tebakan. Pengiriman order dengan flag itu ditolak.
+Lease pemeriksaan bersifat sementara (90 detik), tersimpan di DB dan dapat diambil
+alih setelah kedaluwarsa; tidak perlu menghapusnya saat restart.
+
+Tenggat sesi/token mengikuti blanket expiry asli enam jam. Untuk token yang hilang,
+pemeriksaan setelah deadline ditambah 10 detik masih wajib membaca status provider;
+respons 404 sebelum deadline tidak pernah menjadi alasan melepas stok.
+
 ## Tambahan Midtrans sandbox — batch 1
 
 Order tanpa field `payment` atau dengan `payment: null` tetap dianggap manual.

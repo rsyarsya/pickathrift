@@ -32,7 +32,7 @@ router.post(
   validate.idParam("id"),
   async (req, res, next) => {
     await payments.ownedOrder(req.params.id, req.account);
-    await expireOrders();
+    await expireOrders(new Date(), req.app.locals.config);
     const order = await payments.ownedOrder(req.params.id, req.account);
     if (order.payment)
       throw new ApiError(409, "PAYMENT_METHOD_CONFLICT", "Gunakan pembayaran Midtrans.");

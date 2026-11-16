@@ -9,7 +9,7 @@ const serialize = require("../lib/serializers");
 
 router.use(authenticateToken, requireBuyer);
 router.get("/", async (req, res) => {
-  await expireOrders();
+  await expireOrders(new Date(), req.app.locals.config);
   const items = await Wishlist.find({ user_id: req.user.id }).populate("product_id");
   res.json({ success: true, data: items.map(serialize.wishlist) });
 });

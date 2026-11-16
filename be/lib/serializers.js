@@ -63,6 +63,10 @@ function order(value) {
       merchantOrderId: value.payment?.merchantOrderId ?? null,
       channel: value.payment?.channel ?? null,
       paidAt: value.payment?.paidAt ?? null,
+      providerStatus: value.payment?.providerStatus ?? null,
+      providerExpiresAt: value.payment?.providerExpiresAt ?? null,
+      checkedAt: value.payment?.checkedAt ?? null,
+      reviewReason: value.payment?.reviewReason ?? null,
     },
     proof: value.proof
       ? {

@@ -27,7 +27,18 @@ orderRouter.post("/:id/payment", requireBuyer, validate.idParam("id"), async (re
 
 orderRouter.post("/:id/cancel", requireBuyer, validate.idParam("id"), async (req, res) => {
   validate.fields(req.body, []);
-  const order = await cancelOrder(req.params.id, req.user.id);
+  const order = await cancelOrder(req.params.id, req.user.id, new Date(), req.app.locals.config);
+  res.json({ success: true, data: serialize.order(order) });
+});
+
+orderRouter.post("/:id/payment/sync", validate.idParam("id"), async (req, res) => {
+  res.set("Cache-Control", "no-store");
+  validate.fields(req.body, []);
+  await require("../services/payments").ownedOrder(req.params.id, req.account);
+  const order = await require("../services/payment-sync").reconcile(
+    req.params.id,
+    req.app.locals.config,
+  );
   res.json({ success: true, data: serialize.order(order) });
 });
 
@@ -37,7 +48,7 @@ orderRouter.post("/:id/receive", requireBuyer, validate.idParam("id"), async (re
   res.json({ success: true, data: serialize.order(order) });
 });
 orderRouter.get("/my", requireBuyer, async (req, res) => {
-  await expireOrders();
+  await expireOrders(new Date(), req.app.locals.config);
   const orders = await Order.find({ buyer_id: req.user.id })
     .populate("product_id")
     .populate({ path: "review", populate: { path: "buyer_id", select: "name" } });
@@ -45,7 +56,7 @@ orderRouter.get("/my", requireBuyer, async (req, res) => {
 });
 
 orderRouter.get("/:id", validate.idParam("id"), async (req, res) => {
-  await expireOrders();
+  await expireOrders(new Date(), req.app.locals.config);
   const order = await Order.findById(req.params.id)
     .populate("product_id")
     .populate({ path: "review", populate: { path: "buyer_id", select: "name" } });
@@ -66,7 +77,7 @@ adminOrderRouter.post("/:id/actions", validate.idParam("id"), async (req, res) =
   res.json({ success: true, data: serialize.order(order) });
 });
 adminOrderRouter.get("/", async (req, res) => {
-  await expireOrders();
+  await expireOrders(new Date(), req.app.locals.config);
   validate.fields(req.query, ["status", "page", "limit"]);
   const statuses = require("../lib/order-options").STATUSES;
   if (req.query.status !== undefined && !statuses.includes(req.query.status))

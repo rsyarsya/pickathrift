@@ -5,8 +5,8 @@ const { catalogQuery } = require("../lib/catalog-query");
 const { CATEGORIES } = require("../lib/product-options");
 const serialize = require("../lib/serializers");
 
-async function listProducts(query, admin = false) {
-  await expireOrders();
+async function listProducts(query, admin = false, config = {}) {
+  await expireOrders(new Date(), config);
   const { filter, order, page, limit, skip } = catalogQuery(query, admin);
   const [items, total, groups] = await Promise.all([
     Product.find(filter).sort(order).skip(skip).limit(limit),
@@ -31,15 +31,15 @@ async function listProducts(query, admin = false) {
   };
 }
 
-async function getProduct(id, admin = false) {
-  await expireOrders();
+async function getProduct(id, admin = false, config = {}) {
+  await expireOrders(new Date(), config);
   const product = await Product.findOne({ _id: id, ...(admin ? {} : { active: true }) });
   if (!product) throw new ApiError(404, "NOT_FOUND", "Barang tidak ditemukan.");
   return product;
 }
 
-async function updateProduct(id, input) {
-  const current = await getProduct(id, true);
+async function updateProduct(id, input, config = {}) {
+  const current = await getProduct(id, true, config);
   if (current.status === "sold")
     throw new ApiError(409, "PRODUCT_LOCKED", "Barang Terjual tidak bisa diubah.");
   if (

@@ -92,6 +92,8 @@ async function adminAction(id, body, config = {}) {
     const now = new Date();
     if (type === "ship") {
       if (order.status !== "DIPROSES") throw conflict();
+      if (order.payment && (order.payment.status !== "settled" || order.payment.reviewReason))
+        throw conflict();
       order.status = "DIKIRIM";
       order.shipment = { ...shipment, shippedAt: now };
       order.tracking_number = shipment.number;

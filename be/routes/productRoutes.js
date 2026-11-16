@@ -8,15 +8,21 @@ const serialize = require("../lib/serializers");
 const products = require("../services/products");
 
 router.get("/", async (req, res) => {
-  res.json({ success: true, data: await products.listProducts(req.query) });
+  res.json({
+    success: true,
+    data: await products.listProducts(req.query, false, req.app.locals.config),
+  });
 });
 
 router.post("/match", async (req, res) => {
-  res.json({ success: true, data: await matchProducts(req.body) });
+  res.json({ success: true, data: await matchProducts(req.body, req.app.locals.config) });
 });
 
 router.get("/:id", validate.idParam("id"), async (req, res) => {
-  res.json({ success: true, data: serialize.product(await products.getProduct(req.params.id)) });
+  res.json({
+    success: true,
+    data: serialize.product(await products.getProduct(req.params.id, false, req.app.locals.config)),
+  });
 });
 
 router.post("/", authenticateToken, requireAdmin, async (req, res) => {
@@ -25,12 +31,20 @@ router.post("/", authenticateToken, requireAdmin, async (req, res) => {
 });
 
 router.patch("/:id", authenticateToken, requireAdmin, validate.idParam("id"), async (req, res) => {
-  const product = await products.updateProduct(req.params.id, productInput(req.body, true));
+  const product = await products.updateProduct(
+    req.params.id,
+    productInput(req.body, true),
+    req.app.locals.config,
+  );
   res.json({ success: true, data: serialize.product(product) });
 });
 
 router.delete("/:id", authenticateToken, requireAdmin, validate.idParam("id"), async (req, res) => {
-  const product = await products.updateProduct(req.params.id, { active: false });
+  const product = await products.updateProduct(
+    req.params.id,
+    { active: false },
+    req.app.locals.config,
+  );
   res.json({ success: true, data: serialize.product(product) });
 });
 

@@ -42,6 +42,18 @@ async function paymentSession(id, account, config) {
     }).session(session);
     if (!ownsStock) throw new ApiError(409, "STOCK_CONFLICT", "Kunci barang sudah berubah.");
     const now = new Date();
+    if (order.payment.syncUntil > now)
+      throw new ApiError(
+        409,
+        "PAYMENT_SYNC_IN_PROGRESS",
+        "Pemeriksaan pembayaran sedang berjalan.",
+      );
+    if (order.payment.reviewReason)
+      throw new ApiError(
+        409,
+        "PAYMENT_REVIEW_REQUIRED",
+        "Pembayaran memerlukan pemeriksaan Admin.",
+      );
     if (order.payment.status === "creating") {
       if (now - order.payment.requestedAt < REQUEST_TIMEOUT_MS + 5000)
         throw new ApiError(
@@ -57,7 +69,8 @@ async function paymentSession(id, account, config) {
     if (order.payment.status === "unknown") return { uncertain: true };
     if (order.expiresAt <= now)
       throw new ApiError(409, "PAYMENT_EXPIRED", "Batas pembayaran sudah habis.");
-    if (order.payment.status === "ready") {
+    if (["ready", "pending"].includes(order.payment.status)) {
+      if (!order.payment.redirectUrl) throw unknown();
       if (order.payment.sessionExpiresAt <= now)
         throw new ApiError(
           409,
@@ -88,6 +101,7 @@ async function paymentSession(id, account, config) {
     status: "MENUNGGU_PEMBAYARAN",
     "payment.merchantOrderId": order.payment.merchantOrderId,
     "payment.requestedAt": order.payment.requestedAt,
+    "payment.syncToken": null,
     "payment.status": { $in: ["creating", "unknown"] },
   };
   try {

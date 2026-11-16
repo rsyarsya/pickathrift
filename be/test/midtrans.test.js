@@ -49,6 +49,8 @@ const cancel = (id) => request(`/orders/${id}/cancel`, { method: "POST", body: {
 
 before(async () => {
   mock.method(globalThis, "fetch", async (url, init) => {
+    if (typeof url === "string" && url.startsWith("https://api.sandbox.midtrans.com/"))
+      return new globalThis.Response("{}", { status: 503 });
     if (url !== "https://app.sandbox.midtrans.com/snap/v1/transactions")
       return realFetch(url, init);
     calls.push({ url, init, body: JSON.parse(init.body) });
@@ -209,7 +211,7 @@ test("dua request bersamaan hanya satu request provider, pihak kedua dapat melan
     assert.equal(second.status, 409);
     assert.equal(second.code, "PAYMENT_IN_PROGRESS");
     assert.equal(calls.length, 1);
-    assert.equal((await cancel(order.id)).code, "PAYMENT_CHECK_REQUIRED");
+    assert.equal((await cancel(order.id)).code, "PAYMENT_IN_PROGRESS");
   } finally {
     finish();
   }
@@ -272,7 +274,7 @@ for (const [label, handler] of [
     assert.equal((await Order.findById(order.id)).payment.status, "unknown");
     assert.equal((await pay(order.id)).code, "PAYMENT_STATUS_UNKNOWN");
     assert.equal(calls.length, 1);
-    assert.equal((await cancel(order.id)).code, "PAYMENT_CHECK_REQUIRED");
+    assert.equal((await cancel(order.id)).code, "PAYMENT_STATUS_UNKNOWN");
     const expiresAt = new Date(Date.now() - 1000);
     await Order.collection.updateOne(
       { _id: new mongoose.Types.ObjectId(order.id) },
@@ -468,7 +470,7 @@ test("pembuatan sesi bersamaan dengan pembatalan tidak meninggalkan sesi aktif p
       assert.equal(saved.status, "DIBATALKAN");
       assert.equal(stock.status, "available");
     } else {
-      assert.equal(cancellation.code, "PAYMENT_CHECK_REQUIRED");
+      assert.equal(cancellation.code, "PAYMENT_IN_PROGRESS");
       assert.equal(payment.status, 201);
       assert.equal(calls.length, countBefore + 1);
       assert.equal(saved.status, "MENUNGGU_PEMBAYARAN");
