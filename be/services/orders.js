@@ -39,9 +39,11 @@ async function expireOrders(now = new Date()) {
 async function createOrder(account, body) {
   validate.fields(body, ["product_id", "address"]);
   const productId = validate.objectId(body.product_id, "product_id");
-  const address = addressInput(
-    body.address === undefined ? (account.address?.toObject() ?? account.address) : body.address,
-  );
+  // Alamat baru dari form dicek dengan aturan ketat; alamat profil lama tetap dengan aturan lama.
+  const address =
+    body.address === undefined
+      ? addressInput(account.address?.toObject() ?? account.address)
+      : addressInput(body.address, { strict: true });
   await expireOrders();
   return mongoose.connection.transaction(async (session) => {
     const now = new Date();
