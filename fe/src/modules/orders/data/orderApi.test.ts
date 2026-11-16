@@ -13,7 +13,7 @@ import { getOrder, listOrders, loadPaymentProof, updateBuyerOrder } from "./orde
 const address = {
   recipient: "Penerima Uji",
   phone: "081234567890",
-  street: "Jl. Uji",
+  street: "Jl. Uji No. 1",
   city: "Kota Uji",
   postalCode: "12345",
 };

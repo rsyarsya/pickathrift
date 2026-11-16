@@ -276,9 +276,13 @@ produk yang nonaktif/hilang menggunakan `product_id: null, unavailable: true`.
 `address` pada registrasi opsional, GET/PATCH `/api/users/me`, dan respons auth
 sekarang berupa null (belum diisi) atau objek lengkap
 `{recipient, phone, street, city, postalCode}`. PATCH alamat mengganti seluruh objek;
-null/string/objek parsial ditolak 422. Semua teks di-trim. Batas recipient/city 100,
-street 1000; nomor Indonesia 08 sepanjang 10–13 digit, pemisah spasi/kurung/tanda
-hubung dihapus; kode pos lima digit. Nama akun tetap terpisah dari penerima.
+null/string/objek parsial ditolak 422. Semua teks di-trim. recipient dan city 2–100
+karakter, wajib ada huruf, tanpa angka/simbol (boleh `. , ' -`, city juga boleh kurung);
+street 8–1000 karakter; nomor HP 10–13 digit diawali 08, dan input `+62…`/`62…` beserta
+pemisah spasi/kurung/titik/tanda hubung diseragamkan menjadi `08…`; kode pos lima digit
+tidak diawali 0. Aturan ini berlaku untuk input baru (registrasi, PATCH profil, alamat
+di body pesanan). Alamat profil yang sudah tersimpan dan pemeriksaan data lama memakai
+aturan lama agar data lama tidak ikut ditolak. Nama akun tetap terpisah dari penerima.
 Nomor `phone` tingkat akun tetap field terpisah sesuai kontrak sebelumnya.
 Alamat lama dipindah ke `legacy_address` internal melalui migrasi eksplisit; tidak
 ditampilkan melalui API dan tidak dipakai checkout. Lihat MIGRATION.md.
@@ -380,6 +384,7 @@ foto, atau kondisi. Apply hanya dijalankan secara eksplisit, bukan saat startup.
 | ------ | ---------------- | ---------- | -------------------------------------------------------------------------------------------------------------------------- |
 | POST   | `/auth/register` | Publik     | `name`, `email`, `password`; opsional `confirmPassword`, `phone`, `address`. Hasil `201`, `data` pengguna Buyer.           |
 | POST   | `/auth/login`    | Publik     | `email`, `password`, opsional `role: buyer/admin` untuk memeriksa halaman masuk yang dipilih. Hasil `data: {token, user}`. |
+| POST   | `/auth/google`   | Publik     | `credential` (ID token Google). Masuk atau daftar Buyer. Hasil `data: {token, user}`, sama seperti login.                  |
 | GET    | `/users/me`      | Akun aktif | `data` profil akun dari token.                                                                                             |
 | PATCH  | `/users/me`      | Akun aktif | Hanya `name`, `phone`, `address`; minimal satu field. `address` mengikuti objek lengkap pada bagian batch 3.               |
 
@@ -389,8 +394,16 @@ dan maksimal 72 byte UTF-8 (batas bcrypt); sandi tidak di-trim. Login tidak mema
 minimal 8 karakter agar kredensial lama tetap dapat diperiksa. `confirmPassword`, bila
 dikirim, harus cocok. Field `role` saat registrasi diabaikan: hasil selalu Buyer.
 Registrasi duplikat, termasuk request bersamaan, menghasilkan `409 EMAIL_EXISTS`.
-`phone` akun maksimal 30 karakter. Aturan alamat mengikuti bagian batch 3.
+`phone` akun opsional (string kosong menghapus) dengan aturan nomor HP yang sama dengan alamat.
+PATCH `name` mengikuti aturan nama penerima. Aturan alamat mengikuti bagian batch 3.
 PATCH profil tidak menerima email, password, role, ID, ataupun operator MongoDB.
+
+`/auth/google` aktif kalau `GOOGLE_CLIENT_ID` terisi; tanpa itu jawabannya `503 GOOGLE_DISABLED`.
+Token diverifikasi ke Google (audience = `GOOGLE_CLIENT_ID`) dan email harus terverifikasi;
+selain itu `401 GOOGLE_TOKEN_INVALID`. Email baru dibuat sebagai Buyer tanpa kata sandi. Email
+Buyer yang sudah terdaftar ditautkan ke akun Google dan kata sandinya tetap berlaku. Email
+Admin ditolak `403 ROLE_MISMATCH`. Akun Google tanpa kata sandi yang mencoba `/auth/login`
+mendapat `401 INVALID_CREDENTIALS` yang sama seperti sandi salah.
 
 ## Akses endpoint domain yang sudah ada
 

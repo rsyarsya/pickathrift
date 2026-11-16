@@ -1,10 +1,13 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { useAuthSubmit } from "../hooks/use-auth-submit";
-import { register, type AuthUser } from "../lib/auth-service";
+import { loginWithGoogle, register, type AuthUser } from "../lib/auth-service";
+import { buyerReturnPath } from "../lib/return-path";
 import { validateRegistration, type RegistrationValues } from "../lib/validate-registration";
 import { AuthFeedback } from "./auth-feedback";
+import { GoogleSignIn } from "./google-sign-in";
 import { PasswordField } from "./password-field";
 import styles from "./auth.module.css";
 
@@ -22,6 +25,7 @@ export function BuyerRegisterForm({ onRegistered }: { onRegistered: (user: AuthU
     confirmPassword: false,
   });
   const { pending, feedback, submit, clearFeedback } = useAuthSubmit();
+  const router = useRouter();
   const errors = validateRegistration(values);
   const errorFor = (field: keyof RegistrationValues) =>
     touched[field] ? errors[field] : undefined;
@@ -46,6 +50,18 @@ export function BuyerRegisterForm({ onRegistered }: { onRegistered: (user: AuthU
       (user) => `Akun berhasil dibuat. Selamat datang, ${user.name}!`,
     ).then((user) => {
       if (user) onRegistered(user);
+    });
+  }
+
+  function handleGoogle(credential: string) {
+    clearFeedback();
+    // Akun Google langsung punya sesi, jadi tidak perlu layar "akun dibuat".
+    void submit(
+      () => loginWithGoogle(credential),
+      (user) => `Berhasil masuk sebagai Buyer. Halo, ${user.name}!`,
+    ).then((user) => {
+      if (user)
+        router.push(buyerReturnPath(new URLSearchParams(window.location.search).get("kembali")));
     });
   }
 
@@ -139,6 +155,8 @@ export function BuyerRegisterForm({ onRegistered }: { onRegistered: (user: AuthU
       <button type="submit" className={styles.submitButton} disabled={pending}>
         {pending ? "Memproses…" : "Buat akun"}
       </button>
+
+      <GoogleSignIn mode="signup" disabled={pending} onCredential={handleGoogle} />
     </form>
   );
 }

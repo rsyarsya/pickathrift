@@ -2,7 +2,14 @@ import { api, ApiError } from "@/lib/api";
 import { getToken, setToken, onTokenCleared } from "@/lib/auth-token";
 import { createStore } from "@/lib/store";
 export type AuthRole = "buyer" | "admin";
-export type AuthUser = { id: string; name: string; email: string; role: AuthRole };
+export type AuthUser = {
+  id: string;
+  name: string;
+  email: string;
+  role: AuthRole;
+  /** Dari backend; null berarti alamat pengiriman belum diisi. */
+  address?: object | null;
+};
 type Envelope<T> = { success: true; data: T };
 export const authState = createStore<{ user: AuthUser | null; lastActiveAt: number }>({
   user: null,
@@ -24,14 +31,21 @@ export async function register(values: {
   });
   return result.data;
 }
-export async function login(values: { email: string; password: string }, role: AuthRole) {
-  const result = await api<Envelope<{ token: string; user: AuthUser }>>("/api/auth/login", {
+async function startSession(path: string, body: unknown) {
+  const result = await api<Envelope<{ token: string; user: AuthUser }>>(path, {
     method: "POST",
-    body: JSON.stringify({ ...values, role }),
+    body: JSON.stringify(body),
   });
   setToken(result.data.token);
   authState.set({ user: result.data.user, lastActiveAt: Date.now() });
   return result.data.user;
+}
+export function login(values: { email: string; password: string }, role: AuthRole) {
+  return startSession("/api/auth/login", { ...values, role });
+}
+/** Masuk atau daftar Buyer memakai ID token dari tombol Google. */
+export function loginWithGoogle(credential: string) {
+  return startSession("/api/auth/google", { credential });
 }
 export async function restoreSession() {
   const token = getToken();

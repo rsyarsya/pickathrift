@@ -10,13 +10,13 @@ router.patch("/me", async (req, res) => {
   if (!Object.keys(req.body).length) validate.invalid("body", "Isi minimal satu field.");
   for (const [key, value] of Object.entries(req.body)) {
     if (key === "address") {
-      req.account.address = require("../lib/address").addressInput(value);
+      req.account.address = require("../lib/address").addressInput(value, { strict: true });
       continue;
     }
-    req.account[key] = validate.text(value, key, {
-      max: key === "name" ? 100 : key === "phone" ? 30 : 1000,
-      required: key === "name",
-    });
+    req.account[key] =
+      key === "name"
+        ? validate.personName(value, "name")
+        : validate.phone(value, "phone", { required: false });
   }
   await req.account.save();
   res.json({ success: true, data: serialize.user(req.account) });

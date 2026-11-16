@@ -1,7 +1,13 @@
 import { apiData, ApiError } from "@/lib/api";
 import { getToken } from "@/lib/auth-token";
 import { authState, type AuthUser } from "@/modules/auth/lib/auth-service";
-import { hasAddress, validateProfile, type ProfileValues, type ShippingAddress } from "../address";
+import {
+  hasAddress,
+  normalizePhone,
+  validateProfile,
+  type ProfileValues,
+  type ShippingAddress,
+} from "../address";
 
 export type Profile = AuthUser & { phone: string; address: ShippingAddress | null };
 
@@ -50,7 +56,7 @@ export async function saveProfile(input: ProfileValues, requireAddress = false) 
     throw new ApiError(422, "Periksa data yang ditandai.");
   const address: ShippingAddress = {
     recipient: input.recipient.trim(),
-    phone: input.phone.trim().replace(/[\s()-]/g, ""),
+    phone: normalizePhone(input.phone),
     street: input.street.trim(),
     city: input.city.trim(),
     postalCode: input.postalCode.trim(),
@@ -59,12 +65,15 @@ export async function saveProfile(input: ProfileValues, requireAddress = false) 
     method: "PATCH",
     body: JSON.stringify({
       name: input.name.trim(),
-      phone: input.accountPhone.trim().replace(/[\s()-]/g, ""),
+      phone: normalizePhone(input.accountPhone),
       ...(hasAddress(input) ? { address } : {}),
     }),
   });
   const current = authState.get();
   if (current.user?.id === profile.id)
-    authState.set({ ...current, user: { ...current.user, name: profile.name } });
+    authState.set({
+      ...current,
+      user: { ...current.user, name: profile.name, address: profile.address },
+    });
   return profile;
 }

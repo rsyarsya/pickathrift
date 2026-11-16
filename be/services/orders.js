@@ -58,9 +58,11 @@ async function expireOrders(now = new Date(), config = {}) {
 async function createOrder(account, body, config = {}) {
   validate.fields(body, ["product_id", "address"]);
   const productId = validate.objectId(body.product_id, "product_id");
-  const address = addressInput(
-    body.address === undefined ? (account.address?.toObject() ?? account.address) : body.address,
-  );
+  // Pertahankan validasi alamat baru dari main dan tenggat/konfigurasi gateway.
+  const address =
+    body.address === undefined
+      ? addressInput(account.address?.toObject() ?? account.address)
+      : addressInput(body.address, { strict: true });
   if (config.midtrans?.enabled === false)
     throw new ApiError(
       503,

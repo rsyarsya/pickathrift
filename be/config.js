@@ -37,6 +37,7 @@ function getConfig(env = process.env) {
     jwtSecret: env.JWT_SECRET,
     port,
     uploadDir: env.UPLOAD_DIR,
+    googleClientId: env.GOOGLE_CLIENT_ID?.trim() || undefined,
     nodeEnv: env.NODE_ENV ?? "development",
     midtrans: midtransConfig(env),
   };

@@ -9,3 +9,6 @@ export const GALLERY_OPEN = process.env.NEXT_PUBLIC_GALLERY === "on";
 /** Simulasi auth hanya boleh berjalan di development lokal. */
 export const AUTH_SIMULATION_ENABLED =
   process.env.NODE_ENV === "development" && process.env.NEXT_PUBLIC_AUTH_SIMULATION === "on";
+
+/** Client ID OAuth Google (publik). Kosong berarti tombol Google disembunyikan. */
+export const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID?.trim() ?? "";

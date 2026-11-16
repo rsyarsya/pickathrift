@@ -13,7 +13,7 @@ import { ApiError } from "@/lib/api";
 import { cn } from "@/lib/cn";
 import { BuyerOnly } from "@/modules/auth/components/BuyerOnly";
 import type { SessionUser } from "@/modules/auth/useSession";
-import { validateProfile } from "../address";
+import { FIELD_MAX, PHONE_HINT, validateProfile } from "../address";
 import { getProfile, profileToValues, saveProfile, type Profile } from "../data/profile";
 
 const fields = [
@@ -110,10 +110,15 @@ function ProfileEditor({
   const [saved, setSaved] = useState(initial);
   const [values, setValues] = useState(() => profileToValues(initial));
   const [showErrors, setShowErrors] = useState(false);
+  const [touched, setTouched] = useState<Set<string>>(() => new Set());
   const [pending, setPending] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const { toast, show, clear } = useToast();
-  const errors = showErrors ? validateProfile(values, saved.address !== null) : {};
+  // Galat tampil setelah kolom ditinggalkan, atau semuanya setelah tombol Simpan ditekan.
+  const allErrors = validateProfile(values, saved.address !== null);
+  const errors = Object.fromEntries(
+    Object.entries(allErrors).filter(([key]) => showErrors || touched.has(key)),
+  ) as typeof allErrors;
   const savedValues = profileToValues(saved);
   const dirty = fields.some(({ key }) => key !== "email" && values[key] !== savedValues[key]);
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -133,6 +138,7 @@ function ProfileEditor({
       setSaved(result);
       setValues(profileToValues(result));
       setShowErrors(false);
+      setTouched(new Set());
       show("✓ Perubahan disimpan");
     } catch (error) {
       setSaveError(
@@ -169,7 +175,12 @@ function ProfileEditor({
               const id = `profile-${key}`;
               const error = key === "email" ? undefined : errors[key];
               const hint =
-                error || (key === "phone" ? "Dipakai kurir untuk menghubungimu." : undefined);
+                error ||
+                (key === "phone"
+                  ? `Dipakai kurir untuk menghubungimu. ${PHONE_HINT}`
+                  : key === "accountPhone"
+                    ? PHONE_HINT
+                    : undefined);
               const props = {
                 id,
                 name: key,
@@ -179,6 +190,10 @@ function ProfileEditor({
                   key === "name" ||
                   (key !== "email" && key !== "accountPhone" && saved.address !== null),
                 autoComplete,
+                maxLength: key === "email" ? undefined : FIELD_MAX[key],
+                onBlur: () => {
+                  if (key !== "email") setTouched((previous) => new Set(previous).add(key));
+                },
                 "aria-invalid": error ? true : undefined,
                 "aria-describedby": hint ? `${id}-hint` : undefined,
                 onChange: (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -215,6 +230,13 @@ function ProfileEditor({
                             : "text"
                       }
                       inputMode={key === "postalCode" ? "numeric" : undefined}
+                      placeholder={
+                        key === "phone" || key === "accountPhone"
+                          ? "0812 3456 7890"
+                          : key === "postalCode"
+                            ? "55281"
+                            : undefined
+                      }
                     />
                   )}
                   {hint && (
