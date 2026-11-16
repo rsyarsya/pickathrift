@@ -37,6 +37,29 @@ function password(value, registration = false) {
   return result;
 }
 
+/** "+62 812-3456-7890" dan "62812…" disimpan seragam sebagai "0812…". */
+function phone(value, field, { required = true } = {}) {
+  const raw = text(value, field, { max: 30, required });
+  if (!raw) return "";
+  let result = raw.replace(/[\s().-]/g, "");
+  if (result.startsWith("+62")) result = `0${result.slice(3)}`;
+  else if (result.startsWith("62")) result = `0${result.slice(2)}`;
+  if (!/^08\d{8,11}$/.test(result))
+    invalid(field, "Nomor HP 10 sampai 13 angka, diawali 08 atau +62.");
+  return result;
+}
+
+const PERSON = /^[\p{L}\p{M} .,'-]+$/u;
+const CITY = /^[\p{L}\p{M} .,'()-]+$/u;
+
+/** Nama orang (atau kota dengan pattern CITY): 2–100 karakter, ada huruf, tanpa angka/simbol. */
+function personName(value, field, pattern = PERSON) {
+  const result = text(value, field, { max: 100 });
+  if (result.length < 2 || !/\p{L}/u.test(result) || !pattern.test(result))
+    invalid(field, "Minimal 2 huruf, tanpa angka atau simbol.");
+  return result;
+}
+
 function registration(body) {
   objectBody(body);
   const result = {
@@ -46,9 +69,9 @@ function registration(body) {
   };
   if (body.confirmPassword !== undefined && body.confirmPassword !== body.password)
     invalid("confirmPassword");
-  if (body.phone !== undefined)
-    result.phone = text(body.phone, "phone", { max: 30, required: false });
-  if (body.address !== undefined) result.address = require("./address").addressInput(body.address);
+  if (body.phone !== undefined) result.phone = phone(body.phone, "phone", { required: false });
+  if (body.address !== undefined)
+    result.address = require("./address").addressInput(body.address, { strict: true });
   return result;
 }
 
@@ -83,6 +106,9 @@ module.exports = {
   text,
   email,
   password,
+  phone,
+  personName,
+  CITY,
   registration,
   objectId,
   idParam,

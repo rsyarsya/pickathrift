@@ -290,7 +290,13 @@ for (const value of [
   "Jl. Lama",
   {},
   { ...address, city: " " },
-  { ...address, phone: "628123456789" },
+  { ...address, phone: "+6512345678" },
+  { ...address, phone: "abc" },
+  { ...address, recipient: "123" },
+  { ...address, recipient: "B" },
+  { ...address, street: "a" },
+  { ...address, city: "12345" },
+  { ...address, postalCode: "00000" },
   { ...address, phone: "081234567" },
   { ...address, phone: "08123456789012" },
   { ...address, postalCode: "55a81" },
@@ -319,6 +325,40 @@ for (const value of [
     );
   });
 }
+test("nomor +62 diseragamkan, nomor dan nama akun divalidasi, alamat lama tetap bisa disimpan", async () => {
+  const saved = await request("/users/me", {
+    method: "PATCH",
+    token: otherToken,
+    body: { phone: "+62 812-3456-7890", address: { ...address, phone: "62 812 3456 7890" } },
+  });
+  assert.equal(saved.status, 200);
+  assert.equal(saved.data.phone, "081234567890");
+  assert.equal(saved.data.address.phone, "081234567890");
+  for (const body of [{ phone: "abc" }, { phone: "0812" }, { name: "1" }, { name: "Budi99" }])
+    assert.equal(
+      (await request("/users/me", { method: "PATCH", token: otherToken, body })).status,
+      422,
+    );
+  assert.equal(
+    (await request("/users/me", { method: "PATCH", token: otherToken, body: { phone: "" } })).data
+      .phone,
+    "",
+  );
+  // Alamat lama yang lolos aturan lama tidak menghalangi perubahan field lain.
+  await User.collection.updateOne(
+    { _id: other._id },
+    { $set: { address: { ...address, street: "Jl. A" } } },
+  );
+  const renamed = await request("/users/me", {
+    method: "PATCH",
+    token: otherToken,
+    body: { name: "Buyer Lain" },
+  });
+  assert.equal(renamed.status, 200);
+  assert.equal(renamed.data.address.street, "Jl. A");
+  await User.collection.updateOne({ _id: other._id }, { $set: { address: null, phone: "" } });
+});
+
 test("registrasi alamat valid, login/read mengembalikan DTO tanpa field internal", async () => {
   const account = { name: "Baru", email: "new@example.test", password: "Fictional123!", address };
   const registered = await request("/auth/register", { method: "POST", body: account });

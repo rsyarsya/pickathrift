@@ -21,7 +21,7 @@ const profile: Profile = {
   address: {
     recipient: "Penerima Uji",
     phone: "089876543210",
-    street: "Jl. Uji",
+    street: "Jl. Uji No. 1",
     city: "Kota Uji",
     postalCode: "12345",
   },
@@ -95,7 +95,7 @@ describe("profil dan alamat API", () => {
         accountPhone: "0812 3456 7890",
         recipient: " Penerima Uji ",
         phone: "0898 (7654) 3210",
-        street: " Jl. Uji ",
+        street: " Jl. Uji No. 1 ",
       }),
     ).resolves.toEqual(saved);
     const request = new Request(...fetcher.mock.calls[0]!);

@@ -3,7 +3,12 @@ import { Button } from "@/components/ui/Button";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { cn } from "@/lib/cn";
 import type { Product } from "@/modules/catalog/types";
-import { validateAddress, type ShippingAddress } from "@/modules/profile/address";
+import {
+  FIELD_MAX,
+  PHONE_HINT,
+  validateAddress,
+  type ShippingAddress,
+} from "@/modules/profile/address";
 import { checkoutColumns, OrderSummary, overline } from "./OrderSummary";
 
 const addressFields = [
@@ -43,6 +48,7 @@ export function CheckoutForm({
 }: CheckoutFormProps) {
   const [address, setAddress] = useState(initialAddress);
   const [showErrors, setShowErrors] = useState(false);
+  const [touched, setTouched] = useState<Set<string>>(() => new Set());
   const errors = validateAddress(address);
 
   function submit(event: FormEvent<HTMLFormElement>) {
@@ -82,17 +88,20 @@ export function CheckoutForm({
             </legend>
             {addressFields.map(({ key, label, autoComplete, ...field }) => {
               const id = `shipping-${key}`;
-              const error = showErrors && errors[key];
+              const error = (showErrors || touched.has(key)) && errors[key];
+              const hint = error || (key === "phone" ? PHONE_HINT : undefined);
               const input = {
                 id,
                 name: key,
                 autoComplete,
                 required: true,
                 value: address[key],
+                maxLength: FIELD_MAX[key],
+                onBlur: () => setTouched((previous) => new Set(previous).add(key)),
                 onChange: (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
                   setAddress({ ...address, [key]: event.target.value }),
                 "aria-invalid": error ? true : undefined,
-                "aria-describedby": error ? `${id}-error` : undefined,
+                "aria-describedby": hint ? `${id}-hint` : undefined,
                 className: cn(
                   "w-full min-w-0 rounded-md border bg-surface px-16 py-12 text-body",
                   error ? "border-danger bg-danger-bg" : "border-line",
@@ -119,13 +128,22 @@ export function CheckoutForm({
                     <input
                       {...input}
                       type={key === "phone" ? "tel" : "text"}
-                      placeholder={key === "phone" ? "08xx xxxx xxxx" : undefined}
+                      placeholder={
+                        key === "phone"
+                          ? "0812 3456 7890"
+                          : key === "postalCode"
+                            ? "55281"
+                            : undefined
+                      }
                       inputMode={key === "postalCode" ? "numeric" : undefined}
                     />
                   )}
-                  {error && (
-                    <p id={`${id}-error`} className="text-caption text-danger">
-                      {error}
+                  {hint && (
+                    <p
+                      id={`${id}-hint`}
+                      className={cn("text-caption", error ? "text-danger" : "text-muted")}
+                    >
+                      {hint}
                     </p>
                   )}
                 </div>
