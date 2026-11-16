@@ -6,12 +6,15 @@ const products = require("../services/products");
 
 router.use(authenticateToken, requireAdmin);
 router.get("/", async (req, res) => {
-  res.json({ success: true, data: await products.listProducts(req.query, true) });
+  res.json({
+    success: true,
+    data: await products.listProducts(req.query, true, req.app.locals.config),
+  });
 });
 router.get("/:id", validate.idParam("id"), async (req, res) => {
   res.json({
     success: true,
-    data: serialize.product(await products.getProduct(req.params.id, true)),
+    data: serialize.product(await products.getProduct(req.params.id, true, req.app.locals.config)),
   });
 });
 

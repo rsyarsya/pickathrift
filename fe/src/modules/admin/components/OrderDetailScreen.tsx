@@ -6,6 +6,8 @@ import { useState, type ReactNode } from "react";
 import { BackLink } from "@/components/ui/BackLink";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { StatusMessage } from "@/components/ui/StatusMessage";
+import { PaymentDetails } from "@/modules/orders/components/PaymentDetails";
+import { syncPayment } from "@/modules/orders/data/payment";
 import { Toast } from "@/components/ui/Toast";
 import { useAsync } from "@/hooks/useAsync";
 import { useToast } from "@/hooks/useToast";
@@ -356,11 +358,13 @@ function Shipping({
 function ReadOnly({ order }: { order: Order }) {
   const note =
     order.status === "MENUNGGU_PEMBAYARAN"
-      ? `Buyer belum mengunggah bukti. Pesanan batal otomatis ${shortDateTime(order.expiresAt)} kalau belum dibayar.`
+      ? order.payment?.provider === "midtrans"
+        ? `Menunggu konfirmasi Midtrans. Batas pembayaran ${shortDateTime(order.expiresAt)}.`
+        : `Buyer belum mengunggah bukti. Pesanan batal otomatis ${shortDateTime(order.expiresAt)} kalau belum dibayar.`
       : order.status === "SELESAI"
         ? `Buyer mengonfirmasi barang diterima${order.receivedAt ? ` ${shortDate(order.receivedAt)}` : ""}.`
         : order.status === "DIBATALKAN"
-          ? `Dibatalkan ${order.cancellation === "expired" ? "otomatis karena lewat batas bayar" : order.cancellation === "buyer" ? "oleh buyer" : "oleh admin"}${order.adminNote ? `: ${order.adminNote}` : ""}.`
+          ? `Dibatalkan ${order.cancellation === "expired" ? "karena lewat batas bayar" : order.cancellation === "buyer" ? "oleh buyer" : order.cancellation === "payment" ? "karena pembayaran tidak berhasil" : "oleh admin"}${order.adminNote ? `: ${order.adminNote}` : ""}.`
           : null;
   return (
     <div className="flex flex-col gap-24 lg:flex-row lg:items-start">
@@ -409,7 +413,10 @@ function Detail({ initial }: { initial: Order }) {
     if (busy) return;
     setBusy(true);
     try {
-      const latest = await getAdminOrder(order.id);
+      const latest =
+        order.payment?.provider === "midtrans"
+          ? await syncPayment(order)
+          : await getAdminOrder(order.id);
       setOrder(latest);
       setJustShipped(false);
       setConflict(null);
@@ -448,7 +455,7 @@ function Detail({ initial }: { initial: Order }) {
   }
 
   const verifying = canAdmin(order, "approve");
-  const shipping = order.status === "DIPROSES" || (order.status === "DIKIRIM" && justShipped);
+  const shipping = canAdmin(order, "ship") || (order.status === "DIKIRIM" && justShipped);
   const title = verifying ? "Verifikasi" : shipping ? "Kirim" : "Pesanan";
 
   return (
@@ -465,6 +472,20 @@ function Detail({ initial }: { initial: Order }) {
         title={`${title} ${orderCode(order)}`}
         actions={<AdminOrderStatus status={order.status} />}
       />
+      {order.payment?.provider === "midtrans" && (
+        <>
+          <PaymentDetails order={order} admin />
+          <Button
+            variant="outline"
+            size="md"
+            disabled={busy}
+            onClick={() => void reload()}
+            className="self-start"
+          >
+            {busy ? "Memeriksa…" : "Periksa status pembayaran"}
+          </Button>
+        </>
+      )}
       {conflict && (
         <StatusMessage
           tone="warning"

@@ -36,6 +36,8 @@ async function uploadProof(id, account, proof, expectedProofId) {
     if (!order) throw new ApiError(404, "NOT_FOUND", "Pesanan tidak ditemukan.");
     if (String(order.buyer_id) !== String(account._id))
       throw new ApiError(403, "FORBIDDEN", "Pesanan bukan milik Anda.");
+    if (order.payment)
+      throw new ApiError(409, "PAYMENT_METHOD_CONFLICT", "Gunakan pembayaran Midtrans.");
     const now = new Date();
     if (order.status === "MENUNGGU_PEMBAYARAN" && order.expiresAt <= now) {
       await release(order, session, now, "expired");
@@ -90,10 +92,18 @@ async function adminAction(id, body, config = {}) {
     const now = new Date();
     if (type === "ship") {
       if (order.status !== "DIPROSES") throw conflict();
+      if (order.payment && (order.payment.status !== "settled" || order.payment.reviewReason))
+        throw conflict();
       order.status = "DIKIRIM";
       order.shipment = { ...shipment, shippedAt: now };
       order.tracking_number = shipment.number;
     } else {
+      if (order.payment)
+        throw new ApiError(
+          409,
+          "PAYMENT_METHOD_CONFLICT",
+          "Pembayaran Midtrans tidak memakai verifikasi bukti.",
+        );
       const allowed =
         type === "reupload"
           ? ["MENUNGGU_VERIFIKASI"]

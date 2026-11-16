@@ -1,5 +1,40 @@
 # Memakai data dari BE lama
 
+## Tambahan Midtrans sandbox — batch 2
+
+Status gateway dan metadata pemeriksaan kini divalidasi tanpa mensyaratkan bukti
+manual untuk order gateway lunas. Order manual lama tetap memakai aturan bukti lama.
+Tidak ada apply migrasi database tim otomatis. State pembuatan batch 1 tetap dapat
+dibaca: `unknown/creating` dapat direkonsiliasi dengan ID merchant yang sama.
+
+Order gateway yang telah lunas wajib mempunyai identitas transaksi, kanal, waktu
+bayar, serta `verifiedAt`; pengiriman/penerimaan tetap memerlukan metadata yang lama.
+Pembatalan setelah sesi dimulai memerlukan `sessionClosedAt`. Flag `reviewReason`
+menandai ketidaksesuaian provider atau pembayaran terlambat; tidak mengoreksi stok
+atau mengubah jumlah uang dengan tebakan. Pengiriman order dengan flag itu ditolak.
+Lease pemeriksaan bersifat sementara (90 detik), tersimpan di DB dan dapat diambil
+alih setelah kedaluwarsa; tidak perlu menghapusnya saat restart.
+
+Tenggat sesi/token mengikuti blanket expiry asli enam jam. Token yang hilang hanya
+dipulihkan memakai ID merchant sama bila sisa waktu cukup untuk sesi minimal lima
+menit plus cadangan request 10 detik. Jika tidak cukup, `SESSION_UNCONFIRMED` menahan
+stok untuk pemeriksaan merchant. Deadline lokal dan respons 404, termasuk setelah
+enam jam, tidak pernah menggantikan konfirmasi penutupan sesi Snap.
+
+## Tambahan Midtrans sandbox — batch 1
+
+Order tanpa field `payment` atau dengan `payment: null` tetap dianggap manual.
+Tidak ada backfill otomatis dan tidak ada order lama yang diubah menjadi transaksi
+Midtrans. Metadata gateway hanya dibuat untuk checkout baru saat fitur diaktifkan.
+Startup memeriksa metadata serta duplikasi `payment.merchantOrderId` sebelum memasang
+unique sparse index. Metadata tidak lengkap atau status order yang belum didukung
+batch ini menjadi blocker dan tidak diperbaiki dengan tebakan.
+
+Biarkan `MIDTRANS_ENABLED=false` pada database bersama sampai webhook dan integrasi
+FE selesai. Database uji terisolasi boleh mengaktifkannya. Batch 1 mempertahankan
+reservasi sesi yang sudah dimulai sampai rekonsiliasi batch 2 tersedia. Jangan
+menghapus metadata atau melepas reservasi tersebut secara manual untuk mencoba ulang.
+
 ## Tambahan batch 4
 
 `expiresAt` harus setelah `createdAt`. Untuk Menunggu Pembayaran/pending, selisihnya

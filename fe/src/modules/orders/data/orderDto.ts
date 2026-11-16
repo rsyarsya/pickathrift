@@ -26,6 +26,11 @@ export type OrderDto = {
   expiresAt: string;
   cancelledAt?: string | null;
   cancellation_reason?: Order["cancellation"] | null;
+  payment?: Omit<NonNullable<Order["payment"]>, "paidAt" | "providerExpiresAt" | "checkedAt"> & {
+    paidAt?: string | null;
+    providerExpiresAt?: string | null;
+    checkedAt?: string | null;
+  };
   proof?: {
     id: string;
     name: string;
@@ -69,6 +74,16 @@ export function fromApiOrder(dto: OrderDto, buyerEmail = ""): Order {
     expiresAt: Date.parse(dto.expiresAt),
     cancelledAt: dto.cancelledAt ? Date.parse(dto.cancelledAt) : undefined,
     cancellation: dto.cancellation_reason ?? undefined,
+    payment: dto.payment
+      ? {
+          ...dto.payment,
+          paidAt: dto.payment.paidAt ? Date.parse(dto.payment.paidAt) : undefined,
+          providerExpiresAt: dto.payment.providerExpiresAt
+            ? Date.parse(dto.payment.providerExpiresAt)
+            : undefined,
+          checkedAt: dto.payment.checkedAt ? Date.parse(dto.payment.checkedAt) : undefined,
+        }
+      : undefined,
     proof: dto.proof ? { ...dto.proof, uploadedAt: Date.parse(dto.proof.uploadedAt) } : undefined,
     adminNote: dto.adminNote,
     verifiedAt: dto.verifiedAt ? Date.parse(dto.verifiedAt) : undefined,

@@ -7,12 +7,14 @@ export function CancelOrderDialog({
   pending,
   error,
   onConfirm,
+  gateway = false,
 }: {
   dialogRef: Ref<HTMLDialogElement>;
   productName: string;
   pending: boolean;
   error: ReactNode;
   onConfirm: () => void;
+  gateway?: boolean;
 }) {
   return (
     <dialog
@@ -35,7 +37,9 @@ export function CancelOrderDialog({
           Batalkan pesanan ini?
         </h2>
         <p className="text-body text-muted">
-          {productName} akan kembali tersedia untuk pembeli lain. Pembatalan tidak bisa diurungkan.
+          {gateway
+            ? `Pembayaran ${productName} akan diperiksa dahulu. Barang dilepas setelah pembatalan dikonfirmasi.`
+            : `${productName} akan kembali tersedia untuk pembeli lain. Pembatalan tidak bisa diurungkan.`}
         </p>
         {error && (
           <p role="alert" className="text-caption text-danger">

@@ -22,12 +22,14 @@ import { usePaymentCountdown } from "@/modules/orders/usePaymentCountdown";
 import type { loadCheckout } from "../data/checkout";
 import { checkoutColumns, OrderSummary, overline } from "./OrderSummary";
 import { PaymentProgress } from "./PaymentProgress";
+import { GatewayPayment } from "@/modules/orders/components/GatewayPayment";
 
 type PaymentProps = {
   order: Order;
   account: Awaited<ReturnType<typeof loadCheckout>>["account"];
   onChange: (order: Order) => void;
   onRestart: () => void;
+  disabled?: boolean;
 };
 
 const time = new Intl.DateTimeFormat("id-ID", { timeStyle: "short", timeZone: "Asia/Jakarta" });
@@ -178,7 +180,36 @@ function ProofForm({
   );
 }
 
-export function PaymentScreen({ order, account, onChange, onRestart }: PaymentProps) {
+export function PaymentScreen(props: PaymentProps) {
+  const { order } = props;
+  if (order.payment?.provider !== "midtrans") return <ManualPaymentScreen {...props} />;
+  const { title, step } = orderStatuses[order.status];
+  return (
+    <>
+      <PageHeader
+        title={order.payment.reviewReason ? "Pembayaran perlu diperiksa" : title}
+        overline={`Pesanan ${orderReference(order)}`}
+        aside={<OrderStatusLabel status={order.status} />}
+      />
+      {step !== undefined && (
+        <PaymentProgress current={step} complete={order.status === "SELESAI"} gateway />
+      )}
+      <div className={checkoutColumns}>
+        <div className="grid min-w-0 gap-14">
+          <GatewayPayment order={order} onChange={props.onChange} disabled={props.disabled} />
+          {order.status !== "MENUNGGU_PEMBAYARAN" && (
+            <ButtonLink href={orderHref(order)} className="justify-self-start">
+              Lihat detail pesanan
+            </ButtonLink>
+          )}
+        </div>
+        <OrderSummary product={order.product} order={order} />
+      </div>
+    </>
+  );
+}
+
+function ManualPaymentScreen({ order, account, onChange, onRestart }: PaymentProps) {
   const cancelDialog = useRef<HTMLDialogElement>(null);
   const [action, setAction] = useState<"cancel" | "upload" | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);

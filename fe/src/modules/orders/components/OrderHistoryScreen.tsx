@@ -36,7 +36,7 @@ function orderGroup(order: Order): Exclude<Filter, "Semua"> {
 
 function OrderRow({ order }: { order: Order }) {
   const { product, status } = order;
-  const waiting = status === "MENUNGGU_PEMBAYARAN";
+  const waiting = status === "MENUNGGU_PEMBAYARAN" && !order.payment?.reviewReason;
   const shipped = status === "DIKIRIM";
   const canReview = status === "SELESAI" && !order.review;
   const detail = orderHref(order);
@@ -78,6 +78,9 @@ function OrderRow({ order }: { order: Order }) {
       </Link>
       <div className="flex flex-wrap items-center justify-between gap-8 md:shrink-0 md:gap-14">
         <OrderStatusLabel status={status} reviewed={Boolean(order.review)} />
+        {order.payment?.reviewReason && (
+          <span className="text-caption text-danger">Perlu diperiksa</span>
+        )}
         <ButtonLink href={action} size="sm" variant={waiting || shipped ? "primary" : "outline"}>
           {label}
         </ButtonLink>

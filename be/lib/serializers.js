@@ -57,6 +57,17 @@ function order(value) {
     product_snapshot_source: value.product_snapshot_source,
     version: value.__v,
     status: value.status,
+    payment: {
+      provider: value.payment?.provider ?? "manual",
+      status: value.payment?.status ?? null,
+      merchantOrderId: value.payment?.merchantOrderId ?? null,
+      channel: value.payment?.channel ?? null,
+      paidAt: value.payment?.paidAt ?? null,
+      providerStatus: value.payment?.providerStatus ?? null,
+      providerExpiresAt: value.payment?.providerExpiresAt ?? null,
+      checkedAt: value.payment?.checkedAt ?? null,
+      reviewReason: value.payment?.reviewReason ?? null,
+    },
     proof: value.proof
       ? {
           id: value.proof.id,

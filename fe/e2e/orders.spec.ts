@@ -44,7 +44,7 @@ function placeOrder(page: Page) {
         new URL(response.url()).pathname === "/api/orders" &&
         response.request().method() === "POST",
     ),
-    page.getByRole("button", { name: "Pesan dan kunci barang" }).click(),
+    page.getByRole("button", { name: "Lanjut ke pembayaran", exact: true }).click(),
   ]).then(([response]) => response);
 }
 

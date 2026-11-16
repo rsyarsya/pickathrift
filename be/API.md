@@ -1,5 +1,148 @@
 # Kontrak API BE — batch 1–6
 
+## Midtrans sandbox — batch 3 (FE dan checkout baru)
+
+Runtime dari `getConfig()` hanya membuat checkout gateway: bila `MIDTRANS_ENABLED=false`,
+POST `/orders` menghasilkan `503 PAYMENT_UNAVAILABLE` sebelum menulis order/reservasi.
+Tidak ada pilihan transfer manual untuk order baru. Fixture tes deployment lama memakai
+config tanpa properti Midtrans untuk memverifikasi kompatibilitas order manual.
+
+FE membuka Snap redirect setelah order dan sesi tersimpan. Gagal membuka pembayaran
+tidak membuat order kedua: Buyer dapat melanjutkan dari checkout/riwayat. Halaman kembali
+ke detail order memanggil endpoint sync; callback URL bukan sumber status. Polling setiap
+10 detik saat halaman terlihat dibatasi 12 kali dan berhenti pada status terminal/flag
+review. Tenggat memakai yang paling awal dari `expiresAt` dan `providerExpiresAt`.
+Admin hanya mengirim gateway yang `settled` tanpa flag review; verifikasi bukti hanya
+untuk order manual lama. Uji sandbox nyata tetap memerlukan akun/kanal dan webhook publik.
+
+## Midtrans sandbox — batch 2 (webhook dan rekonsiliasi)
+
+Bagian ini menggantikan pembatasan sementara batch 1. Gateway tetap default nonaktif
+sampai FE batch 3 selesai; pengujian memakai database terisolasi.
+
+| Method | Route                             | Akses / hasil                                                                                                                                                                             |
+| ------ | --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| POST   | `/payments/midtrans/notification` | Publik, JSON Midtrans dengan signature SHA512 valid. Respons 200 `{success:true,data:{received:true}}` setelah hasil tersimpan. Tidak mengembalikan data Buyer.                           |
+| POST   | `/orders/:id/payment/sync`        | Buyer pemilik atau Admin, body `{}`. Respons DTO order; maksimal satu percobaan sinkronisasi per 5 detik per order (`429 PAYMENT_SYNC_THROTTLED`).                                        |
+| POST   | `/orders/:id/cancel`              | Buyer pemilik; tetap idempotent pada order batal. Sesi/transaksi gateway ditutup dan diperiksa dahulu. Jika pembayaran sudah berhasil: simpan hasil lunas, lalu `409 INVALID_TRANSITION`. |
+
+Konfigurasi BE: `MIDTRANS_SERVER_KEY` adalah key API sandbox. Bila key API tambahan
+berbeda dari key utama/default penanda tangan notifikasi, isi juga
+`MIDTRANS_NOTIFICATION_KEY` dengan key utama tersebut. Key utama digunakan untuk
+signature dan Basic auth penutupan sesi Snap; key API tetap dipakai untuk membuat
+sesi, membaca status, dan membatalkan transaksi. Key utama dapat memiliki
+awalan `Mid-server-`; semua endpoint provider tetap dikunci ke domain sandbox.
+Kedua key hanya berada di BE dan tidak disertakan pada respons/log.
+
+`MIDTRANS_NOTIFICATION_URL` opsional berisi satu URL HTTPS publik ke route notifikasi.
+Server meneruskannya sebagai `X-Override-Notification` ketika membuat sesi Snap,
+sehingga QA lokal tidak perlu mengubah pengaturan notifikasi global merchant.
+Tanpa override, Midtrans memakai URL pada dashboard. URL bukan tempat menyimpan key.
+
+Webhook memeriksa signature dengan perbandingan waktu konstan, merchantOrderId dan
+nominal, lalu mengambil status langsung dari Midtrans. Status body webhook/callback
+FE tidak menjadi sumber keputusan. Signature tidak mencakup seluruh field webhook,
+sehingga GET status juga mencegah replay payload lama yang statusnya diganti.
+
+Status `payment` ditambah `pending`, `settled`, `cancelled`, `expired`, `failed`, dan
+`review_required`. DTO menambah `providerStatus`, `checkedAt`, `providerExpiresAt`, dan
+`reviewReason` (null bila normal). `paidAt` memakai waktu settlement provider jika ada,
+atau waktu konfirmasi server. `providerExpiresAt` memuat tenggat kanal bila tersedia;
+FE memakai batas paling awal dari tenggat itu dan `expiresAt` pesanan. Respons sesi
+`POST /orders/:id/payment` dapat berstatus `ready` atau `pending` saat digunakan ulang.
+Pembatalan oleh provider menambah `cancellation_reason: payment`; pembatalan Buyer dan
+kedaluwarsa tetap `buyer/expired`. Token, URL Snap, dan kunci sinkronisasi tetap privat.
+
+- Pending: Menunggu Pembayaran, stok Dipesan. Settlement pada VA/QRIS yang sesuai,
+  nominal benar dan fraud_status absent/accept: Diproses + stok Terjual dalam satu
+  transaksi MongoDB. Pengiriman/penerimaan/ulasan tidak lagi mensyaratkan bukti manual.
+- Cancel/expire/deny/failure baru membatalkan order setelah sesi Snap ditutup dan GET
+  status memastikan tidak ada pembayaran berhasil atau pending. Satu percobaan deny
+  tidak dianggap terminal untuk seluruh sesi Snap. Tidak menambah retry dengan ID baru.
+- `404` sebelum kanal dipilih mempertahankan sesi aktif. Jika token hilang setelah
+  respons pembuatan terputus, GET 404 dapat diikuti pembuatan ulang token dengan
+  merchantOrderId sama (Midtrans menonaktifkan token lama), masih memakai deadline asli.
+- Pembuatan ulang memerlukan sisa minimal lima menit ditambah cadangan request 10 detik.
+  Jika token hilang dan waktu tidak cukup untuk memulihkannya, tandai
+  `SESSION_UNCONFIRMED` untuk pemeriksaan merchant;
+  stok tetap dipesan. Jam lokal, blanket expiry, atau GET 404 tidak menjadi bukti
+  penutupan sesi. Pending tetap harus dibatalkan/di-expire dan dikonfirmasi.
+  Error jaringan/401 bukan 404.
+- Jika status belum pasti, respons 503 `PAYMENT_STATUS_UNKNOWN`, reservasi tetap, dan
+  sinkronisasi dapat diulang. Kegagalan satu provider tidak mematikan katalog.
+- Pembayaran terlambat pada order batal/kunci stok berbeda, nominal/currency/identitas
+  provider berbeda, kanal/status tak didukung atau fraud_status tak aman ditandai
+  `review_required`/`reviewReason`; tidak mengambil stok order lain atau boleh dikirim.
+  Penanganan kasus tersebut melalui pemeriksaan merchant/Admin; refund otomatis di luar batch.
+- Pembayaran berhasil tidak diturunkan oleh pending/cancel lama. Webhook berulang tidak
+  menambah versi domain/status berulang. Kunci operasi sementara di DB mencegah proses
+  lintas instance berjalan bersamaan; tidak ada request provider di transaksi MongoDB.
+  Webhook yang bertabrakan mendapat 503 agar Midtrans mengulangnya.
+
+Kedaluwarsa gateway diperiksa juga saat membaca katalog/detail, pencocokan, wishlist,
+pesanan, dan checkout. Retry otomatis dari pembacaan dibatasi 5 detik; pembacaan
+tetap berjalan bila provider gagal. Tidak menambah cron. Sesi yang sedang dibuat
+tidak dibatalkan sebelum responsnya pasti atau batas request terlewati.
+
+Referensi: [webhook dan status](https://docs.midtrans.com/docs/https-notification-webhooks),
+[batal transaksi](https://docs.midtrans.com/reference/cancel-transaction),
+[batal sesi Snap](https://docs.midtrans.com/reference/cancel-a-snap-session),
+[blanket expiry](https://docs.midtrans.com/reference/expire-a-snap-session).
+
+## Midtrans sandbox — batch 1 (fondasi, belum diaktifkan untuk FE)
+
+Batch ini menambahkan pembuatan sesi Snap. Webhook, sinkronisasi pembayaran, dan FE
+menyusul pada batch 2–3. `MIDTRANS_ENABLED` default `false`: jangan aktifkan pada
+database bersama sebelum tiga batch selesai. Dalam keadaan nonaktif, checkout lama
+tetap manual. Jika diaktifkan pada lingkungan uji terisolasi, semua order baru
+menggunakan Midtrans; request tidak dapat memilih metode manual.
+
+Konfigurasi BE lokal: `MIDTRANS_ENABLED=true`, `MIDTRANS_SERVER_KEY` sandbox, serta
+`FRONTEND_URL` (origin FE, misalnya `http://localhost:3000`). Semua konfigurasi dan
+contoh `.env` tetap lokal. URL API Midtrans dikunci ke sandbox; tidak ada mode produksi.
+Frontend tidak menerima Server Key atau memerlukan Client Key untuk mode redirect.
+
+| Method | Route                 | Akses         | Body / hasil                                                                                                                                                  |
+| ------ | --------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| POST   | `/orders/:id/payment` | Buyer pemilik | Body `{}`. `201` sesi baru, `200` sesi tersimpan; `data: {provider: "midtrans", status: "ready", merchantOrderId, redirectUrl, expiresAt, sessionExpiresAt}`. |
+
+DTO order menambahkan `payment: {provider, status, merchantOrderId, channel, paidAt}`.
+Order tanpa metadata gateway dibaca sebagai `{provider: "manual", status: null,
+merchantOrderId: null, channel: null, paidAt: null}` tanpa menulis ulang data lama.
+Token dan URL Snap tidak disertakan pada daftar/detail order; URL hanya lewat endpoint
+pembayaran milik Buyer. Status pembuatan sesi: `not_started`, `creating`, `ready`,
+atau `unknown`; status ini terpisah dari status order/pengiriman.
+
+BE menyimpan satu merchantOrderId sebelum request provider, mengunci pembuatan sesi
+secara atomik, lalu memanggil Midtrans di luar transaksi MongoDB. Request serentak
+yang belum selesai mendapat `409 PAYMENT_IN_PROGRESS`; request berikutnya menggunakan
+sesi yang sama. Tidak ada retry otomatis untuk respons timeout/galat/malformed atau
+proses yang terhenti: state menjadi `unknown`, respons `503 PAYMENT_STATUS_UNKNOWN`,
+dan ID tidak diganti. Pemulihan melalui rekonsiliasi batch 2, bukan membuat ID baru.
+Galat provider dan kredensial tidak diteruskan ke respons klien.
+
+Payload mengaktifkan `bca_va`, `bni_va`, `bri_va`, `permata_va`, `echannel`, dan
+`other_qris`. Kanal yang benar-benar tampil tetap perlu diverifikasi di akun sandbox.
+Harga, penerima, ongkir, total, dan batas waktu berasal dari snapshot order.
+`expiry.start_time` mengacu pada pembuatan order dengan durasi 360 menit. Page expiry
+memakai sisa menit penuh dengan cadangan timeout request 10 detik agar tidak melewati
+deadline; halaman dapat berakhir sedikit lebih awal. Sesi tidak dibuat ketika sisa
+waktu kurang dari lima menit ditambah cadangan 10 detik (`409 PAYMENT_WINDOW_TOO_SHORT`);
+deadline enam jam tidak diperpanjang. Sesi yang melewati `sessionExpiresAt` menghasilkan
+`409 PAYMENT_SESSION_EXPIRED`, bukan sesi baru.
+
+Sampai rekonsiliasi tersedia, reservasi dengan sesi `creating/ready/unknown` tidak
+dilepas otomatis dan pembatalannya ditolak `409 PAYMENT_CHECK_REQUIRED`. Order gateway
+yang belum pernah memulai sesi masih bisa dibatalkan/kedaluwarsa. Unggah bukti dan
+persetujuan manual ditolak pada semua order gateway. Ini pembatasan sementara batch 1,
+bukan alur final. Gateway nonaktif memberi `503 PAYMENT_UNAVAILABLE`; metode manual,
+order bukan Menunggu Pembayaran, atau kunci stok berubah memberi `409`. Aturan
+401/403/404/422 tetap berlaku. Semua respons endpoint sesi memakai `Cache-Control: no-store`.
+
+Referensi: [Snap](https://docs.midtrans.com/docs/snap-snap-integration-guide),
+[kanal pembayaran](https://docs.midtrans.com/reference/request-body-json-parameter),
+[expiry dan page expiry](https://docs.midtrans.com/reference/json-objects).
+
 ## Perbaikan QA pembayaran
 
 DTO order menyertakan `version` (integer). Semua POST `/api/admin/orders/:id/actions`

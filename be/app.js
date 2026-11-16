@@ -30,6 +30,7 @@ function createApp(config) {
   app.use("/api/admin/products", require("./routes/adminProductRoutes"));
   app.use("/api/wishlist", require("./routes/wishlistRoutes"));
   app.use("/api/orders", orderRouter);
+  app.use("/api/payments/midtrans", require("./routes/midtransRoutes"));
   app.use("/api/admin/orders", adminOrderRouter);
   app.use("/api", require("./routes/reviewRoutes"));
   app.use((req, res, next) => next(new ApiError(404, "NOT_FOUND", "Halaman API tidak ditemukan.")));
