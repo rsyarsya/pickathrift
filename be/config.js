@@ -60,10 +60,13 @@ function getConfig(env = process.env) {
   }
   const port = Number(env.PORT ?? 5000);
   if (!Number.isInteger(port) || port < 0 || port > 65535) throw new Error("PORT tidak valid.");
+  if (env.TRUST_PROXY !== undefined && !/^[0-5]$/.test(env.TRUST_PROXY))
+    throw new Error("TRUST_PROXY harus jumlah proxy terpercaya 0 sampai 5.");
   return {
     mongoUri: env.MONGODB_URI,
     jwtSecret: env.JWT_SECRET,
     port,
+    trustProxy: env.TRUST_PROXY === undefined ? false : Number(env.TRUST_PROXY),
     uploadDir: env.UPLOAD_DIR,
     googleClientId: env.GOOGLE_CLIENT_ID?.trim() || undefined,
     nodeEnv: env.NODE_ENV ?? "development",
