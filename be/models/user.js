@@ -13,7 +13,9 @@ const userSchema = new mongoose.Schema(
       maxlength: 254,
       match: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
     },
-    password: { type: String, required: true, select: false },
+    // Akun yang dibuat lewat Google tidak punya kata sandi.
+    password: { type: String, select: false },
+    googleId: { type: String, unique: true, sparse: true },
     phone: { type: String, default: "", maxlength: 30 },
     address: { type: addressSchema, default: null },
     legacy_address: { type: String, select: false },
