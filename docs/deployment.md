@@ -27,7 +27,7 @@ contohnya tetap lokal, tidak dimasukkan ke Git.
 | Service | Variabel                       | Kebutuhan                                                                                                                |
 | ------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
 | FE      | `NEXT_PUBLIC_API_URL`          | Origin HTTPS BE, tanpa akhiran `/api`. Wajib diisi sebelum build; fallback localhost hanya untuk lokal.                  |
-| FE      | `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | Opsional. Harus sama dengan Client ID BE dan mengizinkan origin FE pada Google Cloud.                                    |
+| FE      | `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | Wajib untuk demo tim. Harus sama dengan Client ID BE dan mengizinkan origin FE pada Google Cloud.                        |
 | BE      | `NODE_ENV`                     | `production`                                                                                                             |
 | BE      | `MONGODB_URI`                  | MongoDB replica set atau Atlas, dengan kredensial dan akses jaringan untuk service BE.                                   |
 | BE      | `JWT_SECRET`                   | Rahasia acak panjang, berbeda dari data uji.                                                                             |
@@ -37,7 +37,7 @@ contohnya tetap lokal, tidak dimasukkan ke Git.
 | BE      | `MIDTRANS_NOTIFICATION_KEY`    | Key utama/default penanda tangan notifikasi dan penutupan Snap, jika berbeda dari key API.                               |
 | BE      | `MIDTRANS_NOTIFICATION_URL`    | Opsional: URL HTTPS publik `/api/payments/midtrans/notification`. Tanpa override, set URL tersebut di dashboard sandbox. |
 | BE      | `UPLOAD_DIR`                   | Direktori pada disk persisten, dapat ditulis BE.                                                                         |
-| BE      | `GOOGLE_CLIENT_ID`             | Opsional; diperlukan bila tombol Google di FE diaktifkan.                                                                |
+| BE      | `GOOGLE_CLIENT_ID`             | Wajib untuk demo tim yang memakai Google Login; isi sama dengan Client ID FE.                                            |
 | BE      | `TRUST_PROXY`                  | Jumlah hop reverse proxy yang benar, 0–5. Default tidak mempercayai header proxy.                                        |
 
 `TRUST_PROXY=1` hanya cocok bila seluruh request memang melalui satu reverse proxy
