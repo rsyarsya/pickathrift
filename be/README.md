@@ -16,9 +16,16 @@ Server Key hanya di BE. Jangan commit `.env` atau contohnya. Bila gateway nonakt
 checkout baru ditolak `503 PAYMENT_UNAVAILABLE` sebelum stok dikunci; tidak beralih
 ke transfer manual. Pesanan manual yang sudah ada tetap bisa diselesaikan.
 
+Jika memakai key API tambahan, isi `MIDTRANS_NOTIFICATION_KEY` dengan Server Key
+utama/default yang menandatangani webhook dan menutup sesi Snap. Jika key API dan
+key utama sama, variabel ini boleh tidak diisi. Nama `MIDTRANS_NOTIFICATION_URL`
+berbeda: nilainya alamat HTTPS publik route notifikasi, bukan key.
+
 Di dashboard sandbox Midtrans, aktifkan VA dan QRIS. Isi Payment Notification URL dengan
 `https://<alamat-publik-be>/api/payments/midtrans/notification`; untuk lokal gunakan tunnel
-HTTPS ke port BE. Halaman Snap memakai redirect ke `/pesanan/:id` pada `FRONTEND_URL`.
+HTTPS ke route notifikasi BE. Alternatifnya, isi `MIDTRANS_NOTIFICATION_URL` lokal
+untuk override per sesi melalui header Snap; pengaturan global merchant tetap utuh.
+Halaman Snap memakai redirect ke `/pesanan/:id` pada `FRONTEND_URL`.
 VA/QRIS sandbox dibayar lewat simulator Midtrans, tanpa uang sungguhan. Server memeriksa
 hasil via webhook dan GET status, bukan parameter callback browser. Lihat [API.md](API.md).
 

@@ -5,6 +5,11 @@ function midtransConfig(env) {
   const serverKey = env.MIDTRANS_SERVER_KEY?.trim();
   if (!/^SB-Mid-server-\S+$/.test(serverKey ?? ""))
     throw new Error("MIDTRANS_SERVER_KEY sandbox wajib diisi.");
+  const notificationKey = env.MIDTRANS_NOTIFICATION_KEY?.trim() || serverKey;
+  // Key utama penanda tangan dapat berawalan Mid-server-, termasuk
+  // notifikasi sandbox. Semua URL API tetap dikunci ke sandbox.
+  if (!/^(?:SB-)?Mid-server-\S+$/.test(notificationKey))
+    throw new Error("MIDTRANS_NOTIFICATION_KEY harus Server Key utama akun.");
   let url;
   try {
     url = new globalThis.URL(env.FRONTEND_URL);
@@ -23,7 +28,30 @@ function midtransConfig(env) {
     )
   )
     throw new Error("FRONTEND_URL harus origin HTTPS atau HTTP localhost.");
-  return { enabled: true, serverKey, frontendUrl: url.origin };
+  let notificationUrl;
+  if (env.MIDTRANS_NOTIFICATION_URL?.trim()) {
+    try {
+      const target = new globalThis.URL(env.MIDTRANS_NOTIFICATION_URL.trim());
+      if (
+        target.protocol !== "https:" ||
+        target.username ||
+        target.password ||
+        target.hash ||
+        target.href.includes(",")
+      )
+        throw new Error();
+      notificationUrl = target.href;
+    } catch {
+      throw new Error("MIDTRANS_NOTIFICATION_URL harus satu URL HTTPS publik.");
+    }
+  }
+  return {
+    enabled: true,
+    serverKey,
+    notificationKey,
+    frontendUrl: url.origin,
+    ...(notificationUrl ? { notificationUrl } : {}),
+  };
 }
 
 function getConfig(env = process.env) {

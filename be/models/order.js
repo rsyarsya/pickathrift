@@ -112,6 +112,7 @@ const orderSchema = new mongoose.Schema(
               "UNSUPPORTED_PAYMENT",
               "UNEXPECTED_STATUS",
               "LATE_SETTLEMENT",
+              "SESSION_UNCONFIRMED",
               null,
             ],
             default: null,

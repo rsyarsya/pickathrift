@@ -1,6 +1,7 @@
 // Tidak menerima base URL dari environment/request: batch ini khusus sandbox.
 const SNAP_URL = "https://app.sandbox.midtrans.com/snap/v1/transactions";
 const REQUEST_TIMEOUT_MS = 10000;
+const MIN_PAGE_MINUTES = 5;
 const UUID = "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}";
 const ENABLED_PAYMENTS = ["bca_va", "bni_va", "bri_va", "permata_va", "echannel", "other_qris"];
 
@@ -14,7 +15,8 @@ function validSnapSession(token, redirectUrl) {
       !url.password &&
       !url.search &&
       !url.hash &&
-      new RegExp(`^/snap/v\\d+/redirection/${UUID}$`, "i").test(url.pathname)
+      new RegExp(`^/snap/v\\d+/redirection/${UUID}$`, "i").test(url.pathname) &&
+      url.pathname.split("/").at(-1).toLowerCase() === token.toLowerCase()
     );
   } catch {
     return false;
@@ -70,6 +72,7 @@ async function createSnap(config, payload) {
       Authorization: `Basic ${Buffer.from(config.serverKey + ":").toString("base64")}`,
       "Content-Type": "application/json",
       Accept: "application/json",
+      ...(config.notificationUrl ? { "X-Override-Notification": config.notificationUrl } : {}),
     },
     body: JSON.stringify(payload),
     signal: globalThis.AbortSignal.timeout(REQUEST_TIMEOUT_MS),
@@ -86,9 +89,8 @@ async function providerRequest(config, url, method = "GET", snap = false) {
     method,
     redirect: "error",
     headers: {
-      Authorization: snap
-        ? config.serverKey
-        : `Basic ${Buffer.from(config.serverKey + ":").toString("base64")}`,
+      // Endpoint penutupan Snap sandbox memakai Basic auth dengan key utama akun.
+      Authorization: `Basic ${Buffer.from((snap ? (config.notificationKey ?? config.serverKey) : config.serverKey) + ":").toString("base64")}`,
       Accept: "application/json",
       "Content-Type": "application/json",
     },
@@ -141,6 +143,7 @@ module.exports = {
   snapPayload,
   validSnapSession,
   REQUEST_TIMEOUT_MS,
+  MIN_PAGE_MINUTES,
   getStatus,
   stopTransaction,
   closeSnap,

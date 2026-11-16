@@ -15,9 +15,11 @@ atau mengubah jumlah uang dengan tebakan. Pengiriman order dengan flag itu ditol
 Lease pemeriksaan bersifat sementara (90 detik), tersimpan di DB dan dapat diambil
 alih setelah kedaluwarsa; tidak perlu menghapusnya saat restart.
 
-Tenggat sesi/token mengikuti blanket expiry asli enam jam. Untuk token yang hilang,
-pemeriksaan setelah deadline ditambah 10 detik masih wajib membaca status provider;
-respons 404 sebelum deadline tidak pernah menjadi alasan melepas stok.
+Tenggat sesi/token mengikuti blanket expiry asli enam jam. Token yang hilang hanya
+dipulihkan memakai ID merchant sama bila sisa waktu cukup untuk sesi minimal lima
+menit plus cadangan request 10 detik. Jika tidak cukup, `SESSION_UNCONFIRMED` menahan
+stok untuk pemeriksaan merchant. Deadline lokal dan respons 404, termasuk setelah
+enam jam, tidak pernah menggantikan konfirmasi penutupan sesi Snap.
 
 ## Tambahan Midtrans sandbox — batch 1
 

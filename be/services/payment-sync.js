@@ -124,7 +124,7 @@ async function claim(id, mode, now) {
   return { order, token };
 }
 
-async function apply(id, token, data, { closed = false, reason, now }) {
+async function apply(id, token, data, { closed = false, reason, reviewReason, now }) {
   return mongoose.connection.transaction(async (session) => {
     const order = await Order.findOne({
       _id: id,
@@ -143,7 +143,7 @@ async function apply(id, token, data, { closed = false, reason, now }) {
       if (payment.status !== "settled") payment.status = "review_required";
     };
     const issue = data ? snapshotIssue(data, order) : null;
-    if (issue) review(issue);
+    if (reviewReason || issue) review(reviewReason ?? issue);
     else if (!payment.reviewReason) {
       // Hasil berhasil monotonik: pembacaan pending/cancel yang terlambat tidak menurunkannya.
       if (payment.status !== "settled") {
@@ -207,7 +207,7 @@ async function apply(id, token, data, { closed = false, reason, now }) {
 
 async function recoverSession(order, config, token, now) {
   const minutes = Math.floor((order.expiresAt - now - client.REQUEST_TIMEOUT_MS) / 60000);
-  if (minutes < 1) throw uncertain();
+  if (minutes < client.MIN_PAGE_MINUTES) throw uncertain();
   const payload = client.snapPayload(order, {}, config.midtrans.frontendUrl, minutes);
   // Alamat snapshot cukup; email sengaja tidak ditebak jika proses awal terputus.
   const result = await client.createSnap(config.midtrans, payload);
@@ -267,8 +267,11 @@ async function reconcile(id, config, { mode = "sync", now = new Date() } = {}) {
       ["cancel", "expire"].includes(mode) ||
       due ||
       ["cancel", "expire", "deny", "failure"].includes(data?.transaction_status);
-    if (!data && !order.payment.snapToken && now - order.expiresAt < client.REQUEST_TIMEOUT_MS)
+    if (!data && !order.payment.snapToken) {
+      if (order.expiresAt - now < client.MIN_PAGE_MINUTES * 60000 + client.REQUEST_TIMEOUT_MS)
+        return await apply(id, token, null, { now, reviewReason: "SESSION_UNCONFIRMED" });
       order = await recoverSession(order, config, token, now);
+    }
     if (!stopping) return data ? await apply(id, token, data, { now }) : order;
 
     if (data?.transaction_status === "pending") {
@@ -285,8 +288,7 @@ async function reconcile(id, config, { mode = "sync", now = new Date() } = {}) {
     let closed = false;
     if (order.payment.snapToken)
       closed = await client.closeSnap(config.midtrans, order.payment.snapToken);
-    // Blanket expiry sejak createdAt tetap berlaku bila respons token pertama hilang.
-    if (!closed && now - order.expiresAt >= client.REQUEST_TIMEOUT_MS) closed = true;
+    // Jam lokal atau GET 404 tidak membuktikan sesi Snap sudah ditutup.
     if (!closed) throw uncertain();
     const latest = await client.getStatus(config.midtrans, order.payment.merchantOrderId);
     if (latest && (snapshotIssue(latest, order) || latest.transaction_status === "settlement"))
@@ -324,7 +326,7 @@ async function reconcile(id, config, { mode = "sync", now = new Date() } = {}) {
 async function notification(body, config) {
   if (!config.midtrans?.enabled)
     throw new ApiError(503, "PAYMENT_UNAVAILABLE", "Pembayaran Midtrans belum tersedia.");
-  verifyNotification(body, config.midtrans.serverKey);
+  verifyNotification(body, config.midtrans.notificationKey ?? config.midtrans.serverKey);
   const order = await Order.findOne({ "payment.merchantOrderId": body.order_id });
   if (!order) throw new ApiError(404, "NOT_FOUND", "Transaksi tidak ditemukan.");
   if (!amountMatches(body.gross_amount, order.total_price))

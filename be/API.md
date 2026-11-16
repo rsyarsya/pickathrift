@@ -26,6 +26,19 @@ sampai FE batch 3 selesai; pengujian memakai database terisolasi.
 | POST   | `/orders/:id/payment/sync`        | Buyer pemilik atau Admin, body `{}`. Respons DTO order; maksimal satu percobaan sinkronisasi per 5 detik per order (`429 PAYMENT_SYNC_THROTTLED`).                                        |
 | POST   | `/orders/:id/cancel`              | Buyer pemilik; tetap idempotent pada order batal. Sesi/transaksi gateway ditutup dan diperiksa dahulu. Jika pembayaran sudah berhasil: simpan hasil lunas, lalu `409 INVALID_TRANSITION`. |
 
+Konfigurasi BE: `MIDTRANS_SERVER_KEY` adalah key API sandbox. Bila key API tambahan
+berbeda dari key utama/default penanda tangan notifikasi, isi juga
+`MIDTRANS_NOTIFICATION_KEY` dengan key utama tersebut. Key utama digunakan untuk
+signature dan Basic auth penutupan sesi Snap; key API tetap dipakai untuk membuat
+sesi, membaca status, dan membatalkan transaksi. Key utama dapat memiliki
+awalan `Mid-server-`; semua endpoint provider tetap dikunci ke domain sandbox.
+Kedua key hanya berada di BE dan tidak disertakan pada respons/log.
+
+`MIDTRANS_NOTIFICATION_URL` opsional berisi satu URL HTTPS publik ke route notifikasi.
+Server meneruskannya sebagai `X-Override-Notification` ketika membuat sesi Snap,
+sehingga QA lokal tidak perlu mengubah pengaturan notifikasi global merchant.
+Tanpa override, Midtrans memakai URL pada dashboard. URL bukan tempat menyimpan key.
+
 Webhook memeriksa signature dengan perbandingan waktu konstan, merchantOrderId dan
 nominal, lalu mengambil status langsung dari Midtrans. Status body webhook/callback
 FE tidak menjadi sumber keputusan. Signature tidak mencakup seluruh field webhook,
@@ -49,10 +62,12 @@ kedaluwarsa tetap `buyer/expired`. Token, URL Snap, dan kunci sinkronisasi tetap
 - `404` sebelum kanal dipilih mempertahankan sesi aktif. Jika token hilang setelah
   respons pembuatan terputus, GET 404 dapat diikuti pembuatan ulang token dengan
   merchantOrderId sama (Midtrans menonaktifkan token lama), masih memakai deadline asli.
-- Pembuatan ulang memerlukan sisa minimal 70 detik. Bila token tidak dapat ditemukan
-  setelah batas enam jam, tunggu tambahan 10 detik dan GET status; hanya 404 yang
-  dikombinasikan dengan blanket expiry asli membuktikan sesi tidak dapat dipakai lagi.
-  Pending tetap harus dibatalkan/di-expire dan dikonfirmasi. Error jaringan/401 bukan 404.
+- Pembuatan ulang memerlukan sisa minimal lima menit ditambah cadangan request 10 detik.
+  Jika token hilang dan waktu tidak cukup untuk memulihkannya, tandai
+  `SESSION_UNCONFIRMED` untuk pemeriksaan merchant;
+  stok tetap dipesan. Jam lokal, blanket expiry, atau GET 404 tidak menjadi bukti
+  penutupan sesi. Pending tetap harus dibatalkan/di-expire dan dikonfirmasi.
+  Error jaringan/401 bukan 404.
 - Jika status belum pasti, respons 503 `PAYMENT_STATUS_UNKNOWN`, reservasi tetap, dan
   sinkronisasi dapat diulang. Kegagalan satu provider tidak mematikan katalog.
 - Pembayaran terlambat pada order batal/kunci stok berbeda, nominal/currency/identitas
@@ -112,8 +127,8 @@ Harga, penerima, ongkir, total, dan batas waktu berasal dari snapshot order.
 `expiry.start_time` mengacu pada pembuatan order dengan durasi 360 menit. Page expiry
 memakai sisa menit penuh dengan cadangan timeout request 10 detik agar tidak melewati
 deadline; halaman dapat berakhir sedikit lebih awal. Sesi tidak dibuat ketika sisa
-waktu kurang dari 70 detik (`409 PAYMENT_WINDOW_TOO_SHORT`); deadline enam jam tidak
-diperpanjang. Sesi yang melewati `sessionExpiresAt` menghasilkan
+waktu kurang dari lima menit ditambah cadangan 10 detik (`409 PAYMENT_WINDOW_TOO_SHORT`);
+deadline enam jam tidak diperpanjang. Sesi yang melewati `sessionExpiresAt` menghasilkan
 `409 PAYMENT_SESSION_EXPIRED`, bukan sesi baru.
 
 Sampai rekonsiliasi tersedia, reservasi dengan sesi `creating/ready/unknown` tidak

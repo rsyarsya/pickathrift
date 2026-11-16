@@ -123,6 +123,61 @@ test("config: opt-in, secret sandbox dan origin FE wajib; production key ditolak
   );
 });
 
+test("config: key notifikasi terpisah dan override webhook harus HTTPS tanpa kredensial", () => {
+  const base = {
+    MONGODB_URI: "mongodb://unused",
+    JWT_SECRET: secret,
+    MIDTRANS_ENABLED: "true",
+    MIDTRANS_SERVER_KEY: serverKey,
+    FRONTEND_URL: "http://localhost:3000",
+  };
+  assert.equal(getConfig(base).midtrans.notificationKey, serverKey);
+  const notificationKey = "SB-Mid-server-" + randomBytes(24).toString("hex");
+  assert.equal(
+    getConfig({ ...base, MIDTRANS_NOTIFICATION_KEY: notificationKey }).midtrans.notificationKey,
+    notificationKey,
+  );
+  const primaryKey = notificationKey.replace(/^SB-/, "");
+  assert.equal(
+    getConfig({ ...base, MIDTRANS_NOTIFICATION_KEY: primaryKey }).midtrans.notificationKey,
+    primaryKey,
+  );
+  assert.throws(
+    () => getConfig({ ...base, MIDTRANS_NOTIFICATION_KEY: "SB-Mid-client-wrong" }),
+    /MIDTRANS_NOTIFICATION_KEY/,
+  );
+  for (const url of [
+    "bad",
+    "http://example.test/hook",
+    "https://user:pass@example.test/hook",
+    "https://example.test/#token",
+    "https://one.test,https://two.test",
+  ])
+    assert.throws(
+      () => getConfig({ ...base, MIDTRANS_NOTIFICATION_URL: url }),
+      /MIDTRANS_NOTIFICATION_URL/,
+    );
+  assert.equal(
+    getConfig({
+      ...base,
+      MIDTRANS_NOTIFICATION_URL: "https://example.test/api/payments/midtrans/notification",
+    }).midtrans.notificationUrl,
+    "https://example.test/api/payments/midtrans/notification",
+  );
+});
+
+test("override webhook diteruskan hanya pada request Snap dari konfigurasi BE", async () => {
+  config.midtrans.notificationUrl = "https://example.test/api/payments/midtrans/notification";
+  try {
+    const order = (await place()).data;
+    assert.equal((await pay(order.id)).status, 201);
+    assert.equal(calls[0].init.headers["X-Override-Notification"], config.midtrans.notificationUrl);
+    assert.ok(!JSON.stringify(order).includes("notificationUrl"));
+  } finally {
+    delete config.midtrans.notificationUrl;
+  }
+});
+
 test("checkout gateway: metadata tersimpan, harga server, VA/QRIS, expiry dan URL kembali", async () => {
   const order = (await place()).data;
   await User.updateOne(
@@ -260,6 +315,17 @@ for (const [label, handler] of [
   ["JSON rusak", () => new globalThis.Response("not json", { status: 201 })],
   ["respons kosong", () => new globalThis.Response("null", { status: 201 })],
   [
+    "token dan URL berbeda",
+    () =>
+      new globalThis.Response(
+        JSON.stringify({
+          token: randomUUID(),
+          redirect_url: `https://app.sandbox.midtrans.com/snap/v4/redirection/${randomUUID()}`,
+        }),
+        { status: 201 },
+      ),
+  ],
+  [
     "URL asing",
     () =>
       new globalThis.Response(
@@ -366,7 +432,7 @@ test("belum memulai sesi: batal/kedaluwarsa aman dan tidak bisa dibayar lagi", a
 
 test("deadline tidak diperpanjang: tidak memulai dekat deadline dan tidak mengganti sesi berakhir", async () => {
   const order = (await place()).data;
-  const expiresAt = new Date(Date.now() + 65000);
+  const expiresAt = new Date(Date.now() + 300000);
   await Order.collection.updateOne(
     { _id: new mongoose.Types.ObjectId(order.id) },
     {

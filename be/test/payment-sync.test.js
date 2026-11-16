@@ -64,7 +64,10 @@ before(async () => {
       );
     }
     if (url.includes("/snap/v1/transactions/")) {
-      assert.equal(init.headers.Authorization, serverKey);
+      assert.equal(
+        init.headers.Authorization,
+        `Basic ${Buffer.from(config.midtrans.notificationKey + ":").toString("base64")}`,
+      );
       const snapToken = url.split("/").at(-2);
       const state = [...states.values()].find((entry) => entry.token === snapToken);
       if (onClose) return onClose(state);
@@ -217,6 +220,30 @@ test("webhook palsu/replay status tidak dipercaya; GET provider tetap pending", 
   assert.equal((await Product.findById(product.id)).status, "reserved");
   assert.equal((await notify(order, { gross_amount: "1.00" })).code, "PAYMENT_MISMATCH");
   assert.equal((await request("/payments/midtrans/notification", {}, null)).status, 422);
+});
+
+test("webhook memakai key notifikasi terpisah; akses API tetap memakai server key", async () => {
+  const order = await place();
+  stateOf(order).status = "settlement";
+  const notificationKey = "Mid-server-" + randomBytes(24).toString("hex");
+  config.midtrans.notificationKey = notificationKey;
+  try {
+    assert.equal((await notify(order)).code, "INVALID_SIGNATURE");
+    const body = signed(order);
+    body.signature_key = createHash("sha512")
+      .update(body.order_id + body.status_code + body.gross_amount + notificationKey)
+      .digest("hex");
+    assert.equal((await request("/payments/midtrans/notification", body, null)).status, 200);
+    assert.equal((await Order.findById(order.id)).status, "DIPROSES");
+    const result = await request(`/orders/${order.id}`, undefined, token, "GET");
+    assert.ok(!JSON.stringify(result).includes(notificationKey));
+    product = await Product.create(productInput());
+    const unpaid = await place();
+    assert.equal((await cancel(unpaid)).status, 200);
+    assert.equal(stateOf(unpaid).closed, true);
+  } finally {
+    config.midtrans.notificationKey = serverKey;
+  }
 });
 
 test("sinkronisasi privat: owner/Admin, role/ownership, body, throttle dan metadata tidak bocor", async () => {
@@ -397,15 +424,27 @@ test("expiry kanal lebih singkat dibaca dan dipakai tanpa memperpanjang enam jam
   assert.equal((await sync(order)).data.status, "DIBATALKAN");
 });
 
-test("blanket expiry + GET 404 menangani token hilang, 404 saja tidak cukup", async () => {
+test("token hilang setelah deadline dan GET 404: perlu review, stok tetap terkunci", async () => {
   const order = await place(token, false);
   failCreate = true;
   assert.equal((await request(`/orders/${order.id}/payment`, {})).status, 503);
   await backdate(order);
   failCreate = false;
   await expireOrders(new Date(), config);
-  assert.equal((await Order.findById(order.id)).status, "DIBATALKAN");
-  assert.equal((await Product.findById(product.id)).status, "available");
+  const saved = await Order.findById(order.id);
+  assert.equal(saved.status, "MENUNGGU_PEMBAYARAN");
+  assert.equal(saved.payment.reviewReason, "SESSION_UNCONFIRMED");
+  assert.equal((await Product.findById(product.id)).status, "reserved");
+  await assertDataReady(mongoose.connection);
+});
+
+test("deadline lokal lewat tidak menggantikan konfirmasi penutupan sesi Snap", async () => {
+  const order = await place();
+  await backdate(order);
+  onClose = () => json({ error_messages: ["token not found"] }, 404);
+  assert.equal((await sync(order)).status, 503);
+  assert.equal((await Order.findById(order.id)).status, "MENUNGGU_PEMBAYARAN");
+  assert.equal((await Product.findById(product.id)).status, "reserved");
 });
 
 for (const [name, extra] of [

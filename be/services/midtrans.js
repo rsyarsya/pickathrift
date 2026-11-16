@@ -2,7 +2,12 @@ const mongoose = require("mongoose");
 const Order = require("../models/order");
 const Product = require("../models/products");
 const { ApiError } = require("../lib/errors");
-const { createSnap, snapPayload, REQUEST_TIMEOUT_MS } = require("../lib/midtrans-client");
+const {
+  createSnap,
+  snapPayload,
+  REQUEST_TIMEOUT_MS,
+  MIN_PAGE_MINUTES,
+} = require("../lib/midtrans-client");
 
 const unknown = () =>
   new ApiError(
@@ -80,7 +85,7 @@ async function paymentSession(id, account, config) {
       return { created: false, order };
     }
     const pageMinutes = Math.floor((order.expiresAt - now - REQUEST_TIMEOUT_MS) / 60000);
-    if (pageMinutes < 1)
+    if (pageMinutes < MIN_PAGE_MINUTES)
       throw new ApiError(
         409,
         "PAYMENT_WINDOW_TOO_SHORT",

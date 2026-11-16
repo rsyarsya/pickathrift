@@ -142,7 +142,7 @@ function Detail({ product }: { product: Product }) {
           </div>
 
           <p className="text-caption text-muted">
-            Hanya ada satu. Ongkir Rp15.000, bayar lewat transfer bank.
+            Hanya ada satu. Ongkir Rp15.000, bayar lewat Virtual Account atau QRIS.
           </p>
 
           <section className="flex flex-col gap-10 border-t border-line pt-16">
