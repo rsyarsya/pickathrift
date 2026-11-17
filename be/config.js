@@ -54,6 +54,34 @@ function midtransConfig(env) {
   };
 }
 
+function getStorageConfig(env = process.env) {
+  const provider = env.STORAGE_DRIVER ?? "local";
+  if (provider === "local") return { provider };
+  if (provider !== "supabase") throw new Error("STORAGE_DRIVER harus local/supabase.");
+  let url;
+  try {
+    url = new globalThis.URL(env.SUPABASE_URL);
+  } catch {
+    throw new Error("SUPABASE_URL wajib diisi.");
+  }
+  if (
+    url.protocol !== "https:" ||
+    url.username ||
+    url.password ||
+    url.pathname !== "/" ||
+    url.search ||
+    url.hash
+  )
+    throw new Error("SUPABASE_URL harus origin HTTPS.");
+  const secretKey = env.SUPABASE_SECRET_KEY?.trim();
+  if (!/^sb_secret_\S+$/.test(secretKey ?? ""))
+    throw new Error("SUPABASE_SECRET_KEY wajib berupa secret key server.");
+  const bucket = env.SUPABASE_STORAGE_BUCKET?.trim();
+  if (!/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,99}$/.test(bucket ?? ""))
+    throw new Error("SUPABASE_STORAGE_BUCKET wajib diisi dengan nama bucket.");
+  return { provider, url: url.origin, secretKey, bucket };
+}
+
 function getConfig(env = process.env) {
   for (const name of ["MONGODB_URI", "JWT_SECRET"]) {
     if (typeof env[name] !== "string" || !env[name].trim()) throw new Error(`${name} wajib diisi.`);
@@ -68,10 +96,11 @@ function getConfig(env = process.env) {
     port,
     trustProxy: env.TRUST_PROXY === undefined ? false : Number(env.TRUST_PROXY),
     uploadDir: env.UPLOAD_DIR,
+    storage: getStorageConfig(env),
     googleClientId: env.GOOGLE_CLIENT_ID?.trim() || undefined,
     nodeEnv: env.NODE_ENV ?? "development",
     midtrans: midtransConfig(env),
   };
 }
 
-module.exports = { getConfig };
+module.exports = { getConfig, getStorageConfig };

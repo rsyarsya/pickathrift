@@ -17,6 +17,7 @@ async function start(config = getConfig()) {
       error.code = "REPLICA_SET_REQUIRED";
       throw error;
     }
+    await require("./services/files").assertStorageReady(config);
     await assertDataReady(mongoose.connection, config);
     await User.createIndexes();
     await Wishlist.createIndexes();
@@ -58,7 +59,7 @@ if (require.main === module) {
         return;
       }
       console.error(
-        "Backend gagal dimulai. Periksa MONGODB_URI, JWT_SECRET, PORT, dan koneksi database.",
+        "Backend gagal dimulai. Periksa konfigurasi database, Storage, JWT_SECRET, PORT, dan koneksi.",
       );
       process.exitCode = 1;
     });

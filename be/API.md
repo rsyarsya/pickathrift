@@ -1,5 +1,22 @@
 # Kontrak API BE — batch 1–6
 
+## Penyimpanan Supabase
+
+`STORAGE_DRIVER=supabase` menyimpan gambar ke bucket private pada `SUPABASE_URL`, memakai
+`SUPABASE_SECRET_KEY` server dan `SUPABASE_STORAGE_BUCKET`. Default `local` tetap tersedia
+untuk pengembangan/tes. Startup memeriksa akses bucket dan menolak bucket public.
+
+- `POST /api/admin/product-images` tetap mengembalikan `/uploads/products/<filename>`.
+  `GET` path tersebut meneruskan gambar dari Supabase melalui BE, tanpa mengekspos key.
+- Bukti bayar manual lama tetap di `/api/orders/:id/payment-proof`; akses hanya pemilik/Admin.
+  Objek memakai prefix `products/` atau `proofs/` di bucket yang sama. Tidak ada route publik proofs.
+- Validasi isi JPG/PNG, batas 2 MiB dan maksimal empat foto tetap berlaku.
+- Objek hilang: `404 FILE_UNAVAILABLE`. Storage gagal: `503 STORAGE_UNAVAILABLE`, tanpa
+  detail kredensial. Upload gagal tidak beralih ke disk lokal. Upload parsial dibersihkan;
+  bila pembersihan juga gagal, BE mencatat pesan tanpa key dan mempertahankan galat awal.
+- Peralihan driver tidak memindahkan file lama otomatis. Salin file lama ke prefix dan nama
+  yang sama sebelum mengganti driver pada database yang sudah dipakai; simpan backup lokal.
+
 ## Midtrans sandbox — batch 3 (FE dan checkout baru)
 
 Runtime dari `getConfig()` hanya membuat checkout gateway: bila `MIDTRANS_ENABLED=false`,
