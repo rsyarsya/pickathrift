@@ -158,9 +158,10 @@ describe("produk Admin dari API", () => {
   });
 
   it("foto dikirim sebagai multipart images dan urutan foto utama dipertahankan", async () => {
-    const fetcher = vi.fn<typeof fetch>(async () =>
-      reply(["/uploads/products/utama.png", "/uploads/products/detail.jpg"], 201),
-    );
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(reply(["/uploads/products/utama.png"], 201))
+      .mockResolvedValueOnce(reply(["/uploads/products/detail.jpg"], 201));
     vi.stubGlobal("fetch", fetcher);
     const paths = await uploadProductImages([
       new File(["png"], "utama.png", { type: "image/png" }),
@@ -170,15 +171,27 @@ describe("produk Admin dari API", () => {
     expect(request.url).toBe(`${API_URL}/api/admin/product-images`);
     expect(request.headers.get("Content-Type")).toMatch(/^multipart\/form-data; boundary=/);
     const form = await request.formData();
-    expect([...form.keys()]).toEqual(["images", "images"]);
-    expect(form.getAll("images").map((file) => (file as File).name)).toEqual([
-      "utama.png",
-      "detail.jpg",
-    ]);
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect([...form.keys()]).toEqual(["images"]);
+    expect((form.get("images") as File).name).toBe("utama.png");
+    const second = await new Request(...fetcher.mock.calls[1]!).formData();
+    expect([...second.keys()]).toEqual(["images"]);
+    expect((second.get("images") as File).name).toBe("detail.jpg");
     expect(paths).toEqual([
       `${API_URL}/uploads/products/utama.png`,
       `${API_URL}/uploads/products/detail.jpg`,
     ]);
+  });
+
+  it("berhenti dan menampilkan galat saat upload berikutnya gagal", async () => {
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(reply(["/uploads/products/utama.png"], 201))
+      .mockResolvedValueOnce(failure(503, "STORAGE_UNAVAILABLE"));
+    vi.stubGlobal("fetch", fetcher);
+    const photo = new File(["png"], "uji.png", { type: "image/png" });
+    await expect(uploadProductImages([photo, photo, photo])).rejects.toMatchObject({ status: 503 });
+    expect(fetcher).toHaveBeenCalledTimes(2);
   });
 
   it("menolak jumlah, tipe, dan ukuran berkas sebelum unggah", async () => {

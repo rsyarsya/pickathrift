@@ -22,7 +22,7 @@
   "private": true,
   "type": "commonjs",
   "engines": {
-    "node": ">=22"
+    "node": "22.x"
   },
   "scripts": {
     "start": "node webthrift.js",

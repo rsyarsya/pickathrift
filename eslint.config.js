@@ -6,7 +6,14 @@ import prettier from "eslint-config-prettier";
 
 export default tseslint.config(
   {
-    ignores: ["**/node_modules/**", "**/.next/**", "**/dist/**", "**/out/**", ".claude/**"],
+    ignores: [
+      "**/node_modules/**",
+      "**/.next/**",
+      "**/.vercel/**",
+      "**/dist/**",
+      "**/out/**",
+      ".claude/**",
+    ],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,

@@ -1,5 +1,44 @@
 # Deployment PickaThrift
 
+## Target Vercel: BE dahulu, lalu FE
+
+Buat dua project dari repository yang sama, branch production `main`:
+
+| Project         | Root Directory | Framework | Node |
+| --------------- | -------------- | --------- | ---- |
+| pickathrift-api | `be`           | Express   | 22.x |
+| pickathrift-web | `fe`           | Next.js   | 22.x |
+
+Konfigurasi install/build ada di masing-masing `vercel.json`. Output directory mengikuti
+framework; `npm start` bukan build command. `.vercel/` dan env tetap lokal.
+BE mengekspor Express melalui `app.js`; request pertama menghubungkan database dan memeriksa
+replica set, data, indeks, serta bucket private. Request bersamaan berbagi inisialisasi;
+request berikutnya memakai ulang pool. Kegagalan awal menghasilkan 503 dan dicoba lagi.
+
+1. Isi env BE dari tabel di bawah, termasuk `STORAGE_DRIVER=supabase` dan key sandbox.
+   FRONTEND_URL sementara boleh `http://localhost:3000`; setelah FE live gunakan origin HTTPS FE.
+   Pilih `TRUST_PROXY=1` dan verifikasi pembatasan login pada deployment.
+2. Izinkan koneksi Vercel di Atlas. Vercel biasa tidak menyediakan IP egress tetap. Untuk demo
+   Free, akses list `0.0.0.0/0` memungkinkan koneksi dari seluruh IP; autentikasi database tetap
+   wajib. Gunakan user khusus dengan akses database `pickathrift` dan password kuat.
+   [Panduan Atlas/Vercel](https://www.mongodb.com/docs/atlas/reference/partner-integrations/vercel/).
+3. Deploy BE; pastikan `/` dan `/api/products` menjawab 200. URL produksi API harus dapat diakses
+   tanpa Vercel Authentication agar browser Buyer dan webhook Midtrans dapat menghubunginya.
+4. Isi env FE sebelum build: NEXT_PUBLIC_API_URL = origin HTTPS BE tanpa `/api`, dan
+   NEXT_PUBLIC_GOOGLE_CLIENT_ID = Client ID yang sama dengan BE. Build Vercel menolak API
+   localhost/HTTP agar FE tidak menunjuk komputer pengunjung.
+5. Deploy FE. Ubah FRONTEND_URL BE menjadi origin produksi FE lalu redeploy BE.
+6. Tambahkan origin FE ke Google OAuth Authorized JavaScript origins. Pasang URL BE
+   `/api/payments/midtrans/notification` di dashboard sandbox Midtrans dan env override bila dipakai.
+7. Uji Google Login, foto, VA/QRIS, webhook, dan status stok pada domain final.
+
+FE mengirim satu foto per request, maksimal 2 MiB, dengan urutan hingga empat foto tetap sama.
+Ini menghindari [batas payload Vercel 4,5 MB](https://vercel.com/docs/functions/limitations).
+Jika upload berikutnya gagal, foto sebelumnya mungkin sudah tersimpan tanpa terkait produk;
+form menampilkan galat dan tidak menyimpan produk otomatis. Penghitung rate limit masih
+per instance, bukan penghitung global lintas instance serverless. Driver local tetap tersedia
+untuk pengembangan; Vercel wajib Supabase karena disk sementara dan express.static tidak dilayani.
+
 Gunakan Node.js 22 atau lebih baru. Frontend menjalankan Next.js server dan backend
 menjalankan Express; keduanya bukan situs statis. Pembayaran saat ini khusus Midtrans
 sandbox, untuk demo tanpa uang sungguhan.

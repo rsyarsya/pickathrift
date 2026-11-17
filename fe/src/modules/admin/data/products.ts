@@ -75,9 +75,13 @@ export async function uploadProductImages(files: File[]): Promise<string[]> {
     const error = imageError(file);
     if (error) throw new ApiError(422, error);
   }
-  const body = new FormData();
-  for (const file of files) body.append("images", file);
-  return (await apiData<string[]>("/api/admin/product-images", { method: "POST", body })).map(
-    (path) => new URL(path, API_URL).href,
-  );
+  const paths: string[] = [];
+  // Each image stays below Vercel's 4.5 MB request limit.
+  for (const file of files) {
+    const body = new FormData();
+    body.append("images", file);
+    const uploaded = await apiData<string[]>("/api/admin/product-images", { method: "POST", body });
+    paths.push(...uploaded.map((path) => new URL(path, API_URL).href));
+  }
+  return paths;
 }

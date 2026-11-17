@@ -2,27 +2,11 @@ const mongoose = require("mongoose");
 const { once } = require("node:events");
 const { getConfig } = require("./config");
 const { createApp } = require("./app");
-const User = require("./models/user");
-const Order = require("./models/order");
-const Review = require("./models/review");
-const Wishlist = require("./models/wishlist");
-const { assertDataReady } = require("./lib/legacy-data");
+const { prepareDatabase } = require("./services/database");
 
 async function start(config = getConfig()) {
   try {
-    await mongoose.connect(config.mongoUri, { serverSelectionTimeoutMS: 5000, autoIndex: false });
-    const hello = await mongoose.connection.db.admin().command({ hello: 1 });
-    if (!hello.setName) {
-      const error = new Error("MongoDB replica set diperlukan.");
-      error.code = "REPLICA_SET_REQUIRED";
-      throw error;
-    }
-    await require("./services/files").assertStorageReady(config);
-    await assertDataReady(mongoose.connection, config);
-    await User.createIndexes();
-    await Wishlist.createIndexes();
-    await Order.createIndexes();
-    await Review.createIndexes();
+    await prepareDatabase(config);
     const server = createApp(config).listen(config.port);
     await once(server, "listening");
     return server;
