@@ -27,6 +27,7 @@ Proyek akhir mata kuliah Pengembangan Aplikasi Web (PAW) 2026/2027, Kelompok 19,
 **US6 Web Thrift Store**.
 
 <p align="center">
+  <a href="#presentasi">Presentasi</a> ·
   <a href="#live">Live</a> ·
   <a href="#screenshot">Screenshot</a> ·
   <a href="#fitur">Fitur</a> ·
@@ -39,6 +40,18 @@ Proyek akhir mata kuliah Pengembangan Aplikasi Web (PAW) 2026/2027, Kelompok 19,
   <a href="#batasan">Batasan</a> ·
   <a href="#tim">Tim</a>
 </p>
+
+---
+
+## Presentasi
+
+<p align="center">
+  <a href="docs/video/presentasi-pickathrift.mp4">
+    <img src="docs/video/presentasi-poster.jpg" alt="Slide pembuka presentasi PickaThrift Kelompok 19" width="100%" />
+  </a>
+</p>
+
+<p align="center"><sub>▶ Klik gambar untuk menonton video presentasi (±10 menit).</sub></p>
 
 ---
 
@@ -66,7 +79,7 @@ sudah disamarkan.
 
 <p align="center">
   <a href="docs/screenshots/beranda-penuh.jpg">
-    <img src="docs/screenshots/beranda.jpg" alt="Beranda PickaThrift dengan foto dua orang memakai pakaian thrift dan wordmark besar PickaThrift" width="100%" />
+    <img src="docs/screenshots/beranda-hero.jpg" alt="Beranda PickaThrift dengan foto dua orang memakai pakaian thrift dan wordmark besar PickaThrift" width="100%" />
   </a>
 </p>
 <p align="center"><sub>Klik gambar untuk melihat beranda satu halaman penuh.</sub></p>
