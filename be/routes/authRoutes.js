@@ -80,19 +80,45 @@ router.post("/google", async (req, res) => {
   }
   const email = profile.email.trim().toLowerCase();
   let user = (await User.findOne({ googleId: profile.sub })) ?? (await User.findOne({ email }));
-  if (user?.role === "admin") {
-    throw new ApiError(403, "ROLE_MISMATCH", "Akun admin masuk lewat halaman admin.");
-  }
   if (!user) {
     const given = typeof profile.name === "string" ? profile.name.trim() : "";
     const name = (given || email.split("@")[0]).slice(0, 100);
-    user = await User.create({ name, email, googleId: profile.sub, role: "buyer" });
-  } else if (!user.googleId) {
-    // Email sudah terdaftar dengan kata sandi: tautkan ke akun Google yang emailnya terverifikasi.
-    await User.updateOne(
-      { _id: user._id, googleId: { $exists: false } },
-      { $set: { googleId: profile.sub } },
-    );
+    try {
+      user = await User.create({ name, email, googleId: profile.sub, role: "buyer" });
+    } catch (error) {
+      if (error.code !== 11000) throw error;
+      // Request lain mungkin sudah membuat akun ini. Indeks unik tetap menjadi penjaga.
+      user = (await User.findOne({ googleId: profile.sub })) ?? (await User.findOne({ email }));
+      if (!user) throw error;
+    }
+  }
+  if (user.role === "admin")
+    throw new ApiError(403, "ROLE_MISMATCH", "Akun admin masuk lewat halaman admin.");
+  if (!user.googleId) {
+    // email_verified pihak ketiga tidak membuktikan kepemilikan email saat ini.
+    const authoritative =
+      email.endsWith("@gmail.com") ||
+      (typeof profile.hd === "string" && profile.hd.trim().length > 0);
+    if (!authoritative)
+      throw new ApiError(
+        409,
+        "GOOGLE_LINK_REQUIRED",
+        "Email ini sudah terdaftar. Masuk menggunakan kata sandi.",
+      );
+    const userId = user._id;
+    try {
+      user = await User.findOneAndUpdate(
+        { _id: userId, role: "buyer", googleId: { $exists: false } },
+        { $set: { googleId: profile.sub } },
+        { returnDocument: "after" },
+      );
+    } catch (error) {
+      if (error.code !== 11000) throw error;
+      throw rejected();
+    }
+    // Jika kalah race, sesi hanya diberikan jika identitas yang tersimpan memang sama.
+    user ??= await User.findById(userId);
+    if (user?.role !== "buyer" || user.googleId !== profile.sub) throw rejected();
   } else if (user.googleId !== profile.sub) {
     throw rejected();
   }

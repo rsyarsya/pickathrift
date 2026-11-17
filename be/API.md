@@ -414,11 +414,15 @@ PATCH `name` mengikuti aturan nama penerima. Aturan alamat mengikuti bagian batc
 PATCH profil tidak menerima email, password, role, ID, ataupun operator MongoDB.
 
 `/auth/google` aktif kalau `GOOGLE_CLIENT_ID` terisi; tanpa itu jawabannya `503 GOOGLE_DISABLED`.
-Token diverifikasi ke Google (audience = `GOOGLE_CLIENT_ID`) dan email harus terverifikasi;
-selain itu `401 GOOGLE_TOKEN_INVALID`. Email baru dibuat sebagai Buyer tanpa kata sandi. Email
-Buyer yang sudah terdaftar ditautkan ke akun Google dan kata sandinya tetap berlaku. Email
-Admin ditolak `403 ROLE_MISMATCH`. Akun Google tanpa kata sandi yang mencoba `/auth/login`
-mendapat `401 INVALID_CREDENTIALS` yang sama seperti sandi salah.
+Signature, issuer, audience (`GOOGLE_CLIENT_ID`), dan waktu berlaku token diperiksa; email harus
+terverifikasi. Kegagalan menghasilkan `401 GOOGLE_TOKEN_INVALID`. Akun baru dibuat sebagai Buyer
+tanpa kata sandi. Akun Buyer lama hanya ditautkan otomatis jika email terverifikasi berupa Gmail,
+atau token Workspace memiliki `hd`; kata sandinya tetap berlaku. Email pihak ketiga tanpa `hd` pada
+akun password lama menghasilkan `409 GOOGLE_LINK_REQUIRED` dengan arahan masuk memakai kata sandi.
+Login pertama bersamaan dengan identitas sama tetap memakai satu akun; identitas berbeda tidak
+dapat memperoleh sesi lewat penautan yang kalah race. Email Admin ditolak `403 ROLE_MISMATCH`.
+Akun Google tanpa kata sandi yang mencoba `/auth/login` mendapat `401 INVALID_CREDENTIALS` yang
+sama seperti sandi salah.
 
 ## Akses endpoint domain yang sudah ada
 

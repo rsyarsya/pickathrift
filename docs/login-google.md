@@ -7,17 +7,27 @@ board A1 Masuk dan A2 Daftar, plus state A1.7 Google gagal.
 
 1. Tombol resmi Google Identity Services di FE memberi ID token (`credential`).
 2. FE mengirim `POST /api/auth/google` dengan `{ credential }`.
-3. BE memverifikasi token ke Google dengan `google-auth-library`. Audience-nya `GOOGLE_CLIENT_ID`,
-   dan email harus berstatus terverifikasi.
+3. BE memverifikasi signature, issuer, audience (`GOOGLE_CLIENT_ID`), dan waktu berlaku token
+   dengan `google-auth-library`. Email harus berstatus terverifikasi.
 4. BE mencari akun berdasarkan `googleId`, lalu berdasarkan email:
    - belum ada: dibuat sebagai Buyer tanpa kata sandi;
-   - Buyer lama dengan email sama: ditautkan, kata sandinya tetap berlaku;
+   - Buyer lama dengan email Gmail atau Workspace yang dikelola Google (`hd`): ditautkan,
+     kata sandinya tetap berlaku;
+   - Buyer lama dengan email pihak ketiga tanpa `hd`: `409 GOOGLE_LINK_REQUIRED`, gunakan
+     kata sandi yang sudah dimiliki;
    - Admin: ditolak `403`.
-5. BE mengembalikan JWT yang sama dengan `/api/auth/login`. Sesi, `sessionStorage`, dan
+5. Request bersamaan tetap memakai satu akun. Penautan hanya berhasil untuk satu identitas
+   Google; request lain tidak diberi sesi jika identitas yang tersimpan berbeda.
+6. BE mengembalikan JWT yang sama dengan `/api/auth/login`. Sesi, `sessionStorage`, dan
    `/api/users/me` tidak berubah.
 
 Tanpa `NEXT_PUBLIC_GOOGLE_CLIENT_ID`, tombol Google tidak tampil. Tanpa `GOOGLE_CLIENT_ID`, BE
 menjawab `503 GOOGLE_DISABLED`.
+
+Penautan email mengikuti [aturan verifikasi Google](https://developers.google.com/identity/gsi/web/guides/verify-google-id-token).
+`email_verified` saja belum membuktikan kepemilikan email pihak ketiga saat ini. Akun Google
+baru tetap boleh memakai email tersebut; pembatasan di atas berlaku saat menautkan akun password
+yang sudah ada. Login berikutnya mengenali akun melalui `sub`, bukan mencocokkan ulang nama.
 
 ## Langkah manual (sekali saja)
 
@@ -27,8 +37,8 @@ menjawab `503 GOOGLE_DISABLED`.
    - User type **External**.
    - Isi nama aplikasi `PickaThrift`, email dukungan, dan email kontak developer.
    - Scope cukup bawaan (`openid`, `email`, `profile`). Tidak perlu menambah scope.
-   - Biarkan status **Testing**, lalu tambahkan email anggota tim dan dosen penguji di
-     **Test users**. Selama Testing, hanya email di daftar ini yang bisa masuk.
+   - Untuk uji tim, gunakan status **Testing** dan tambahkan email anggota tim serta dosen
+     penguji di **Test users** bila diminta konsol.
 3. **Credentials → Create credentials → OAuth client ID**:
    - Application type **Web application**.
    - **Authorized JavaScript origins**: `http://localhost:3000`, `http://localhost`, dan domain
@@ -64,5 +74,7 @@ langkah 3. Perubahan origin bisa butuh beberapa menit sampai berlaku.
 
 - Teks tombol diatur Google sesuai bahasa browser (misalnya "Login dengan Google"), jadi bisa
   sedikit berbeda dari Figma. Lebarnya juga dibatasi Google maksimal 400 px.
-- Tes otomatis memakai verifier palsu (`verifyGoogleIdToken` di config tes). Alur nyata ke
-  Google hanya teruji lewat uji manual di atas.
+- Tes alur akun memakai verifier palsu (`verifyGoogleIdToken` di config tes). Tes token terpisah
+  memakai verifier asli dengan public key QA untuk memeriksa signature, audience, issuer,
+  kedaluwarsa, dan token rusak. Keduanya tidak membuktikan login ke akun Google sungguhan;
+  jalankan uji manual di atas setelah Client ID dan origin disiapkan.

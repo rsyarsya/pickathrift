@@ -89,7 +89,12 @@ test("Google membuat akun buyer baru tanpa kata sandi lalu memberi sesi", async 
 });
 
 test("email buyer yang sudah terdaftar ditautkan dan kata sandinya tetap berlaku", async () => {
-  const linked = await google({ sub: "g-lama", email: "lama@example.test", email_verified: true });
+  const linked = await google({
+    sub: "g-lama",
+    email: "lama@example.test",
+    email_verified: true,
+    hd: "example.test",
+  });
   assert.equal(linked.status, 200);
   assert.equal(linked.json.data.user.name, "Buyer Lama");
   assert.equal((await User.findOne({ email: "lama@example.test" })).googleId, "g-lama");
@@ -132,6 +137,109 @@ test("GOOGLE_CLIENT_ID dibaca dari env dan boleh kosong", () => {
   const env = { MONGODB_URI: "mongodb://unused", JWT_SECRET: secret };
   assert.equal(getConfig(env).googleClientId, undefined);
   assert.equal(getConfig({ ...env, GOOGLE_CLIENT_ID: " id.apps " }).googleClientId, "id.apps");
+});
+
+test("email pihak ketiga yang tidak dikelola Google tidak menautkan akun password otomatis", async () => {
+  await User.create({
+    name: "Buyer Pribadi",
+    email: "pribadi@example.test",
+    password: await bcrypt.hash("Password123!", 10),
+  });
+  const result = await google({
+    sub: "g-pribadi",
+    email: "pribadi@example.test",
+    email_verified: true,
+  });
+  assert.equal(result.status, 409);
+  assert.equal(result.json.code, "GOOGLE_LINK_REQUIRED");
+  assert.equal((await User.findOne({ email: "pribadi@example.test" })).googleId, undefined);
+});
+
+test("Gmail terverifikasi dapat menautkan akun password tanpa hosted domain", async () => {
+  const local = await User.create({
+    name: "Buyer Gmail",
+    email: "buyer-lokal@gmail.com",
+    password: await bcrypt.hash("Password123!", 10),
+  });
+  const result = await google({
+    sub: "g-gmail-lokal",
+    email: "Buyer-Lokal@Gmail.com",
+    email_verified: true,
+  });
+  assert.equal(result.status, 200);
+  assert.equal(result.json.data.user.id, local.id);
+  assert.equal((await User.findById(local.id)).googleId, "g-gmail-lokal");
+  assert.equal(
+    (
+      await request("/auth/login", {
+        method: "POST",
+        body: { email: local.email, password: "Password123!", role: "buyer" },
+      })
+    ).status,
+    200,
+  );
+});
+
+test("login pertama bersamaan dengan identitas Google sama tetap berhasil tanpa akun ganda", async (t) => {
+  const profile = {
+    sub: "g-bersamaan",
+    email: "concurrent@gmail.com",
+    email_verified: true,
+    name: "Buyer Bersamaan",
+  };
+  const original = User.findOne;
+  let count = 0,
+    release;
+  const ready = new Promise((resolve) => {
+    release = resolve;
+  });
+  t.mock.method(User, "findOne", async function (filter, ...args) {
+    const found = await original.call(this, filter, ...args);
+    if (filter.email === profile.email && !found) {
+      if (++count === 6) release();
+      await ready;
+    }
+    return found;
+  });
+  const results = await Promise.all(Array.from({ length: 6 }, () => google(profile)));
+  assert.deepEqual(
+    results.map((x) => x.status),
+    [200, 200, 200, 200, 200, 200],
+  );
+  assert.equal(new Set(results.map((x) => x.json.data.user.id)).size, 1);
+  assert.equal(await User.countDocuments({ googleId: profile.sub }), 1);
+});
+
+test("dua identitas berbeda tidak sama-sama mendapat sesi saat menautkan akun bersamaan", async (t) => {
+  const email = "link-race@workspace.test";
+  await User.create({
+    name: "Buyer Workspace",
+    email,
+    password: await bcrypt.hash("Password123!", 10),
+  });
+  const original = User.findOne;
+  let count = 0,
+    release;
+  const ready = new Promise((resolve) => {
+    release = resolve;
+  });
+  t.mock.method(User, "findOne", async function (filter, ...args) {
+    const found = await original.call(this, filter, ...args);
+    if (filter.email === email && found && !found.googleId) {
+      if (++count === 2) release();
+      await ready;
+    }
+    return found;
+  });
+  const results = await Promise.all(
+    ["g-link-a", "g-link-b"].map((sub) =>
+      google({ sub, email, email_verified: true, hd: "workspace.test" }),
+    ),
+  );
+  assert.deepEqual(results.map((x) => x.status).sort(), [200, 401]);
+  const winner = results.find((x) => x.status === 200);
+  const stored = await User.findById(winner.json.data.user.id);
+  assert.ok(["g-link-a", "g-link-b"].includes(stored.googleId));
 });
 
 test("tanpa GOOGLE_CLIENT_ID endpoint Google menjawab 503", async () => {

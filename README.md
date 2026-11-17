@@ -33,7 +33,7 @@ Pembagian peran tiga anggota lainnya belum tercatat secara terverifikasi dalam r
 - Cari yang Cocok berdasarkan preferensi dan ukuran pakaian opsional.
 - Meja Perbandingan untuk maksimal dua produk sejenis.
 
-Reservasi memakai batas pembayaran 6 jam dari backend dan hitung mundur pada frontend. Gateway memerlukan akun sandbox, Server Key lokal, dan webhook HTTPS publik. Integrasi diuji otomatis dengan respons provider tiruan; uji VA/QRIS nyata masih menunggu akun sandbox. Keranjang dan Blindbox belum diimplementasikan.
+Reservasi memakai batas pembayaran 6 jam dari backend dan hitung mundur pada frontend. Gateway memerlukan akun sandbox, Server Key lokal, dan webhook HTTPS publik. VA dan QRIS diuji melalui simulator sandbox; transaksi uang sungguhan belum didukung. Keranjang dan Blindbox belum diimplementasikan.
 
 ## Pengguna sistem
 
@@ -81,4 +81,5 @@ Package manager pnpm dengan satu workspace di root. Jalankan FE dan BE pada term
 ## Dokumentasi
 
 - [Indeks dokumentasi proyek](docs/README.md)
+- [Panduan deployment](docs/deployment.md)
 - [Laporan dan dokumen proyek di Google Drive](https://drive.google.com/drive/folders/18fWD-o-8HaH5uzsJtjpsghzn-5u93bpv?usp=sharing)

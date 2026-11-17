@@ -7,6 +7,7 @@ const { adminOrderRouter, orderRouter } = require("./routes/orderRoutes");
 function createApp(config) {
   if (!config?.jwtSecret) throw new Error("JWT_SECRET wajib diisi.");
   const app = express();
+  app.set("trust proxy", config.trustProxy ?? false);
   app.locals.config = config;
   app.disable("x-powered-by");
   app.use(cors());
@@ -24,6 +25,13 @@ function createApp(config) {
     next();
   });
   app.get("/", (req, res) => res.json({ success: true, data: { service: "PickaThrift" } }));
+  const limits = require("./middleware/auth-limits").authLimits(config);
+  app.use("/api/auth", (_req, res, next) => {
+    res.set("Cache-Control", "no-store");
+    next();
+  });
+  app.post(["/api/auth/login", "/api/auth/google"], limits.login);
+  app.post("/api/auth/register", limits.register);
   app.use("/api/auth", require("./routes/authRoutes"));
   app.use("/api/users", require("./routes/userRoutes"));
   app.use("/api/products", require("./routes/productRoutes"));
