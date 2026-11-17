@@ -13,13 +13,23 @@ function createApp(config) {
   app.use(cors());
   app.use(express.json({ limit: "100kb" }));
   app.use("/api", require("./routes/uploadRoutes"));
-  app.use(
-    "/uploads/products",
-    express.static(require("./services/files").filePath(config, "products", ""), {
-      dotfiles: "deny",
-      index: false,
-    }),
-  );
+  const files = require("./services/files");
+  if (files.cloud(config)) {
+    app.get("/uploads/products/:filename", async (req, res) => {
+      const buffer = await files.readImage(config, "products", req.params.filename);
+      res.set({ "Cache-Control": "public, max-age=3600", "X-Content-Type-Options": "nosniff" });
+      res
+        .type(req.params.filename.toLowerCase().endsWith(".png") ? "image/png" : "image/jpeg")
+        .send(buffer);
+    });
+  } else
+    app.use(
+      "/uploads/products",
+      express.static(require("./services/files").filePath(config, "products", ""), {
+        dotfiles: "deny",
+        index: false,
+      }),
+    );
   app.use((req, res, next) => {
     if (["POST", "PATCH", "PUT"].includes(req.method)) objectBody(req.body);
     next();

@@ -56,7 +56,9 @@ router.post(
         throw new ApiError(409, "PAYMENT_EXPIRED", "Batas pembayaran sudah habis.");
       res.json({ success: true, data: serialize.order(result.order) });
     } catch (error) {
-      await files.removeImage(config, "proofs", image.filename);
+      await files
+        .removeImage(config, "proofs", image.filename)
+        .catch(() => console.error("Pembersihan gambar gagal."));
       throw error;
     }
   },
@@ -69,20 +71,26 @@ router.get(
     const order = await payments.ownedOrder(req.params.id, req.account);
     if (!order.proof) throw new ApiError(404, "NOT_FOUND", "Bukti belum tersedia.");
     res.set({ "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff" });
-    res
-      .type(order.proof.mime)
-      .sendFile(files.filePath(req.app.locals.config, "proofs", order.proof.filename), (error) => {
-        if (!error) return;
-        if (res.headersSent) return next(error);
-        res
-          .status(error.code === "ENOENT" ? 404 : 500)
-          .type("application/json")
-          .json({
-            success: false,
-            code: "FILE_UNAVAILABLE",
-            message: "Bukti tidak dapat dibaca.",
-          });
-      });
+    const config = req.app.locals.config;
+    if (files.cloud(config)) {
+      const buffer = await files.readImage(config, "proofs", order.proof.filename);
+      res.type(order.proof.mime).send(buffer);
+    } else {
+      res
+        .type(order.proof.mime)
+        .sendFile(files.filePath(config, "proofs", order.proof.filename), (error) => {
+          if (!error) return;
+          if (res.headersSent) return next(error);
+          res
+            .status(error.code === "ENOENT" ? 404 : 500)
+            .type("application/json")
+            .json({
+              success: false,
+              code: "FILE_UNAVAILABLE",
+              message: "Bukti tidak dapat dibaca.",
+            });
+        });
+    }
   },
 );
 router.post(
@@ -102,7 +110,9 @@ router.post(
       });
     } catch (error) {
       for (const image of images)
-        await files.removeImage(req.app.locals.config, "products", image.filename);
+        await files
+          .removeImage(req.app.locals.config, "products", image.filename)
+          .catch(() => console.error("Pembersihan gambar gagal."));
       throw error;
     }
   },

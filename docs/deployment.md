@@ -36,7 +36,11 @@ contohnya tetap lokal, tidak dimasukkan ke Git.
 | BE      | `MIDTRANS_SERVER_KEY`          | Server Key API sandbox. Tidak pernah memakai prefix `NEXT_PUBLIC_`.                                                      |
 | BE      | `MIDTRANS_NOTIFICATION_KEY`    | Key utama/default penanda tangan notifikasi dan penutupan Snap, jika berbeda dari key API.                               |
 | BE      | `MIDTRANS_NOTIFICATION_URL`    | Opsional: URL HTTPS publik `/api/payments/midtrans/notification`. Tanpa override, set URL tersebut di dashboard sandbox. |
-| BE      | `UPLOAD_DIR`                   | Direktori pada disk persisten, dapat ditulis BE.                                                                         |
+| BE      | `STORAGE_DRIVER`               | `supabase` untuk deployment ini; default `local` untuk pengembangan/tes.                                                 |
+| BE      | `SUPABASE_URL`                 | Origin HTTPS project Supabase.                                                                                           |
+| BE      | `SUPABASE_SECRET_KEY`          | Secret key server berawalan `sb_secret_`; hanya di BE.                                                                   |
+| BE      | `SUPABASE_STORAGE_BUCKET`      | Nama bucket private, misalnya `pickathrift-assets`.                                                                      |
+| BE      | `UPLOAD_DIR`                   | Hanya untuk driver local; membutuhkan disk persisten bila dipakai di hosting.                                            |
 | BE      | `GOOGLE_CLIENT_ID`             | Wajib untuk demo tim yang memakai Google Login; isi sama dengan Client ID FE.                                            |
 | BE      | `TRUST_PROXY`                  | Jumlah hop reverse proxy yang benar, 0–5. Default tidak mempercayai header proxy.                                        |
 
@@ -54,11 +58,18 @@ untuk tes alur; pengujian pembatasan sendiri memakai mode production.
 
 ## Penyimpanan dan database
 
-Foto produk serta bukti manual lama disimpan di disk BE. Dependensi Supabase yang
-ada di manifest belum dipakai untuk menyimpan file. Hosting dengan disk sementara
-dapat kehilangan upload setelah restart/redeploy meskipun referensinya tetap di MongoDB.
-Sediakan disk persisten dan backup `UPLOAD_DIR` bersama database, atau implementasikan
-penyimpanan objek sebelum memilih hosting yang hanya menyediakan disk sementara.
+Untuk deployment ini, gunakan Supabase Storage dengan satu bucket **private**.
+BE menyimpan foto pada prefix `products/` dan bukti manual lama pada `proofs/`.
+URL produk tetap melalui BE; bukti tetap memerlukan JWT aplikasi dan akses pemilik/Admin.
+Bucket tidak memerlukan policy akses publik. Key Supabase hanya di server. JWT aplikasi
+tetap memakai `JWT_SECRET`; `SUPABASE_JWKS_URL` tidak digunakan untuk Storage ini.
+
+Startup memeriksa akses dan privasi bucket. File baru tetap tersedia setelah restart/redeploy
+karena tidak bergantung pada disk hosting. Driver `local` tersedia untuk tes/pengembangan;
+driver Supabase tidak memakai file lokal sebagai cadangan jika layanan cloud gagal.
+Sebelum memindahkan database lama ke driver Supabase, salin isi folder lokal `products/`
+dan `proofs/` ke prefix yang sama pada bucket, dengan nama file tetap. Tidak ada migrasi
+atau penghapusan file lama otomatis. Perintah admin dan dry-run migrasi mengikuti driver terpilih.
 
 Startup BE memeriksa replica set, indeks unik, dan kompatibilitas data. Untuk database
 lama, jalankan pemeriksaan di [panduan migrasi](../be/MIGRATION.md) pada salinan database
