@@ -1,5 +1,48 @@
 # Deployment PickaThrift
 
+## Target hosting: FE Vercel, BE Railway
+
+FE memakai Vercel, BE memakai Railway, database memakai MongoDB Atlas, dan foto
+memakai Supabase Storage. Deploy hanya folder `fe` di Vercel; BE tetap menjalankan
+Express melalui `npm start` di Railway.
+
+### Deploy FE di Vercel
+
+1. Merge konfigurasi FE ke `main`, lalu buka project `pickathrift-web` pada workspace
+   `rasyadwarsyas-projects`. Jika project belum ada, import repository `rsyarsya/pickathrift`.
+2. Pilih production branch `main`, Root Directory `fe`, Framework Preset **Next.js**,
+   dan Node.js **22.x**. Aktifkan **Include source files outside of the Root Directory
+   in the Build Step** agar lockfile dan konfigurasi pnpm workspace dapat dibaca.
+3. Gunakan Install Command `pnpm install --frozen-lockfile` dan Build Command
+   `pnpm build`, sesuai `fe/vercel.json`. Biarkan Output Directory mengikuti default
+   Next.js; tidak perlu mengisi Start Command.
+4. Isi dua variabel FE untuk environment Production sebelum build:
+
+   | Variabel                       | Nilai                                                      |
+   | ------------------------------ | ---------------------------------------------------------- |
+   | `NEXT_PUBLIC_API_URL`          | `https://pickathriftbe-production.up.railway.app`          |
+   | `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | Client ID Google yang sama dengan `GOOGLE_CLIENT_ID` di BE |
+
+   API URL berupa origin HTTPS tanpa `/api`. Jika menguji preview, isi kedua variabel
+   di environment Preview juga. Jangan memasukkan JWT secret, URI database, Server Key
+   Midtrans, atau secret Supabase ke FE.
+
+5. Deploy commit `main` terbaru. Perubahan `NEXT_PUBLIC_*` memerlukan build/deployment
+   baru; mengubah nilai di Settings tidak mengubah JavaScript yang sudah terpasang.
+6. Setelah mendapat domain produksi FE, isi `FRONTEND_URL` di Railway dengan origin
+   HTTPS FE tersebut, lalu redeploy BE. Tambahkan origin yang sama ke Google Cloud
+   OAuth Client: **Authorized JavaScript origins**, tanpa path `/masuk`.
+7. Di dashboard Sandbox Midtrans, arahkan Payment Notification URL ke
+   `https://pickathriftbe-production.up.railway.app/api/payments/midtrans/notification`.
+   Jika BE memakai `MIDTRANS_NOTIFICATION_URL`, pastikan nilainya sama.
+8. Buka domain produksi FE dan cek katalog, detail/foto, login password dan Google,
+   lalu checkout VA/QRIS melalui simulator Sandbox Midtrans. Periksa status pesanan
+   dari API; halaman kembali dari pembayaran saja belum membuktikan pembayaran sukses.
+
+Build Vercel menolak API localhost/HTTP agar FE tidak menunjuk komputer pengunjung.
+Konfigurasi BE untuk Vercel tidak diperlukan. Pengaturan lengkap BE dan penyimpanan
+tetap mengikuti bagian di bawah.
+
 Gunakan Node.js 22 atau lebih baru. Frontend menjalankan Next.js server dan backend
 menjalankan Express; keduanya bukan situs statis. Pembayaran saat ini khusus Midtrans
 sandbox, untuk demo tanpa uang sungguhan.
