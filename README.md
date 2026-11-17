@@ -318,7 +318,7 @@ Kelompok 19:
 | Nama                          | NIM                |
 | ----------------------------- | ------------------ |
 | Annora Farah Aprilla Setyawan | 24/538937/TK/59766 |
-| Harum Satiti Astyanti         | 24/543494/TK/60398 |
+| Harum Satiti Astyanti         | 24/543492/TK/60398 |
 | Muhammad Farrel Al Ghazy      | 24/540589/TK/60022 |
 | Rasyadwa Arsya Irnantyanto    | 24/534714/TK/59283 |
 
